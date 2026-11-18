@@ -72,11 +72,11 @@ def todos_list(request):
     private = Todo.objects.filter(is_private=True).filter(Q(owner=user) | Q(created_by=user)).filter(done=False)
 
     base = Todo.objects.filter(team=team, is_private=False)
-    weekly = weekly_completion(base, weeks=6)
+    weekly = weekly_completion(base, weeks=4)
     members = team.members.filter(is_active=True) if team else User.objects.none()
     people = []
     for m in members:
-        rows = weekly_completion(base.filter(owner=m), weeks=6)
+        rows = weekly_completion(base.filter(owner=m), weeks=4)
         people.append({"user": m, "weeks": rows, "open": base.filter(owner=m, done=False).count()})
     can_add = is_admin(user) or is_team_member(user, team)
     return render(

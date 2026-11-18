@@ -47,13 +47,14 @@
   <section class="lg:col-span-2">
     <div class="flex items-center justify-between mb-2"><h2 class="section-title">My issues</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
     <div class="list-group">
-      {% for i in issues %}
+      {% for i in issues|slice:":10" %}
         <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5">
           {% if i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
           <span class="flex-1 text-sm font-medium truncate">{{ i.title }}</span>
           <span class="pill pill-muted">{{ i.team.name }}</span><span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
         </a>
       {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open issues you own.</p>{% endfor %}
+      {% if issues|length > 10 %}<a href="{% url 'issues' %}" class="block px-4 py-2.5 text-xs link">{{ issues|length|add:"-10" }} more on the Issues lists</a>{% endif %}
     </div>
   </section>
 </div>
