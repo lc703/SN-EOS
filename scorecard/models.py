@@ -1,0 +1,122 @@
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
+from django.db import models
+
+from core.models import LegacyMixin
+
+
+class Measurable(LegacyMixin):
+    UNIT_NUMBER = "number"
+    UNIT_PERCENT = "percent"
+    UNIT_CURRENCY = "currency"
+    UNIT_YESNO = "yesno"
+    UNIT_CHOICES = [
+        (UNIT_NUMBER, "Number"),
+        (UNIT_PERCENT, "%"),
+        (UNIT_CURRENCY, "Currency ($)"),
+        (UNIT_YESNO, "Yes / No"),
+    ]
+    GTE, LTE, EQ = "gte", "lte", "eq"
+    COMPARE_CHOICES = [(GTE, "≥"), (LTE, "≤"), (EQ, "=")]
+    TRAIL_NONE, TRAIL_AVG, TRAIL_TOTAL = "", "avg", "total"
+    TRAIL_CHOICES = [(TRAIL_NONE, "None"), (TRAIL_AVG, "Average"), (TRAIL_TOTAL, "Total")]
+
+    team = models.ForeignKey("core.Team", on_delete=models.CASCADE, related_name="measurables")
+    title = models.CharField(max_length=160)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="measurables"
+    )
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default=UNIT_NUMBER)
+    goal_compare = models.CharField("Goal is", max_length=3, choices=COMPARE_CHOICES, default=GTE)
+    goal = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True, help_text="For Yes/No, 1 = Yes, 0 = No."
+    )
+    trailing = models.CharField(
+        "Trailing column", max_length=5, choices=TRAIL_CHOICES, default=TRAIL_NONE, blank=True
+    )
+    sort = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["team__sort", "sort", "id"]
+
+    def __str__(self):
+        return self.title
+
+    def is_on_goal(self, value):
+        """True/False against the goal, or None when there is no value or no goal."""
+        if value is None or self.goal is None:
+            return None
+        value, goal = Decimal(value), Decimal(self.goal)
+        if self.goal_compare == self.GTE:
+            return value >= goal
+        if self.goal_compare == self.LTE:
+            return value <= goal
+        return value == goal
+
+    def format_value(self, value):
+        if value is None:
+            return ""
+        value = Decimal(value)
+        if self.unit == self.UNIT_YESNO:
+            return "Yes" if value else "No"
+        text = f"{value:,.2f}".rstrip("0").rstrip(".")
+        if self.unit == self.UNIT_PERCENT:
+            return f"{text}%"
+        if self.unit == self.UNIT_CURRENCY:
+            return f"${text}"
+        return text
+
+    @property
+    def goal_display(self):
+        if self.goal is None:
+            return "—"
+        if self.unit == self.UNIT_YESNO:
+            return "Yes" if self.goal else "No"
+        return f"{self.get_goal_compare_display()} {self.format_value(self.goal)}"
+
+    def trailing_value(self, values):
+        values = [Decimal(v) for v in values if v is not None]
+        if not values or not self.trailing:
+            return None
+        total = sum(values)
+        if self.trailing == self.TRAIL_TOTAL:
+            return total
+        return (total / len(values)).quantize(Decimal("0.01"))
+
+    @staticmethod
+    def parse(raw, unit):
+        raw = (raw or "").strip().replace(",", "").replace("$", "").replace("%", "")
+        if raw == "":
+            return None
+        if unit == Measurable.UNIT_YESNO:
+            low = raw.lower()
+            if low in {"y", "yes", "1", "true"}:
+                return Decimal(1)
+            if low in {"n", "no", "0", "false"}:
+                return Decimal(0)
+            raise ValueError("Enter yes or no")
+        try:
+            return Decimal(raw)
+        except InvalidOperation as exc:
+            raise ValueError("Enter a number") from exc
+
+
+class ScoreEntry(models.Model):
+    measurable = models.ForeignKey(Measurable, on_delete=models.CASCADE, related_name="entries")
+    week_start = models.DateField()
+    value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("measurable", "week_start")]
+        ordering = ["week_start"]
+
+    def __str__(self):
+        return f"{self.measurable} {self.week_start}: {self.value}"
+
+    @property
+    def on_goal(self):
+        return self.measurable.is_on_goal(self.value)

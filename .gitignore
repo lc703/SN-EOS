@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+.env
+
+# Battle Planner exports contain real people's 1:1 notes. Never commit them.
+battle-planner-export*.json
+*export*.json
+data/
+!tests/fixtures/*.json
+
+# Tools
+bin/
+node_modules/
+.DS_Store
+.idea/
+.vscode/
