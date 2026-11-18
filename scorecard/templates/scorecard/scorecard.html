@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Scorecard{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">{{ team.label }} · {{ quarter.name }}</div>
+    <h1 class="text-2xl">Scorecard</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Weekly measurables. Type a number in any week; green is on goal, red is off.</p>
+  </div>
+  {% if can_add %}
+    <div x-data="{open:false}">
+      <button type="button" class="btn btn-primary" @click="open=!open">+ Measurable</button>
+      <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 mt-2 w-[min(32rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
+        <form method="post" action="{% url 'measurable_new' %}">{% csrf_token %}
+          {% include "_form.html" %}
+          <div class="mt-4 flex justify-end gap-2"><button type="button" class="btn" @click="open=false">Cancel</button><button class="btn btn-primary">Add</button></div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% include "scorecard/_table.html" with mode="scorecard" %}
+<p class="mt-3 text-xs text-neutral-500">Columns are the {{ weeks|length }} weeks of {{ quarter.name }} (week of Monday). The lime line marks this week.</p>
+{% endblock %}

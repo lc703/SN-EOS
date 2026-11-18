@@ -1,0 +1,20 @@
+{% load sn %}
+<p class="text-sm text-neutral-600 mb-3">Good and bad news about customers and employees, one sentence each. Anything that needs discussion drops to Issues.</p>
+<div class="list-group">
+  {% if can_run %}
+  <form method="post" action="{% url 'headline_add' meeting.pk %}" class="flex flex-wrap gap-2 px-4 py-3 bg-neutral-50/70">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <select name="kind" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Headline type"><option value="customer">Customer</option><option value="employee">Employee</option></select>
+    <input name="text" required placeholder="Add a headline…" aria-label="Headline" class="flex-1 min-w-[14rem] rounded-lg border bg-white px-3 py-2 text-[15px]">
+    <button class="btn btn-primary h-10">Add</button>
+  </form>
+  {% endif %}
+  {% for h in headlines %}
+    <div class="flex items-center gap-3 px-4 py-2.5">
+      <span class="pill {% if h.kind == 'customer' %}pill-bolt{% else %}pill-muted{% endif %} w-20 justify-center">{{ h.get_kind_display }}</span>
+      <span class="flex-1 text-sm">{{ h.text }}</span>
+      <span class="text-xs text-neutral-500 hidden sm:inline">{{ h.author.first }}</span>
+      {% include "issues/_drop_button.html" with kind="headline" obj_id=h.pk %}
+    </div>
+  {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No headlines yet.</p>{% endfor %}
+</div>

@@ -1,0 +1,17 @@
+{% load sn %}{% with m=row.measurable %}
+<td id="mt-{{ m.pk }}" class="sc-sticky px-3 py-1.5" {% if oob %}hx-swap-oob="true"{% endif %}>
+  <div class="flex items-center gap-2">
+    {% avatar m.owner %}
+    <div class="min-w-0 flex-1">
+      <div class="font-semibold leading-tight truncate">{{ m.title }}</div>
+      <div class="text-[11.5px] text-neutral-500 truncate">{% if m.owner %}{{ m.owner.display_name }}{% else %}No owner{% endif %}{% if mode == 'home' %} · {{ m.team.name }}{% endif %}</div>
+    </div>
+    {% if mode != 'home' %}
+      {% if row.is_red %}
+        {% include "issues/_drop_button.html" with kind="measurable" obj_id=m.pk %}
+      {% endif %}
+      {% if row.editable %}<a href="{% url 'measurable_edit' m.pk %}" class="btn btn-ghost btn-sm !px-1.5 text-neutral-400" title="Edit measurable" hx-select="unset" hx-target="unset" hx-swap="unset">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg></a>{% endif %}
+    {% endif %}
+  </div>
+</td>{% endwith %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Accountability Chart{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">{{ team.label }}</div>
+    <h1 class="text-2xl">Accountability Chart</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Right people in the right seats. Each seat lists its five roles.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="inline-flex rounded-xl bg-white border border-black/10 p-1 text-sm font-semibold">
+      <a href="?view=tree" class="px-3 h-8 inline-flex items-center rounded-lg {% if view != 'list' %}bg-black text-white{% else %}text-neutral-600{% endif %}">Tree</a>
+      <a href="?view=list" class="px-3 h-8 inline-flex items-center rounded-lg {% if view == 'list' %}bg-black text-white{% else %}text-neutral-600{% endif %}">List</a>
+    </div>
+    {% if can_edit %}<a href="{% url 'seat_new' %}" class="btn btn-primary">+ Seat</a>{% endif %}
+  </div>
+</div>
+
+{% if view == 'list' %}
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-neutral-500 text-xs border-b border-black/5">
+        <th class="px-4 py-2 font-semibold">Seat</th><th class="px-3 py-2 font-semibold">Person</th><th class="px-3 py-2 font-semibold">Reports to</th><th class="px-3 py-2 font-semibold">Roles</th><th></th>
+      </tr></thead>
+      <tbody class="divide-y divide-black/5">
+        {% for s in seats %}
+          <tr class="align-top list-row">
+            <td class="px-4 py-2 font-semibold whitespace-nowrap">{{ s.title }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ s.holder|default:"—" }}</td>
+            <td class="px-3 py-2 text-neutral-600 whitespace-nowrap">{{ s.parent.title|default:"—" }}</td>
+            <td class="px-3 py-2 text-neutral-600 text-[12.5px]">{{ s.role_list|join:" · " }}</td>
+            <td class="px-3 py-2 text-right">{% if can_edit %}<a href="{% url 'seat_edit' s.pk %}" class="btn btn-sm">Edit</a>{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-neutral-500">No seats for {{ team.name }} yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card p-6 overflow-x-auto">
+    {% if tree %}
+      <div class="tree flex justify-center items-start gap-10 min-w-max">
+        {% for node in tree %}<ul class="root">{% include "vision/_seat_node.html" %}</ul>{% endfor %}
+      </div>
+    {% else %}<p class="text-center text-neutral-500 py-8">No seats for {{ team.name }} yet.</p>{% endif %}
+  </div>
+{% endif %}
+{% endblock %}

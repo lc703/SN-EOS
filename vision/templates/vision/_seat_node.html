@@ -1,0 +1,24 @@
+{% load sn %}
+<li>
+  <div class="seat-card card px-3 py-2.5 {% if node.depth == 0 %}ring-2 ring-black{% endif %}">
+    <div class="flex items-start gap-2">
+      <div class="min-w-0 flex-1">
+        <div class="font-display font-bold text-[13.5px] leading-tight">{{ node.seat.title }}</div>
+        <div class="text-[12.5px] {% if node.seat.holder %}text-neutral-700{% else %}text-amber-700 font-semibold{% endif %}">{{ node.seat.holder|default:"Open seat" }}</div>
+      </div>
+      {% if can_edit %}<a href="{% url 'seat_edit' node.seat.pk %}" class="text-neutral-300 hover:text-black" title="Edit seat"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg></a>{% endif %}
+    </div>
+    {% with roles=node.seat.role_list %}{% if roles %}
+      <ul class="mt-1.5 space-y-0.5 text-[11.5px] text-neutral-600 leading-snug">
+        {% for r in roles|slice:":5" %}<li class="flex gap-1.5"><span class="mt-[5px] h-1 w-1 rounded-full bg-neutral-400 shrink-0"></span><span>{{ r }}</span></li>{% endfor %}
+        {% if roles|length > 5 %}<li class="text-neutral-400">+{{ roles|length|add:"-5" }} more</li>{% endif %}
+      </ul>
+    {% endif %}{% endwith %}
+    {% if node.children and node.depth >= 1 %}<div class="mt-1.5 text-[11px] text-neutral-400">{{ node.children|length }} report{{ node.children|length|pluralize }}</div>{% endif %}
+  </div>
+  {% if node.children %}
+    <ul class="{% if node.depth < 1 %}h{% else %}v{% endif %}">
+      {% for child in node.children %}{% include "vision/_seat_node.html" with node=child %}{% endfor %}
+    </ul>
+  {% endif %}
+</li>

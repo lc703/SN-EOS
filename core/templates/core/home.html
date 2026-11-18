@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}My 90{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div>
+    <div class="eyebrow">{{ quarter.name }} · {{ today|date:"l, F j" }}</div>
+    <h1 class="text-2xl sm:text-3xl">Hi {{ user.first }}, here’s your 90.</h1>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    {% for m in open_meetings %}<a href="{% url 'meeting' m.pk %}" class="btn btn-bolt">▶ Rejoin {{ m.team.name }} L10</a>{% endfor %}
+    {% if not open_meetings %}<a href="{% url 'meetings' %}" class="btn">L10 meetings</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid sm:grid-cols-4 gap-3 mb-6">
+  {% with last=completion|last %}
+  <div class="card card-pad"><div class="eyebrow">Open to-dos</div><div class="font-display font-extrabold text-2xl">{{ todos|length }}</div></div>
+  <div class="card card-pad"><div class="eyebrow">Rocks</div><div class="font-display font-extrabold text-2xl">{{ rocks|length }}</div></div>
+  <div class="card card-pad"><div class="eyebrow">My open issues</div><div class="font-display font-extrabold text-2xl">{{ issues|length }}</div></div>
+  <div class="card card-pad"><div class="eyebrow">To-do completion</div>
+    <div class="flex items-end gap-2">{% for w, pct, done, total in completion %}<div class="text-center"><div class="font-display font-extrabold {% if forloop.last %}text-2xl{% else %}text-sm{% endif %} {{ pct|pct_class }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</div><div class="text-[10px] text-neutral-400">{{ w|date:"n/j" }}</div></div>{% endfor %}</div>
+  </div>
+  {% endwith %}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 items-start">
+  <section>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My to-dos</h2><a href="{% url 'todos' %}" class="text-xs link">All to-dos</a></div>
+    <div class="list-group">
+      {% for t in todos %}{% include "todos/_todo.html" with compact=1 %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My rocks</h2><a href="{% url 'rocks' %}" class="text-xs link">All rocks</a></div>
+    <div class="list-group">
+      {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No rocks this quarter.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="lg:col-span-2">
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My measurables</h2><a href="{% url 'scorecard' %}" class="text-xs link">Scorecard</a></div>
+    {% if rows %}{% include "scorecard/_table.html" with mode="home" %}{% else %}<div class="card card-pad text-sm text-neutral-500">You don’t own any measurables yet.</div>{% endif %}
+  </section>
+
+  <section class="lg:col-span-2">
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My issues</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
+    <div class="list-group">
+      {% for i in issues %}
+        <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5">
+          {% if i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
+          <span class="flex-1 text-sm font-medium truncate">{{ i.title }}</span>
+          <span class="pill pill-muted">{{ i.team.name }}</span><span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
+        </a>
+      {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open issues you own.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

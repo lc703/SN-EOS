@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Issue{% endblock %}
+{% block content %}
+<a href="{% if meeting %}{% url 'meeting' meeting.pk %}?s=ids{% else %}{% url 'issues' %}{% endif %}" class="text-sm text-neutral-500 hover:text-black">← {% if meeting %}Back to the meeting{% else %}Issues{% endif %}</a>
+<div class="mt-1 mb-5 flex flex-wrap items-start gap-3">
+  <h1 class="text-2xl flex-1 min-w-0">{{ issue.title }}</h1>
+  {% if issue.is_open %}<span class="pill pill-muted">Open · {{ issue.get_horizon_display }}</span>{% if issue.priority %}<span class="prio prio-on">{{ issue.priority }}</span>{% endif %}
+  {% else %}<span class="pill st-done">Solved {{ issue.solved_at|date:"M j"|default:"" }}</span>{% endif %}
+</div>
+
+<div class="grid lg:grid-cols-[1fr_22rem] gap-6 items-start">
+  <div class="space-y-6">
+    {% if issue.source %}
+      <div class="card card-pad text-sm flex items-center gap-2">
+        <span class="eyebrow">Came from</span>
+        {% if issue.source_measurable %}<a class="link" href="{% url 'scorecard' %}?team={{ issue.source_measurable.team.slug }}">Scorecard: {{ issue.source_measurable.title }}</a>
+        {% elif issue.source_rock %}<a class="link" href="{% url 'rock_detail' issue.source_rock.pk %}">Rock: {{ issue.source_rock.title }}</a>
+        {% elif issue.source_headline %}<span>Headline: {{ issue.source_headline.text }}</span>{% endif %}
+      </div>
+    {% endif %}
+
+    {% if issue.is_open and editable %}
+      <section class="card card-pad">
+        <h2 class="section-title mb-3">Solve it (IDS)</h2>
+        {% include "issues/_solve_panel.html" %}
+      </section>
+    {% elif issue.resolution %}
+      <section class="card card-pad"><div class="eyebrow mb-1">Solution</div><p class="prose-pre text-sm">{{ issue.resolution }}</p></section>
+    {% endif %}
+
+    <section>
+      <h2 class="section-title mb-2">To-dos from this issue</h2>
+      <div class="list-group">
+        {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-4 text-sm text-neutral-500">None yet.</p>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="space-y-4">
+    <form method="post" class="card card-pad">{% csrf_token %}
+      <h2 class="section-title mb-3">Details</h2>
+      {% if editable %}
+        {% include "_form.html" with cols="grid-cols-1" %}
+        <div class="mt-4 flex items-center gap-2"><button class="btn btn-primary">Save</button>
+          <button name="delete" value="1" class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Delete this issue?')">Delete</button></div>
+      {% else %}
+        <p class="text-sm prose-pre">{{ issue.description|default:"No description." }}</p>
+        <p class="text-sm mt-2 text-neutral-500">Owner: {{ issue.owner|default:"—" }}</p>
+      {% endif %}
+    </form>
+    {% if not issue.is_open and editable %}
+      <form method="post" action="{% url 'issue_reopen' issue.pk %}">{% csrf_token %}<button class="btn w-full">Reopen issue</button></form>
+    {% endif %}
+    <p class="text-xs text-neutral-500">{{ issue.team.name }} · raised {{ issue.created_at|date:"M j, Y" }}{% if issue.created_by %} by {{ issue.created_by.display_name }}{% endif %}</p>
+  </aside>
+</div>
+{% endblock %}

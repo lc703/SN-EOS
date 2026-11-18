@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}People{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">{% if show_all %}Everyone{% else %}{{ team.label }}{% endif %}</div>
+    <h1 class="text-2xl">People</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Directory, seats, 1:1s and the People Analyzer.</p>
+  </div>
+  <a href="?{% if not show_all %}all=1{% endif %}" class="btn">{% if show_all %}Only {{ team.name }}{% else %}Show everyone{% endif %}</a>
+</div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  {% for p in people %}
+    <a href="{% url 'person' p.pk %}" class="card card-pad flex items-start gap-3 hover:border-black/40">
+      {% avatar p "lg" %}
+      <div class="min-w-0 flex-1">
+        <div class="font-semibold leading-tight">{{ p.display_name }}{% if p.is_admin %} <span class="pill pill-bolt ml-1 !h-5 !text-[10px]">Admin</span>{% endif %}</div>
+        <div class="text-[12.5px] text-neutral-600 truncate">{% for s in p.seats.all|slice:":2" %}{{ s.title }}{% if not forloop.last %}, {% endif %}{% empty %}{{ p.title|default:"—" }}{% endfor %}</div>
+        <div class="mt-1 flex flex-wrap gap-1">{% for t in p.teams.all %}<span class="pill pill-muted !h-5 !text-[10.5px]">{{ t.short_code|default:t.name }}</span>{% endfor %}
+          {% if not p.can_sign_in %}<span class="pill !h-5 !text-[10.5px] bg-amber-50 text-amber-800">No login</span>{% endif %}</div>
+      </div>
+    </a>
+  {% empty %}<p class="text-sm text-neutral-500">Nobody here yet.</p>{% endfor %}
+</div>
+{% endblock %}

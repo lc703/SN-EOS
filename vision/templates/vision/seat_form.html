@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Seat{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+  <a href="{% url 'chart' %}" class="text-sm text-neutral-500 hover:text-black">← Accountability Chart</a>
+  <h1 class="text-2xl mt-1 mb-4">{% if obj %}{{ obj.title }}{% else %}New seat{% endif %}</h1>
+  <form method="post" class="card card-pad">{% csrf_token %}
+    {% include "_form.html" %}
+    <div class="mt-5 flex items-center gap-2">
+      <button class="btn btn-primary">Save</button>
+      <a href="{% url 'chart' %}" class="btn">Cancel</a>
+      {% if obj %}<button name="delete" value="1" class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Remove this seat? Its reports move up a level.')">Remove seat</button>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

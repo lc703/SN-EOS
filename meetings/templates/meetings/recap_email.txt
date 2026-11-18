@@ -1,0 +1,16 @@
+{% autoescape off %}{{ meeting.team.name }} Level 10 · {{ meeting.date|date:"l, F j, Y" }}
+Average rating: {{ average|default:"-" }}
+
+NEW TO-DOS
+{% for t in new_todos %}- {{ t.title }} ({{ t.owner.display_name }}, due {{ t.due_date|date:"M j" }})
+{% empty %}- None
+{% endfor %}
+ISSUES SOLVED
+{% for i in solved %}- {{ i.title }}{% if i.resolution %}: {{ i.resolution }}{% endif %}
+{% empty %}- None
+{% endfor %}{% if meeting.notes %}
+CASCADING MESSAGES
+{{ meeting.notes }}
+{% endif %}
+Full recap: {{ site_url }}/meetings/{{ meeting.pk }}/recap/
+{% endautoescape %}

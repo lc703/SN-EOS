@@ -10,6 +10,7 @@ def app(request):
         "COMPANY_NAME": settings.COMPANY_NAME,
         "TAILWIND_CDN": settings.TAILWIND_CDN,
         "DEV_LOGIN": settings.DEV_LOGIN,
+        "ALLOWED_EMAIL_DOMAIN": settings.ALLOWED_EMAIL_DOMAIN,
     }
     if getattr(request, "user", None) and request.user.is_authenticated:
         ctx.update(

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}V/TO{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div>
+    <div class="eyebrow">{{ COMPANY_NAME }}</div>
+    <h1 class="text-2xl">Vision / Traction Organizer</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Updated {{ vto.updated_at|date:"M j, Y" }}{% if vto.updated_by %} by {{ vto.updated_by.display_name }}{% endif %}</p>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="window.print()" class="btn">Print</button>
+    {% if is_admin %}<a href="{% url 'vto_edit' %}" class="btn btn-primary">Edit V/TO</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-5 items-start">
+  {# ---------------- VISION ---------------- #}
+  <div class="space-y-4">
+    <div class="flex items-center gap-2"><span class="h-5 w-1.5 rounded-full bg-bolt ring-1 ring-black"></span><h2 class="font-display font-extrabold text-lg uppercase tracking-wide">Vision</h2></div>
+
+    <section class="card card-pad">
+      <div class="eyebrow mb-2">Core values</div>
+      <ol class="space-y-2">
+        {% for v in values %}
+          <li><div class="font-semibold">{{ forloop.counter }}. {{ v.name }}</div>{% if v.description %}<p class="text-[13px] text-neutral-600 prose-pre">{{ v.description }}</p>{% endif %}</li>
+        {% empty %}<li class="text-sm text-neutral-500">Not set.</li>{% endfor %}
+      </ol>
+    </section>
+
+    <section class="card card-pad grid gap-3">
+      <div class="eyebrow">Core focus</div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Purpose / cause / passion</div><p class="font-medium">{{ vto.purpose|default:"—" }}</p></div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Niche</div><p class="font-medium">{{ vto.niche|default:"—" }}</p></div>
+    </section>
+
+    <section class="card card-pad">
+      <div class="eyebrow mb-1">10-year target</div>
+      <p class="font-display font-bold text-lg leading-snug">{{ vto.ten_year_target|default:"—" }}</p>
+    </section>
+
+    <section class="card card-pad grid gap-3">
+      <div class="eyebrow">Marketing strategy</div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Target market / “the list”</div><p>{{ vto.target_market|default:"—" }}</p></div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Three uniques</div>
+        <ol class="list-decimal pl-5 space-y-1">{% for u in vto.uniques|lines %}<li>{{ u }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ol></div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Proven process</div><p>{{ vto.proven_process|default:"—" }}</p></div>
+      <div><div class="text-[12px] font-semibold text-neutral-500">Guarantee</div><p>{{ vto.guarantee|default:"—" }}</p></div>
+    </section>
+
+    <section class="card card-pad">
+      <div class="flex items-baseline justify-between mb-2"><div class="eyebrow">3-year picture</div><span class="text-sm font-semibold">{{ vto.three_year_date }}</span></div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="rounded-lg bg-neutral-50 px-3 py-2"><div class="text-[11px] font-semibold text-neutral-500">Revenue</div><div class="font-display font-bold">{{ vto.three_year_revenue|default:"—" }}</div></div>
+        <div class="rounded-lg bg-neutral-50 px-3 py-2"><div class="text-[11px] font-semibold text-neutral-500">Profit</div><div class="font-display font-bold">{{ vto.three_year_profit|default:"—" }}</div></div>
+      </div>
+      <div class="text-[12px] font-semibold text-neutral-500">Measurables</div>
+      <ul class="list-disc pl-5 text-sm mb-3">{% for x in vto.three_year_measurables|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ul>
+      <div class="text-[12px] font-semibold text-neutral-500">What does it look like?</div>
+      <ul class="list-disc pl-5 text-sm space-y-0.5">{% for x in vto.three_year_picture|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ul>
+    </section>
+  </div>
+
+  {# ---------------- TRACTION ---------------- #}
+  <div class="space-y-4">
+    <div class="flex items-center gap-2"><span class="h-5 w-1.5 rounded-full bg-black"></span><h2 class="font-display font-extrabold text-lg uppercase tracking-wide">Traction</h2></div>
+
+    <section class="card card-pad">
+      <div class="flex items-baseline justify-between mb-2"><div class="eyebrow">1-year plan</div><span class="text-sm font-semibold">{{ vto.one_year_date }}</span></div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="rounded-lg bg-neutral-50 px-3 py-2"><div class="text-[11px] font-semibold text-neutral-500">Revenue</div><div class="font-display font-bold">{{ vto.one_year_revenue|default:"—" }}</div></div>
+        <div class="rounded-lg bg-neutral-50 px-3 py-2"><div class="text-[11px] font-semibold text-neutral-500">Profit</div><div class="font-display font-bold">{{ vto.one_year_profit|default:"—" }}</div></div>
+      </div>
+      <div class="text-[12px] font-semibold text-neutral-500">Measurables</div>
+      <ul class="list-disc pl-5 text-sm mb-3">{% for x in vto.one_year_measurables|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ul>
+      <div class="text-[12px] font-semibold text-neutral-500">Goals for the year</div>
+      <ol class="list-decimal pl-5 text-sm space-y-0.5">{% for x in vto.one_year_goals|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ol>
+    </section>
+
+    <section class="card card-pad">
+      <div class="flex items-baseline justify-between mb-2"><div class="eyebrow">Rocks · {{ quarter.name }}</div><a href="{% url 'rocks' %}{% if leadership %}?team={{ leadership.slug }}{% endif %}" class="text-xs link">All rocks →</a></div>
+      <ul class="divide-y divide-black/5">
+        {% for r in rocks %}<li class="py-1.5 flex items-center gap-2 text-sm">{% avatar r.owner %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 hover:underline">{{ r.title }}</a>{% status_pill r %}</li>
+        {% empty %}<li class="text-sm text-neutral-500 py-1">No company rocks this quarter.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card card-pad">
+      <div class="flex items-baseline justify-between mb-2"><div class="eyebrow">Issues list (long-term)</div><a href="{% url 'issues' %}?list=long{% if leadership %}&team={{ leadership.slug }}{% endif %}" class="text-xs link">Issues →</a></div>
+      <ol class="list-decimal pl-5 text-sm space-y-1">
+        {% for i in long_issues %}<li><a href="{% url 'issue_detail' i.pk %}" class="hover:underline">{{ i.title }}</a></li>{% empty %}<li class="list-none -ml-5 text-neutral-500">No long-term issues.</li>{% endfor %}
+      </ol>
+    </section>
+
+    {% if vto.legacy.strategy_house %}
+      <details class="card card-pad print:hidden">
+        <summary class="cursor-pointer font-semibold text-sm">From the Battle Planner Strategy House</summary>
+        <div class="mt-3 space-y-3 text-sm">
+          {% with sh=vto.legacy.strategy_house %}
+            {% if sh.major_business_challenge %}<div><div class="eyebrow">Major business challenge</div><p>{{ sh.major_business_challenge }}</p></div>{% endif %}
+            {% if sh.targets %}<div><div class="eyebrow">Targets</div><ul class="list-disc pl-5">{% for t in sh.targets %}<li><strong>{{ t.value }}</strong> {{ t.label }}{% if t.sub %} <span class="text-neutral-500">({{ t.sub }})</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+            {% if sh.lessons %}<div><div class="eyebrow">Lessons</div><ul class="space-y-1.5">{% for l in sh.lessons %}<li><strong>{{ l.title }}</strong> <span class="text-neutral-600">{{ l.body }}</span></li>{% endfor %}</ul></div>{% endif %}
+            {% if sh.rudder_note %}<p class="text-neutral-600 italic">{{ sh.rudder_note }}</p>{% endif %}
+          {% endwith %}
+        </div>
+      </details>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

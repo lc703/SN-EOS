@@ -1,0 +1,27 @@
+{% load sn %}
+<div id="rock-{{ r.pk }}" class="px-4 py-3 flex flex-wrap sm:flex-nowrap items-center gap-3"
+     hx-vals='{"partial": "1", "mode": "{{ mode|default:"" }}", "meeting": "{{ meeting_id|default:"" }}"}'>
+  {% avatar r.owner %}
+  <div class="min-w-0 flex-1">
+    <a href="{% url 'rock_detail' r.pk %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-vals="unset">{{ r.title }}</a>
+    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-neutral-500">
+      <span>{{ r.owner.display_name|default:"No owner" }}</span>
+      {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
+      {% if r.is_company %}<span class="pill pill-muted">Company</span>{% endif %}
+      {% if mode == 'company' %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
+    </div>
+  </div>
+  <div class="flex items-center gap-2 shrink-0">
+    {% if r.status == 'off_track' and mode != 'home' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}{% endif %}
+    {% if user.is_admin or r.owner_id == user.pk or not r.owner_id %}
+      <select name="status" aria-label="Status for {{ r.title }}"
+              class="pill st-{{ r.status }} !h-8 border-0 pr-7 cursor-pointer text-[12px]"
+              hx-post="{% url 'rock_status' r.pk %}" hx-trigger="change" hx-target="#rock-{{ r.pk }}" hx-swap="outerHTML" hx-select="unset">
+        {% for v, label in statuses %}<option value="{{ v }}" {% if v == r.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    {% else %}
+      {% status_pill r %}
+    {% endif %}
+  </div>
+</div>

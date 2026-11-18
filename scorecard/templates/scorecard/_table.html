@@ -1,0 +1,22 @@
+{% load sn %}
+<div class="card overflow-x-auto">
+  <table class="sc-table w-full text-[13.5px]">
+    <thead>
+      <tr class="text-left text-neutral-500">
+        <th class="sc-sticky px-3 py-2 font-semibold min-w-[14rem] text-[12px]">Measurable</th>
+        <th class="px-2 py-2 font-semibold text-[12px] text-center whitespace-nowrap">Goal</th>
+        {% for w in weeks %}
+          <th class="px-1 py-2 text-center font-medium text-[11.5px] whitespace-nowrap">{{ w|date:"M j" }}</th>
+        {% endfor %}
+        {% if show_trailing %}<th class="px-2 py-2 text-center font-semibold text-[12px]">Avg / Total</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        {% include "scorecard/_row.html" %}
+      {% empty %}
+        <tr><td colspan="20" class="px-4 py-8 text-center text-neutral-500">No measurables yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

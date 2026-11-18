@@ -1,0 +1,29 @@
+{# IDS: Identify, Discuss, Solve. Capture the solution, spin off to-dos, mark solved. #}
+<form method="post" action="{% url 'issue_solve' issue.pk %}" x-data="{rows: [0]}" class="space-y-3">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if meeting %}<input type="hidden" name="meeting" value="{{ meeting.pk }}">{% endif %}
+  <div>
+    <label class="block text-[12px] font-semibold text-neutral-600 mb-1">Solution / decision</label>
+    <textarea name="resolution" rows="2" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]" placeholder="What did we decide?">{{ issue.resolution }}</textarea>
+  </div>
+  <div>
+    <div class="text-[12px] font-semibold text-neutral-600 mb-1">To-dos from this issue</div>
+    <div class="space-y-2">
+      <template x-for="(r, i) in rows" :key="i">
+        <div class="flex flex-wrap gap-2">
+          <input name="todo_title" placeholder="Who does what…" class="flex-1 min-w-[12rem] rounded-lg border bg-white px-3 py-1.5 text-[14px]">
+          <select name="todo_owner" class="rounded-lg border bg-white px-2 py-1.5 text-sm" aria-label="Owner">
+            {% for p in people %}<option value="{{ p.pk }}" {% if p.pk == issue.owner_id %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}
+          </select>
+          <input type="date" name="todo_due" value="{{ default_due|date:'Y-m-d' }}" class="rounded-lg border bg-white px-2 py-1.5 text-sm" aria-label="Due">
+        </div>
+      </template>
+    </div>
+    <button type="button" class="mt-2 text-[12.5px] font-semibold text-neutral-600 hover:text-black" @click="rows.push(rows.length)">+ another to-do</button>
+  </div>
+  <div class="flex flex-wrap items-center gap-2 pt-1">
+    <button name="action" value="solve" class="btn btn-bolt">✓ Mark solved</button>
+    <button name="action" value="todos" class="btn">Save without solving</button>
+  </div>
+</form>

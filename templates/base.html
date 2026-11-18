@@ -1,0 +1,104 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Home{% endblock %} · {{ APP_NAME }}</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  {% if TAILWIND_CDN %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: { extend: {
+          colors: { brand: "#000000", bolt: "#D5FF03", paper: "#f6f6f4" },
+          fontFamily: {
+            sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+            display: ["Montserrat", "Inter", "ui-sans-serif", "sans-serif"],
+          },
+        } },
+      };
+    </script>
+  {% else %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% endif %}
+  <link rel="stylesheet" href="{% static 'css/sn.css' %}">
+  <script src="{% static 'js/htmx.min.js' %}"></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-paper text-neutral-900 min-h-screen font-sans text-[15px] leading-normal"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' {% if user.is_authenticated %}hx-boost="true"{% endif %}>
+  {% with p=request.path %}
+  <header class="sticky top-0 z-30 bg-black text-white print:hidden">
+    <div class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 h-14 flex items-center justify-between gap-3">
+      <a href="/" class="flex items-center gap-3 min-w-0 shrink-0">
+        <img src="{% static 'img/logo-light.svg' %}" alt="{{ COMPANY_NAME }}" class="h-6 w-auto">
+        <span class="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-bolt border-l border-white/20 pl-3 leading-tight whitespace-nowrap">{{ APP_NAME }}</span>
+      </a>
+      {% if user.is_authenticated %}
+      <nav class="hidden lg:flex items-center gap-0.5 text-[13px] font-medium">
+        {% include "_nav_links.html" with desktop=1 %}
+      </nav>
+      <div class="flex items-center gap-2 shrink-0" x-data="{open:false}">
+        <button type="button" @click="open=!open" class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-white/10" aria-label="Account">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-bolt text-black text-[11px] font-bold">{{ user.initials }}</span>
+          <span class="hidden sm:inline text-xs text-neutral-300">{{ user.first }}</span>
+        </button>
+        <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 top-12 w-56 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
+          <div class="px-3 py-2 border-b border-black/5">
+            <div class="font-semibold">{{ user.display_name }}</div>
+            <div class="text-xs text-neutral-500 truncate">{{ user.email }}{% if is_admin %} · Admin{% endif %}</div>
+          </div>
+          <a href="{% url 'person' user.pk %}" class="block px-3 py-2 hover:bg-neutral-50">My profile</a>
+          {% if is_admin %}
+            <a href="/admin/" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Django admin</a>
+            <a href="{% url 'export_json' %}" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Download backup (.json)</a>
+          {% endif %}
+          <form method="post" action="{% url 'account_logout' %}" hx-boost="false">{% csrf_token %}
+            <button class="w-full text-left px-3 py-2 hover:bg-neutral-50 text-neutral-600">Sign out</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if user.is_authenticated and not hide_scope %}
+    {% include "_scope_bar.html" %}
+  {% endif %}
+
+  <main class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 pt-5 pb-28 lg:pb-12 print:p-0 print:max-w-none">
+    {% if messages %}
+      <div class="space-y-2 mb-4 print:hidden">
+        {% for msg in messages %}
+          <div class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm border {% if msg.tags == 'error' %}bg-red-50 border-red-200 text-red-900{% else %}bg-white border-black/10{% endif %}">
+            <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {% if msg.tags == 'error' %}bg-red-500{% else %}bg-bolt ring-2 ring-black/80{% endif %}"></span>{{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if user.is_authenticated %}
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-black text-white pb-[env(safe-area-inset-bottom)] print:hidden" x-data="{more:false}">
+    <div x-cloak x-show="more" @click.outside="more=false" class="absolute bottom-full right-2 mb-2 w-48 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
+      <a href="{% url 'scorecard' %}" class="block px-4 py-2.5">Scorecard</a>
+      <a href="{% url 'vto' %}" class="block px-4 py-2.5">V/TO</a>
+      <a href="{% url 'chart' %}" class="block px-4 py-2.5">Accountability Chart</a>
+      <a href="{% url 'people' %}" class="block px-4 py-2.5">People</a>
+    </div>
+    <div class="grid grid-cols-6 text-[11px] font-medium">
+      {% include "_nav_links.html" with mobile=1 %}
+      <button type="button" @click="more=!more" class="flex flex-col items-center justify-center gap-0.5 h-14 text-neutral-400">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>More
+      </button>
+    </div>
+  </nav>
+  {% endif %}
+  {% endwith %}
+</body>
+</html>
