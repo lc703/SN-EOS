@@ -7,8 +7,8 @@
     <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-neutral-500">
       <span>{{ r.owner.display_name|default:"No owner" }}</span>
       {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
-      {% if r.is_company %}<span class="pill pill-muted">Company</span>{% endif %}
-      {% if mode == 'company' %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% if r.is_company and mode != 'company' %}<span class="pill pill-muted">Company</span>{% endif %}
+      {% if not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
       {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
     </div>
   </div>

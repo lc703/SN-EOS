@@ -225,9 +225,11 @@ class BattlePlannerImporter:
         for pk, f in self.fields("core.valuestatement"):
             statements[f["value"]].append((f.get("sort", 0), f["text"]))
         for pk, f in self.fields("core.value"):
-            desc = "\n".join(t for _, t in sorted(statements.get(pk, [])))
+            # Old value statements were generic offsite evaluation prompts, not descriptions of the value.
+            evals = [t for _, t in sorted(statements.get(pk, []))]
             obj, _ = self.upsert(
-                CoreValue, pk, {"name": f["name"], "sort": f.get("sort", 0), "active": f.get("active", True), "description": desc},
+                CoreValue, pk,
+                {"name": f["name"], "sort": f.get("sort", 0), "active": f.get("active", True), "legacy": {"evaluation_statements": evals}},
                 label="Core values",
             )
             self.values[pk] = obj
@@ -529,7 +531,7 @@ class BattlePlannerImporter:
                 {"team": team, "quarter": self.quarters.get(f.get("quarter")), "date": date,
                  "current_section": STEP_TO_SECTION.get(f.get("current_step"), "segue"), "segue_notes": "\n".join(segue),
                  "notes": f.get("notes", ""), "started_at": _day_start(date),
-                 "concluded_at": _day_start(date) if f.get("is_closed") else None,
+                 "concluded_at": _day_start(date),
                  "legacy": {k: f.get(k) for k in ("round_robin_question", "current_step", "is_closed", "summary_sent_at")}},
                 label="L10 meetings",
             )

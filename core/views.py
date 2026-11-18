@@ -42,7 +42,9 @@ def home(request):
     rows = build_rows(measurables, weeks, user)
     completion = weekly_completion(Todo.objects.filter(owner=user), weeks=4, today=today)
     my_teams = user.teams.all()
-    open_meetings = Meeting.objects.filter(team__in=my_teams, concluded_at__isnull=True).select_related("team")[:3]
+    open_meetings = Meeting.objects.filter(
+        team__in=my_teams, concluded_at__isnull=True, date__gte=today - dt.timedelta(days=1)
+    ).select_related("team")[:3]
     return render(
         request,
         "core/home.html",

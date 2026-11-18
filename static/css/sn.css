@@ -55,6 +55,7 @@ input[type=checkbox] { accent-color: #000; }
 .sc-table th, .sc-table td { border-bottom: 1px solid rgb(0 0 0 / .06); }
 .sc-cell { min-width: 4.25rem; }
 .sc-cell input, .sc-cell select { width: 100%; height: 2rem; border: 1px solid transparent !important; background: transparent; text-align: center; border-radius: .375rem; font-variant-numeric: tabular-nums; font-size: 13.5px; padding: 0 .25rem; }
+.sc-cell select { appearance: none; -webkit-appearance: none; text-align-last: center; cursor: pointer; }
 .sc-cell input:hover, .sc-cell select:hover { border-color: rgb(0 0 0 / .2) !important; background: #fff; }
 .sc-cell input:focus, .sc-cell select:focus { background: #fff; border-color: #000 !important; }
 .sc-green { background: #dcf5e3; }

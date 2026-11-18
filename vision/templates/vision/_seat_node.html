@@ -14,10 +14,10 @@
         {% if roles|length > 5 %}<li class="text-neutral-400">+{{ roles|length|add:"-5" }} more</li>{% endif %}
       </ul>
     {% endif %}{% endwith %}
-    {% if node.children and node.depth >= 1 %}<div class="mt-1.5 text-[11px] text-neutral-400">{{ node.children|length }} report{{ node.children|length|pluralize }}</div>{% endif %}
+    {% if node.children and node.depth >= 2 %}<div class="mt-1.5 text-[11px] text-neutral-400">{{ node.children|length }} report{{ node.children|length|pluralize }}</div>{% endif %}
   </div>
   {% if node.children %}
-    <ul class="{% if node.depth < 1 %}h{% else %}v{% endif %}">
+    <ul class="{% if node.depth < 2 %}h{% else %}v{% endif %}">
       {% for child in node.children %}{% include "vision/_seat_node.html" with node=child %}{% endfor %}
     </ul>
   {% endif %}
