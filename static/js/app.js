@@ -86,6 +86,11 @@
   document.body.addEventListener("panel:close", function () {
     window.Alpine.store("ui").closePanel();
   });
+  document.body.addEventListener("panel:open", function () {
+    window.Alpine.store("ui").openPanel();
+    const first = document.querySelector("#panel-body [autofocus]");
+    if (first) first.focus();
+  });
 
   /* ---- Save indicator: any non-GET htmx request. ---- */
   const LABELS = { saving: "Saving…", saved: "Saved", error: "Couldn't save. Try again." };
@@ -162,6 +167,46 @@
         else el.click();
       }
     }
+  });
+
+  /* ---- Scorecard grid: Enter / arrows move between cells like a spreadsheet. ---- */
+  document.addEventListener("keydown", function (e) {
+    const input = e.target.closest && e.target.closest(".sc-cell input");
+    if (!input) return;
+    const td = input.closest("td");
+    const tr = td.closest("tr");
+    const col = Array.prototype.indexOf.call(tr.children, td);
+    let target = null;
+    if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+      let row = e.key === "ArrowUp" ? tr.previousElementSibling : tr.nextElementSibling;
+      while (row && !(row.children[col] && row.children[col].querySelector("input"))) {
+        row = e.key === "ArrowUp" ? row.previousElementSibling : row.nextElementSibling;
+      }
+      target = row && row.children[col].querySelector("input");
+    } else if ((e.key === "ArrowLeft" && input.selectionStart === 0) || (e.key === "ArrowRight" && input.selectionEnd === input.value.length)) {
+      let cell = e.key === "ArrowLeft" ? td.previousElementSibling : td.nextElementSibling;
+      while (cell && !cell.querySelector("input")) cell = e.key === "ArrowLeft" ? cell.previousElementSibling : cell.nextElementSibling;
+      target = cell && cell.querySelector("input");
+    }
+    if (!target) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      return;
+    }
+    e.preventDefault();
+    const col2 = Array.prototype.indexOf.call(target.closest("tr").children, target.closest("td"));
+    const rowId = target.closest("tr").id;
+    target.focus();
+    target.select();
+    // The posted cell is swapped out; refocus the destination once htmx settles.
+    document.addEventListener("htmx:afterSettle", function once() {
+      document.removeEventListener("htmx:afterSettle", once);
+      const row = document.getElementById(rowId);
+      const again = row && row.children[col2] && row.children[col2].querySelector("input");
+      if (again && document.activeElement !== again) { again.focus(); again.select(); }
+    });
   });
 
   /* ---- Drag reorder: <ul data-sortable="/url/"> with children [data-id] and a .drag-handle. ---- */

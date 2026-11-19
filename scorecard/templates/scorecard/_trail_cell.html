@@ -1,1 +1,1 @@
-<td id="mtr-{{ row.measurable.pk }}" class="px-2 text-center font-semibold whitespace-nowrap" {% if oob %}hx-swap-oob="true"{% endif %}>{{ row.trailing|default:"—" }}</td>
+<td id="mtr-{{ row.measurable.pk }}" class="px-2 text-center font-semibold whitespace-nowrap tabular-nums" {% if oob %}hx-swap-oob="true"{% endif %}>{{ row.trailing|default:"—" }}{% if row.trailing %}<span class="block text-[10px] font-medium text-neutral-400 uppercase tracking-wide">{{ row.trailing_label }}</span>{% endif %}</td>

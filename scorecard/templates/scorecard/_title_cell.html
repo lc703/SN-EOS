@@ -1,9 +1,10 @@
 {% load sn %}{% with m=row.measurable %}
 <td id="mt-{{ m.pk }}" class="sc-sticky px-3 py-1.5" {% if oob %}hx-swap-oob="true"{% endif %}>
   <div class="flex items-center gap-2">
+    {% if sortable and mode == "scorecard" %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
     {% avatar m.owner %}
     <div class="min-w-0 flex-1">
-      <div class="font-semibold leading-tight truncate">{{ m.title }}</div>
+      <button type="button" class="font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}" data-panel-wide title="Trend and details">{{ m.title }}</button>
       <div class="text-[11.5px] text-neutral-500 truncate">{% if m.owner %}{{ m.owner.display_name }}{% else %}No owner{% endif %}{% if mode == 'home' %} · {{ m.team.name }}{% endif %}</div>
     </div>
     {% if mode != 'home' %}

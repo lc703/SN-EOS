@@ -11,7 +11,7 @@
       </select>
     {% else %}
       <input name="value" value="{{ c.value|num }}" inputmode="decimal" autocomplete="off" aria-label="{{ m.title }} {{ c.week }}"
-             hx-post="{% url 'scorecard_cell' m.pk c.week|date:'Y-m-d' %}" hx-trigger="change, keyup[key=='Enter']"
+             hx-post="{% url 'scorecard_cell' m.pk c.week|date:'Y-m-d' %}" hx-trigger="change"
              hx-target="closest td" hx-swap="outerHTML" hx-select="unset">
     {% endif %}
     {% if error %}<div class="text-[10px] text-red-700 leading-tight pb-0.5">{{ error }}</div>{% endif %}

@@ -1,8 +1,11 @@
 import datetime as dt
 from dataclasses import dataclass, field
 
+from decimal import Decimal
+
 from django import forms
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -29,12 +32,36 @@ class Row:
     measurable: Measurable
     cells: list = field(default_factory=list)
     trailing: str = ""
+    trailing_label: str = ""
     editable: bool = False
     latest_state: str = ""
 
     @property
     def is_red(self):
         return self.latest_state == "red"
+
+    @property
+    def spark_values(self):
+        return [c.value for c in self.cells]
+
+    @property
+    def spark_ok(self):
+        return [None if not c.state else c.state == "green" for c in self.cells]
+
+    @property
+    def hits(self):
+        judged = [c.state for c in self.cells if c.state]
+        return (judged.count("green"), len(judged)) if judged else None
+
+
+def trailing_for(m, values):
+    """The measurable's own trailing setting, or the average when none is set."""
+    values = [Decimal(v) for v in values if v is not None]
+    if not values:
+        return None, ""
+    if m.trailing == Measurable.TRAIL_TOTAL:
+        return sum(values), "total"
+    return (sum(values) / len(values)).quantize(Decimal("0.01")), "avg"
 
 
 def build_rows(measurables, weeks, user):
@@ -56,7 +83,7 @@ def build_rows(measurables, weeks, user):
             if v is not None:
                 values.append(v)
                 row.latest_state = state
-        trailing = m.trailing_value(values)
+        trailing, row.trailing_label = trailing_for(m, values)
         row.trailing = m.format_value(trailing) if trailing is not None else ""
         rows.append(row)
     return rows
@@ -85,8 +112,10 @@ def scorecard(request):
             "rows": rows,
             "weeks": weeks,
             "cols": ",".join(w.isoformat() for w in weeks),
-            "show_trailing": any(r.measurable.trailing for r in rows),
+            "show_trailing": True,
+            "show_trend": True,
             "can_add": can_add,
+            "sortable": can_add,
             "form": MeasurableForm(team=team) if can_add else None,
             "wide": True,
         },
@@ -124,6 +153,8 @@ def cell(request, pk, week):
             "mode": request.POST.get("mode", ""),
             "meeting_id": request.POST.get("meeting", ""),
             "show_trailing": request.POST.get("trailing") == "1",
+            "show_trend": request.POST.get("trend") == "1",
+            "sortable": is_admin(request.user) or is_team_member(request.user, m.team),
             "error": error,
         },
     )
@@ -173,3 +204,35 @@ def measurable_edit(request, pk):
             messages.success(request, "Measurable saved.")
             return redirect("scorecard")
     return render(request, "scorecard/measurable_form.html", {"form": form, "obj": m})
+
+
+def measurable_panel(request, pk):
+    """Side panel: trend line against the goal over the last 13 weeks."""
+    m = get_object_or_404(Measurable.objects.select_related("team", "owner"), pk=pk)
+    this_monday = monday_of(timezone.localdate())
+    weeks = [this_monday - dt.timedelta(weeks=i) for i in range(12, -1, -1)]
+    row = build_rows([m], weeks, request.user)[0]
+    from core.charts import trend_chart
+    from django.utils.safestring import mark_safe
+
+    chart = trend_chart([w.strftime("%b %-d") for w in weeks], row.spark_values, goal=m.goal, ok=row.spark_ok,
+                        fmt=lambda v: m.format_value(Decimal(str(round(v, 2)))))
+    values = [c.value for c in row.cells if c.value is not None]
+    hits = row.hits
+    return render(request, "scorecard/_panel.html", {
+        "m": m, "row": row, "chart": mark_safe(chart),
+        "latest": next((c for c in reversed(row.cells) if c.value is not None), None),
+        "average": m.format_value((sum(Decimal(v) for v in values) / len(values)).quantize(Decimal("0.01"))) if values else "",
+        "hit_pct": round(100 * hits[0] / hits[1]) if hits else None, "hits": hits,
+        "editable": can_edit_owned(request.user, m),
+    })
+
+
+@require_POST
+def measurables_sort(request):
+    team, _ = scope(request)
+    require(team is not None and (is_admin(request.user) or is_team_member(request.user, team)))
+    ids = [int(x) for x in request.POST.get("ids", "").split(",") if x.strip().isdigit()]
+    for i, pk in enumerate(ids):
+        Measurable.objects.filter(pk=pk, team=team).update(sort=i)
+    return HttpResponse(status=204)
