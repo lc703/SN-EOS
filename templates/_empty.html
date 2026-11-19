@@ -1,0 +1,6 @@
+{% load sn %}<div class="empty {% if compact %}!py-6{% endif %}">
+  <span class="empty-icon">{% icon icon_name %}</span>
+  <div class="empty-title">{{ title }}</div>
+  {% if body %}<p class="empty-body">{{ body }}</p>{% endif %}
+  {% if action_url %}<a href="{{ action_url }}" class="btn btn-sm btn-primary mt-3">{{ action_label }}</a>{% endif %}
+</div>

@@ -76,3 +76,54 @@ def avatar(user, size=""):
 @register.inclusion_tag("_status_pill.html")
 def status_pill(rock):
     return {"rock": rock}
+
+
+@register.simple_tag
+def icon(name, cls="h-4 w-4", stroke="2"):
+    from django.utils.safestring import mark_safe
+
+    from core.icons import svg
+
+    return mark_safe(svg(name, cls, stroke))
+
+
+@register.simple_tag
+def sparkline(values, goal=None, states=None, width=96, height=26):
+    from django.utils.safestring import mark_safe
+
+    from core.charts import sparkline as draw
+
+    return mark_safe(draw(values, goal=goal, states=states, width=width, height=height))
+
+
+@register.simple_tag
+def donut(segments, size=92, center="", sub=""):
+    from django.utils.safestring import mark_safe
+
+    from core.charts import donut as draw
+
+    return mark_safe(draw(segments, size=size, center=str(center), sub=sub))
+
+
+@register.simple_tag
+def bars(items, goal=None, height=72):
+    from django.utils.safestring import mark_safe
+
+    from core.charts import bars as draw
+
+    return mark_safe(draw(items, goal=goal, height=height))
+
+
+@register.filter
+def rag_label(rag):
+    return {"green": "Green", "yellow": "Yellow", "red": "Red", "done": "Done"}.get(rag, "—")
+
+
+@register.inclusion_tag("_empty.html")
+def empty(title, body="", icon_name="sparkle", action_url="", action_label="", compact=False):
+    return {"title": title, "body": body, "icon_name": icon_name, "action_url": action_url, "action_label": action_label, "compact": compact}
+
+
+@register.inclusion_tag("rocks/_strip.html")
+def rock_strip(rock):
+    return {"strip": rock.week_strip()}

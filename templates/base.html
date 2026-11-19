@@ -1,104 +1,119 @@
-{% load static %}<!doctype html>
+{% load static sn %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}Home{% endblock %} · {{ APP_NAME }}</title>
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
-  {% if TAILWIND_CDN %}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: { extend: {
-          colors: { brand: "#000000", bolt: "#D5FF03", paper: "#f6f6f4" },
-          fontFamily: {
-            sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-            display: ["Montserrat", "Inter", "ui-sans-serif", "sans-serif"],
-          },
-        } },
-      };
-    </script>
-  {% else %}
-    <link rel="stylesheet" href="{% static 'css/app.css' %}">
-  {% endif %}
-  <link rel="stylesheet" href="{% static 'css/sn.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'js/htmx.min.js' %}"></script>
+  <script src="{% static 'js/sortable.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
   <script src="{% static 'js/alpine.min.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body class="bg-paper text-neutral-900 min-h-screen font-sans text-[15px] leading-normal"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' {% if user.is_authenticated %}hx-boost="true"{% endif %}>
-  {% with p=request.path %}
-  <header class="sticky top-0 z-30 bg-black text-white print:hidden">
-    <div class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 h-14 flex items-center justify-between gap-3">
-      <a href="/" class="flex items-center gap-3 min-w-0 shrink-0">
-        <img src="{% static 'img/logo-light.svg' %}" alt="{{ COMPANY_NAME }}" class="h-6 w-auto">
-        <span class="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-bolt border-l border-white/20 pl-3 leading-tight whitespace-nowrap">{{ APP_NAME }}</span>
-      </a>
-      {% if user.is_authenticated %}
-      <nav class="hidden lg:flex items-center gap-0.5 text-[13px] font-medium">
-        {% include "_nav_links.html" with desktop=1 %}
-      </nav>
-      <div class="flex items-center gap-2 shrink-0" x-data="{open:false}">
-        <button type="button" @click="open=!open" class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-white/10" aria-label="Account">
-          <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-bolt text-black text-[11px] font-bold">{{ user.initials }}</span>
-          <span class="hidden sm:inline text-xs text-neutral-300">{{ user.first }}</span>
-        </button>
-        <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 top-12 w-56 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
-          <div class="px-3 py-2 border-b border-black/5">
-            <div class="font-semibold">{{ user.display_name }}</div>
-            <div class="text-xs text-neutral-500 truncate">{{ user.email }}{% if is_admin %} · Admin{% endif %}</div>
+{% if user.is_authenticated %}
+<div class="app-shell" x-data="{nav:false}">
+  {# ---------------- sidebar ---------------- #}
+  <aside class="sidebar fixed inset-y-0 left-0 z-40 bg-black text-white flex-col hidden lg:flex no-print" aria-label="Main">
+    {% include "_sidebar.html" %}
+  </aside>
+  <div x-cloak x-show="nav" class="lg:hidden fixed inset-0 z-50 no-print">
+    <div class="absolute inset-0 bg-black/40" @click="nav=false"></div>
+    <aside class="sidebar absolute inset-y-0 left-0 bg-black text-white flex flex-col slide-in" style="animation-direction: reverse">
+      {% include "_sidebar.html" %}
+    </aside>
+  </div>
+
+  <div class="content">
+    {# ---------------- top bar ---------------- #}
+    <header class="sticky top-0 z-30 bg-paper/85 backdrop-blur border-b border-black/[.06] no-print">
+      <div class="h-14 px-4 sm:px-6 flex items-center gap-3">
+        <button type="button" class="lg:hidden btn btn-ghost btn-icon -ml-2" @click="nav=true" aria-label="Menu">{% icon "menu" "h-5 w-5" %}</button>
+        <a href="/" class="lg:hidden flex items-center gap-2 shrink-0"><span class="h-7 w-7 rounded-lg bg-black inline-flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-bolt"></span></span><span class="font-display font-extrabold text-sm">{{ APP_NAME }}</span></a>
+        {% if not hide_scope %}{% include "_scope_bar.html" %}{% else %}<div class="flex-1"></div>{% endif %}
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span id="save-indicator" class="save-ind text-neutral-400" x-data x-show="$store.ui.save" x-cloak aria-live="polite">
+            <template x-if="$store.ui.save === 'saving'"><span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-neutral-400 animate-pulse"></span>Saving…</span></template>
+            <template x-if="$store.ui.save === 'saved'"><span class="inline-flex items-center gap-1.5 text-green-700">{% icon "check" "h-3.5 w-3.5" "2.6" %}Saved</span></template>
+            <template x-if="$store.ui.save === 'error'"><span class="inline-flex items-center gap-1.5 text-red-700">{% icon "x" "h-3.5 w-3.5" "2.6" %}Not saved</span></template>
+          </span>
+          <button type="button" class="btn btn-ghost btn-icon hidden sm:inline-flex" x-data @click="$store.ui.help = true" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">{% icon "keyboard" "h-[18px] w-[18px]" %}</button>
+          <div class="relative" x-data="{open:false}">
+            <button type="button" @click="open=!open" class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-black/5" aria-label="Account">
+              <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black text-bolt text-[11px] font-bold">{{ user.initials }}</span>
+              <span class="hidden sm:inline text-[13px] font-medium text-neutral-700">{{ user.first }}</span>
+            </button>
+            <div x-cloak x-show="open" @click.outside="open=false" x-transition.opacity class="absolute right-0 top-11 w-60 rounded-xl bg-white text-neutral-900 shadow-lift border border-black/10 py-1 text-sm z-50">
+              <div class="px-3 py-2 border-b border-black/5">
+                <div class="font-semibold">{{ user.display_name }}</div>
+                <div class="text-xs text-neutral-500 truncate">{{ user.email }}{% if is_admin %} · Admin{% endif %}</div>
+              </div>
+              <a href="{% url 'person' user.pk %}" class="flex items-center gap-2 px-3 py-2 hover:bg-neutral-50">{% icon "user" %}My profile</a>
+              <a href="{% url 'api_tokens' %}" class="flex items-center gap-2 px-3 py-2 hover:bg-neutral-50">{% icon "key" %}API &amp; AI connections</a>
+              {% if is_admin %}
+                <a href="/admin/" class="flex items-center gap-2 px-3 py-2 hover:bg-neutral-50" hx-boost="false">{% icon "shield" %}Django admin</a>
+                <a href="{% url 'export_json' %}" class="flex items-center gap-2 px-3 py-2 hover:bg-neutral-50" hx-boost="false">{% icon "download" %}Download backup (.json)</a>
+              {% endif %}
+              <form method="post" action="{% url 'account_logout' %}" hx-boost="false">{% csrf_token %}
+                <button class="w-full flex items-center gap-2 text-left px-3 py-2 hover:bg-neutral-50 text-neutral-600">{% icon "logout" %}Sign out</button>
+              </form>
+            </div>
           </div>
-          <a href="{% url 'person' user.pk %}" class="block px-3 py-2 hover:bg-neutral-50">My profile</a>
-          {% if is_admin %}
-            <a href="/admin/" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Django admin</a>
-            <a href="{% url 'export_json' %}" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Download backup (.json)</a>
-          {% endif %}
-          <form method="post" action="{% url 'account_logout' %}" hx-boost="false">{% csrf_token %}
-            <button class="w-full text-left px-3 py-2 hover:bg-neutral-50 text-neutral-600">Sign out</button>
-          </form>
         </div>
       </div>
-      {% endif %}
-    </div>
-  </header>
+    </header>
 
-  {% if user.is_authenticated and not hide_scope %}
-    {% include "_scope_bar.html" %}
-  {% endif %}
+{% endif %}
+    <main class="page {% if wide %}page-wide{% endif %}">
+      {% block content %}{% endblock %}
+    </main>
+{% if user.is_authenticated %}
+  </div>
 
-  <main class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 pt-5 pb-28 lg:pb-12 print:p-0 print:max-w-none">
-    {% if messages %}
-      <div class="space-y-2 mb-4 print:hidden">
-        {% for msg in messages %}
-          <div class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm border {% if msg.tags == 'error' %}bg-red-50 border-red-200 text-red-900{% else %}bg-white border-black/10{% endif %}">
-            <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {% if msg.tags == 'error' %}bg-red-500{% else %}bg-bolt ring-2 ring-black/80{% endif %}"></span>{{ msg }}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
-
-  {% if user.is_authenticated %}
-  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-black text-white pb-[env(safe-area-inset-bottom)] print:hidden" x-data="{more:false}">
-    <div x-cloak x-show="more" @click.outside="more=false" class="absolute bottom-full right-2 mb-2 w-48 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
-      <a href="{% url 'scorecard' %}" class="block px-4 py-2.5">Scorecard</a>
-      <a href="{% url 'vto' %}" class="block px-4 py-2.5">V/TO</a>
-      <a href="{% url 'chart' %}" class="block px-4 py-2.5">Accountability Chart</a>
-      <a href="{% url 'people' %}" class="block px-4 py-2.5">People</a>
-    </div>
-    <div class="grid grid-cols-6 text-[11px] font-medium">
-      {% include "_nav_links.html" with mobile=1 %}
-      <button type="button" @click="more=!more" class="flex flex-col items-center justify-center gap-0.5 h-14 text-neutral-400">
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>More
-      </button>
+  {# ---------------- mobile bottom nav ---------------- #}
+  {% with p=request.path %}
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-black text-white pb-[env(safe-area-inset-bottom)] no-print">
+    <div class="grid grid-cols-5 text-[10.5px] font-medium">
+      {% for url, label, ic, key in mobile_nav %}
+        <a href="{{ url }}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if key == '/' and p == '/' or key != '/' and key in p %}text-bolt{% else %}text-neutral-400{% endif %}">{% icon ic "h-5 w-5" %}{{ label }}</a>
+      {% endfor %}
     </div>
   </nav>
-  {% endif %}
   {% endwith %}
+</div>
+
+{# ---------------- side panel ---------------- #}
+<div x-data x-cloak x-show="$store.ui.panel" class="no-print" @keydown.escape.window="$store.ui.closePanel()">
+  <div class="panel-backdrop" x-show="$store.ui.panel" x-transition.opacity @click="$store.ui.closePanel()"></div>
+  <aside class="panel" x-show="$store.ui.panel" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full" role="dialog" aria-modal="true">
+    <div id="panel-content" class="flex flex-col h-full">
+      <div class="panel-body"><div class="space-y-3 animate-pulse"><div class="h-5 w-1/2 rounded bg-neutral-200"></div><div class="h-24 rounded bg-neutral-100"></div><div class="h-10 rounded bg-neutral-100"></div></div></div>
+    </div>
+  </aside>
+</div>
+
+{# ---------------- keyboard shortcuts ---------------- #}
+<div x-data x-cloak x-show="$store.ui.help" class="no-print" @keydown.escape.window="$store.ui.help=false">
+  <div class="panel-backdrop" @click="$store.ui.help=false"></div>
+  <div class="modal p-5" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="flex items-center justify-between mb-3"><h2 class="text-lg">Keyboard shortcuts</h2><button class="btn btn-ghost btn-icon btn-sm" @click="$store.ui.help=false" aria-label="Close">{% icon "x" %}</button></div>
+    <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[13px]">
+      {% for keys, label in shortcuts %}<div class="flex items-center justify-between gap-3 py-1 border-b border-black/5"><span class="text-neutral-600">{{ label }}</span><span class="flex gap-1">{% for k in keys %}<span class="kbd">{{ k }}</span>{% endfor %}</span></div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ---------------- toasts ---------------- #}
+<div id="toasts" class="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 no-print" aria-live="polite">
+  {% for msg in messages %}<div class="toast fade-in {% if msg.tags == 'error' %}!bg-red-700{% endif %}" data-toast><span class="h-2 w-2 rounded-full {% if msg.tags == 'error' %}bg-white{% else %}bg-bolt{% endif %}"></span>{{ msg }}</div>{% endfor %}
+</div>
+{% endif %}
 </body>
 </html>
