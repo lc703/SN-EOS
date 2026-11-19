@@ -1,0 +1,5 @@
+{% load sn %}
+<div class="card divide-y divide-black/5">
+  {% if can_run %}{% include "issues/_add.html" %}{% endif %}
+  {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}{% empty "The Issues List is clear" "" "check" compact=True %}{% endfor %}
+</div>

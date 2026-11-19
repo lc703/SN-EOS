@@ -2,12 +2,52 @@
 {% load sn %}
 {% block title %}Quarterly & annual sessions{% endblock %}
 {% block content %}
-<div class="page-head"><div><div class="eyebrow">Meetings</div><h1 class="page-title">Quarterly &amp; annual sessions</h1></div></div>
-<div class="card">
-  {% for s in sessions %}
-    <div class="px-4 py-3 border-b border-black/5">{{ s }}</div>
-  {% empty %}
-    {% empty "No sessions yet" "" "sessions" %}
-  {% endfor %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">{{ team.label }}</div>
+    <h1 class="page-title">Quarterly &amp; Annual Planning</h1>
+    <p class="page-sub">Step back from the week. Review the last 90 days, re-read the V/TO, set the next quarter's Rocks and IDS the big issues. Annual adds team health, SWOT and 1-year goals.</p>
+  </div>
+  {% if upcoming %}<a href="{% url 'session' upcoming.pk %}" class="btn btn-bolt h-11 px-5">{% icon "play" %}Open {{ upcoming.get_kind_display|lower }} session</a>{% endif %}
+</div>
+
+<div class="grid lg:grid-cols-[1fr_22rem] gap-6 items-start">
+  <section class="card divide-y divide-black/5">
+    {% for s in sessions %}
+      <a href="{% url 'session' s.pk %}" class="flex items-center gap-4 px-4 py-3.5 hover:bg-neutral-50">
+        <div class="w-12 text-center shrink-0">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-neutral-500">{{ s.date|date:"M" }}</div>
+          <div class="font-display font-extrabold text-xl leading-none">{{ s.date|date:"j" }}</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold flex items-center gap-2">{{ s.get_kind_display }} Planning <span class="pill {% if s.kind == 'annual' %}pill-dark{% else %}pill-muted{% endif %} !h-5 !text-[10px]">{% if s.quarter %}for {{ s.quarter.name }}{% else %}{{ s.date|date:"Y" }}{% endif %}</span></div>
+          <div class="text-xs text-neutral-500">{{ s.attendees.all|length }} attendees{% if s.facilitator %} · facilitated by {{ s.facilitator.first }}{% endif %}</div>
+        </div>
+        {% with avg=s.average_rating %}{% if avg %}<div class="text-right"><div class="font-display font-extrabold text-lg leading-none">{{ avg }}</div><div class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">rating</div></div>{% endif %}{% endwith %}
+        {% if s.is_concluded %}<span class="pill rag-done">Concluded</span>{% elif s.date > today %}<span class="pill pill-muted">Upcoming</span>{% else %}<span class="pill pill-bolt pill-dot">In progress</span>{% endif %}
+        <span class="text-neutral-300">{% icon "chev-right" "h-4 w-4" %}</span>
+      </a>
+    {% empty %}
+      {% empty "No sessions yet" "Plan your next quarter: schedule a Quarterly session on the right." "sessions" compact=True %}
+    {% endfor %}
+  </section>
+
+  {% if can_run %}
+  <aside class="card card-pad lg:sticky lg:top-20">
+    <h2 class="section-title mb-3">Schedule a session</h2>
+    <form method="post" action="{% url 'session_new' %}" class="space-y-3">{% csrf_token %}
+      <div class="seg w-full">
+        <label class="flex-1 text-center !py-2"><input type="radio" name="kind" value="quarterly" class="sr-only" checked>Quarterly</label>
+        <label class="flex-1 text-center !py-2"><input type="radio" name="kind" value="annual" class="sr-only">Annual</label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="label">Date</span><input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="input"></label>
+        <label class="block"><span class="label">Plans</span><select name="quarter" class="input">{% for q in quarters %}<option value="{{ q.pk }}" {% if q.pk == default_quarter.pk %}selected{% endif %}>{{ q.name }}</option>{% endfor %}{% if default_quarter not in quarters %}<option value="{{ default_quarter.pk }}" selected>{{ default_quarter.name }}</option>{% endif %}</select></label>
+      </div>
+      <p class="text-xs text-neutral-500">New Rocks set in the session go to the quarter it plans. Everyone on {{ team.name }} is added as an attendee.</p>
+      <button class="btn btn-primary w-full" data-shortcut-new>{% icon "plus" %}Create session</button>
+    </form>
+  </aside>
+  {% endif %}
 </div>
 {% endblock %}

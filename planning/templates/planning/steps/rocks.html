@@ -1,0 +1,56 @@
+{% load sn %}
+<div class="grid xl:grid-cols-[1fr_1.2fr] gap-5 items-start">
+  <div>
+    <p class="mb-2 text-sm text-neutral-500">Brainstorm everything, then keep, kill or combine. Hover an idea to make it a Rock.</p>
+    <section class="card">
+      <div class="card-head"><h3 class="section-title">Rock brainstorm</h3><span class="text-xs text-neutral-500">{{ boards.0.items|length }}</span></div>
+      <ul class="divide-y divide-black/5">
+        {% for i in boards.0.items %}
+          <li class="px-4 py-2.5" x-data="{ open: false }">
+            <div class="flex items-start gap-2">
+              {% avatar i.author "sm" %}
+              <p class="flex-1 text-sm leading-snug {% if i.rag == 'rock' %}text-neutral-400 line-through{% endif %}">{{ i.text }}</p>
+              {% if i.rag == 'rock' %}<span class="pill pill-dark !h-5 !text-[10px]">Rock</span>
+              {% elif can_run %}
+                <button type="button" class="btn btn-sm !h-7" @click="open = !open">{% icon "rocks" "h-3.5 w-3.5" %}Make it a Rock</button>
+                <form hx-post="{% url 'session_item_action' i.pk %}" hx-swap="none">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="btn btn-ghost btn-sm !px-1.5 !h-7" title="Kill">{% icon "x" "h-3.5 w-3.5" %}</button></form>
+              {% endif %}
+            </div>
+            {% if can_run and i.rag != 'rock' %}
+              <form x-show="open" x-cloak hx-post="{% url 'session_item_action' i.pk %}" hx-swap="none" class="mt-2 flex flex-wrap gap-2 pl-7">{% csrf_token %}
+                <input type="hidden" name="action" value="rock">
+                <select name="owner" class="input input-sm !w-auto" aria-label="Owner">{% for p in people %}<option value="{{ p.pk }}" {% if p.pk == i.author_id %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}</select>
+                <select name="goal" class="input input-sm !w-auto" aria-label="1-year goal"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.pk }}">{{ g.title|truncatechars:40 }}</option>{% endfor %}</select>
+                <button class="btn btn-primary btn-sm">Set Rock</button>
+              </form>
+            {% endif %}
+          </li>
+        {% empty %}<li class="px-4 py-3 text-sm text-neutral-400">Nothing yet.</li>{% endfor %}
+      </ul>
+      {% if can_run %}
+        <form hx-post="{% url 'session_item_add' s.pk %}" hx-swap="none" class="p-3 border-t border-black/5 bg-neutral-50/70" hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
+          <input type="hidden" name="step" value="rocks"><input type="hidden" name="kind" value="rock_idea">
+          <input name="text" required class="input input-sm" placeholder="Could be a Rock…" autocomplete="off">
+        </form>
+      {% endif %}
+    </section>
+  </div>
+  <section class="card">
+    <div class="card-head">
+      <div><h3 class="section-title">{{ s.quarter.name }} Rocks</h3><p class="text-xs text-neutral-500">{% if rocks|length < 3 %}Aim for 3–7.{% elif rocks|length > 7 %}More than 7. When everything is important, nothing is.{% else %}{{ rocks|length }} set. Good.{% endif %}</p></div>
+      <span class="font-display text-2xl font-extrabold {% if rocks|length >= 3 and rocks|length <= 7 %}text-[var(--green-ink)]{% elif rocks|length > 7 %}text-[var(--red-ink)]{% endif %}">{{ rocks|length }}</span>
+    </div>
+    <div class="divide-y divide-black/5">
+      {% for r in rocks %}
+        <div class="flex items-center gap-3 px-4 py-2.5">{% avatar r.owner %}<div class="flex-1 min-w-0"><a href="{% url 'rock_detail' r.pk %}" class="text-sm font-semibold hover:underline">{{ r.title }}</a><div class="text-xs text-neutral-500">{{ r.owner.display_name }}{% if r.goal %} · {{ r.goal.title|truncatechars:40 }}{% endif %}</div></div></div>
+      {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No Rocks set for {{ s.quarter.name|default:"the quarter" }} yet.</p>{% endfor %}
+    </div>
+    {% if can_run and s.quarter %}
+      <form hx-post="{% url 'session_rock_add' s.pk %}" hx-swap="none" class="flex flex-wrap gap-2 px-4 py-3 border-t border-black/5 bg-neutral-50/70" hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
+        <input name="title" required class="input flex-1 min-w-[12rem]" placeholder="Add a Rock directly" autocomplete="off">
+        <select name="owner" class="input !w-auto" aria-label="Owner">{% for p in people %}<option value="{{ p.pk }}" {% if p.pk == user.pk %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}</select>
+        <button class="btn btn-primary">{% icon "plus" %}Add</button>
+      </form>
+    {% endif %}
+  </section>
+</div>

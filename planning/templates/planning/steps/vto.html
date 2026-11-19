@@ -1,0 +1,21 @@
+{% load sn %}
+<div class="grid md:grid-cols-2 gap-4 mb-5">
+  <section class="card card-pad">
+    <div class="eyebrow mb-2">Core values</div>
+    <ol class="space-y-1 text-sm">{% for v in values %}<li><b>{{ forloop.counter }}. {{ v.name }}</b>{% if v.description %} <span class="text-neutral-500">· {{ v.description }}</span>{% endif %}</li>{% empty %}<li class="text-neutral-500">Not set.</li>{% endfor %}</ol>
+    <div class="eyebrow mt-4 mb-1">Core focus</div>
+    <p class="text-sm"><b>Purpose:</b> {{ vto.purpose|default:"—" }}</p>
+    <p class="text-sm"><b>Niche:</b> {{ vto.niche|default:"—" }}</p>
+    <div class="eyebrow mt-4 mb-1">10-year target</div>
+    <p class="text-sm font-semibold">{{ vto.ten_year_target|default:"—" }}</p>
+  </section>
+  <section class="card card-pad">
+    <div class="eyebrow mb-2">3-year picture · {{ vto.three_year_date }}</div>
+    <p class="text-sm"><b>{{ vto.three_year_revenue|default:"—" }}</b> revenue · <b>{{ vto.three_year_profit|default:"—" }}</b> profit</p>
+    <ul class="mt-1 list-disc pl-5 text-sm">{% for x in vto.three_year_picture|lines %}<li>{{ x }}</li>{% endfor %}</ul>
+    <div class="eyebrow mt-4 mb-2">1-year goals</div>
+    <ol class="list-decimal pl-5 text-sm space-y-0.5">{% for g in goals %}<li>{{ g.title }}{% if g.owner %} <span class="text-neutral-500">· {{ g.owner.first }}</span>{% endif %}</li>{% empty %}<li class="list-none -ml-5 text-neutral-500">None yet.</li>{% endfor %}</ol>
+    <a href="{% url 'vto' %}" class="mt-4 inline-flex link text-sm">Open the full V/TO</a>
+  </section>
+</div>
+{% include "planning/_board.html" with promote_issue=1 %}

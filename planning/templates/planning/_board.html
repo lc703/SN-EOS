@@ -1,0 +1,35 @@
+{% load sn %}
+{# Brainstorm columns for this step. Context: boards, s, can_run, step; optional promote = "rock" | "issue" | "goal" #}
+{% if boards %}
+<div class="grid gap-4 {% if boards|length >= 4 %}md:grid-cols-2 2xl:grid-cols-4{% elif boards|length == 3 %}md:grid-cols-3{% elif boards|length == 2 %}md:grid-cols-2{% endif %}">
+  {% for b in boards %}
+    <section class="card flex flex-col board board-{{ b.kind }}">
+      <div class="card-head"><h3 class="section-title">{{ b.label }}</h3><span class="text-xs text-neutral-500">{{ b.items|length }}</span></div>
+      <ul class="flex-1 divide-y divide-black/5">
+        {% for i in b.items %}
+          <li class="group px-4 py-2.5 flex items-start gap-2">
+            {% avatar i.author "sm" %}
+            <div class="flex-1 min-w-0">
+              <p class="text-sm leading-snug">{{ i.text }}</p>
+              {% if i.rag == 'rock' %}<span class="pill pill-dark !h-5 !text-[10px] mt-1">Made a Rock</span>{% elif i.rag == 'issue' %}<span class="pill pill-muted !h-5 !text-[10px] mt-1">On the Issues List</span>{% elif i.rag == 'goal' %}<span class="pill pill-bolt !h-5 !text-[10px] mt-1">1-year goal</span>{% endif %}
+            </div>
+            {% if can_run %}
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+                {% if promote_issue and not i.rag %}<form hx-post="{% url 'session_item_action' i.pk %}" hx-swap="none">{% csrf_token %}<input type="hidden" name="action" value="issue"><button class="btn btn-ghost btn-sm !px-1.5 !h-7 text-[11px]" title="Drop to the Issues List">{% icon "issues" "h-3.5 w-3.5" %}</button></form>{% endif %}
+                {% if promote_goal and not i.rag %}<form hx-post="{% url 'session_item_action' i.pk %}" hx-swap="none">{% csrf_token %}<input type="hidden" name="action" value="goal"><button class="btn btn-ghost btn-sm !px-1.5 !h-7" title="Make it a 1-year goal">{% icon "target" "h-3.5 w-3.5" %}</button></form>{% endif %}
+                <form hx-post="{% url 'session_item_action' i.pk %}" hx-swap="none">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="btn btn-ghost btn-sm !px-1.5 !h-7" title="Remove">{% icon "x" "h-3.5 w-3.5" %}</button></form>
+              </div>
+            {% endif %}
+          </li>
+        {% empty %}<li class="px-4 py-3 text-sm text-neutral-400">Nothing yet.</li>{% endfor %}
+      </ul>
+      {% if can_run %}
+        <form hx-post="{% url 'session_item_add' s.pk %}" hx-swap="none" class="p-3 border-t border-black/5 bg-neutral-50/70" hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
+          <input type="hidden" name="step" value="{{ step }}"><input type="hidden" name="kind" value="{{ b.kind }}">
+          <input name="text" required class="input input-sm" placeholder="{{ b.placeholder }}" autocomplete="off">
+        </form>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endif %}

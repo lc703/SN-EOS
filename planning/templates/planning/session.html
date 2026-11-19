@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}{{ s.get_kind_display }} session · {{ step_label }}{% endblock %}
+{% block content %}
+<div id="session" hx-get="{{ request.get_full_path }}" hx-select="#session" hx-target="this" hx-swap="outerHTML" hx-trigger="sessionChanged from:body, rocksChanged from:body" hx-disinherit="*">
+<div class="flex flex-wrap items-end gap-4 mb-5">
+  <div class="flex-1 min-w-0">
+    <a href="{% url 'sessions' %}?team={{ s.team.slug }}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-black">{% icon "chev-left" "h-3.5 w-3.5" %}{{ s.team.name }} · Quarterly &amp; Annual</a>
+    <h1 class="page-title mt-1">{{ s.get_kind_display }} Planning{% if s.quarter %} <span class="text-neutral-400">· for {{ s.quarter.name }}</span>{% endif %}</h1>
+    <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">
+      <span class="inline-flex items-center gap-1.5">{% icon "calendar" "h-3.5 w-3.5" %}{{ s.date|date:"l, F j, Y" }}</span>
+      <span class="inline-flex items-center gap-1.5">{% icon "user" "h-3.5 w-3.5" %}Facilitator <strong class="text-neutral-900">{{ s.facilitator.display_name|default:"—" }}</strong></span>
+      {% if can_run and not is_facilitator and not s.is_concluded %}<form hx-post="{% url 'session_update' s.pk %}" hx-swap="none" class="inline">{% csrf_token %}<input type="hidden" name="facilitate" value="1"><button class="link text-xs">Take over</button></form>{% endif %}
+      <span class="inline-flex items-center"><span class="flex -space-x-1.5 mr-1.5">{% for u in attendees|slice:":8" %}<span class="ring-2 ring-paper rounded-full">{% avatar u "sm" %}</span>{% endfor %}</span>{{ attendees|length }} attending</span>
+      {% if s.is_concluded %}<span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Concluded{% if s.average_rating %} · {{ s.average_rating }}/10{% endif %}</span>{% else %}<span class="pill pill-bolt pill-dot">In progress</span>{% endif %}
+    </div>
+  </div>
+  <button onclick="window.print()" class="btn print:hidden">{% icon "print" %}Print</button>
+</div>
+
+<div class="grid lg:grid-cols-[15rem_1fr] gap-6 items-start">
+  <nav class="card p-1.5 lg:sticky lg:top-20 print:hidden" aria-label="Agenda">
+    <div class="flex lg:flex-col gap-0.5 overflow-x-auto no-scrollbar">
+      {% for key, label, n in agenda %}
+        <a href="?s={{ key }}" class="l10-step {% if key == step %}on{% endif %}" {% if key == step %}aria-current="step"{% endif %}>
+          <span class="l10-n">{{ forloop.counter }}</span><span class="flex-1 whitespace-nowrap lg:whitespace-normal leading-tight">{{ label }}</span>
+          {% if n %}<span class="l10-badge">{{ n }}</span>{% endif %}
+          {% if key == s.current_step and not s.is_concluded and key != step %}<span class="fac" title="Facilitator is here"></span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    <div class="hidden lg:block px-2.5 pt-3 pb-1.5">
+      <div class="flex justify-between text-[11px] text-neutral-500 mb-1"><span>Agenda</span><span>{{ step_n }} of {{ agenda|length }}</span></div>
+      <div class="bar"><span style="width: {{ progress }}%"></span></div>
+      <p class="mt-3 text-[11px] text-neutral-400 leading-snug">Press <kbd class="kbd">[</kbd> <kbd class="kbd">]</kbd> to move between steps.</p>
+    </div>
+  </nav>
+
+  <div class="min-w-0">
+    <div class="flex flex-wrap items-start gap-3 mb-4">
+      <div class="flex-1 min-w-0">
+        <div class="eyebrow">Step {{ step_n }}</div>
+        <h2 class="font-display text-2xl font-extrabold tracking-tight leading-tight">{{ step_label }}</h2>
+        <p class="mt-1 text-sm text-neutral-600 max-w-2xl">{{ step_hint }}</p>
+      </div>
+      <div class="flex items-center gap-2 print:hidden">
+        {% if prev %}<a href="?s={{ prev }}" class="btn btn-sm" data-shortcut-prev>{% icon "chev-left" "h-3.5 w-3.5" %}Back</a>{% endif %}
+        {% if next_s %}<a href="?s={{ next_s }}" class="btn btn-sm btn-primary" data-shortcut-next>Next{% icon "chev-right" "h-3.5 w-3.5" %}</a>{% endif %}
+      </div>
+    </div>
+    {% include "planning/steps/"|add:step|add:".html" %}
+  </div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% load sn %}
+<div class="grid lg:grid-cols-[1fr_24rem] gap-5 items-start">
+  <div class="space-y-5">
+    <div class="grid grid-cols-2 gap-4">
+      <div class="card card-pad"><div class="eyebrow">{{ s.quarter.name }} Rocks set</div><div class="mt-1 font-display text-3xl font-extrabold">{{ rocks_set }}</div></div>
+      {% if goals_set is not None %}<div class="card card-pad"><div class="eyebrow">1-year goals</div><div class="mt-1 font-display text-3xl font-extrabold">{{ goals_set }}</div></div>{% endif %}
+    </div>
+    {% include "planning/_board.html" %}
+  </div>
+  <div class="space-y-4 lg:sticky lg:top-20">
+    <section class="card">
+      <div class="card-head"><h3 class="section-title">Rate the session</h3><div class="text-right"><span class="font-display text-3xl font-extrabold leading-none">{{ average|default:"—" }}</span><div class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">avg · {{ rated }}/{{ attendee_ratings|length }} in</div></div></div>
+      <div class="divide-y divide-black/5">
+        {% for u, r in attendee_ratings %}
+          <div class="px-4 py-2.5">
+            <div class="flex items-center gap-2 mb-1.5">{% avatar u "sm" %}<span class="text-sm font-semibold flex-1">{{ u.display_name }}</span>{% if r %}<span class="text-sm font-bold">{{ r }}</span>{% endif %}</div>
+            {% if u.pk == user.pk or is_facilitator or user.is_admin %}
+              <form hx-post="{% url 'session_rate' s.pk %}" hx-swap="none" class="grid grid-cols-10 gap-1">{% csrf_token %}<input type="hidden" name="user" value="{{ u.pk }}">
+                {% for n in rating_range %}<button name="rating" value="{{ n }}" class="rate-btn {% if r == n %}on{% endif %}">{{ n }}</button>{% endfor %}
+              </form>
+            {% endif %}
+          </div>
+        {% empty %}<p class="px-4 py-3 text-sm text-neutral-500">Add attendees in the Segue.</p>{% endfor %}
+      </div>
+    </section>
+    {% if can_run %}
+      <form method="post" action="{% url 'session_conclude' s.pk %}">{% csrf_token %}
+        {% if s.is_concluded %}<input type="hidden" name="reopen" value="1"><button class="btn w-full">Reopen session</button>
+        {% else %}<button class="btn btn-bolt w-full">{% icon "check" %}Conclude session</button>{% endif %}
+      </form>
+    {% endif %}
+  </div>
+</div>

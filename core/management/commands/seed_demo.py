@@ -403,12 +403,13 @@ class Command(BaseCommand):
         for u, r in zip(leaders, [9, 9, 8, 9, 8, 10]):
             SessionRating.objects.create(session=qs, user=u, rating=r)
 
-        annual = Session.objects.create(team=co, quarter=self.q, kind=Session.ANNUAL, date=self.today + dt.timedelta(days=21), facilitator=self.u["rachel"], current_step="swot")
+        annual = Session.objects.create(team=co, quarter=Quarter.for_calendar(self.q.end_date + dt.timedelta(days=1)), kind=Session.ANNUAL, date=self.today + dt.timedelta(days=21), facilitator=self.u["rachel"], current_step="swot")
         annual.attendees.set(leaders)
         for i, (kind, who, text) in enumerate([
             ("swot_strength", "ben", "Loyal dealer network"), ("swot_strength", "dan", "Own trucking fleet"),
             ("swot_weakness", "tom", "Systems still on spreadsheets"), ("swot_weakness", "jenna", "Thin bench behind plant managers"),
             ("swot_opportunity", "maria", "Ohio and Indiana dealers want a second supplier"), ("swot_threat", "tom", "Commodity price swings"),
+            ("swot_opportunity", "dan", "Pellet demand from Kentucky horse farms"), ("swot_threat", "jenna", "Tight labor market for night shift"),
         ]):
             SessionItem.objects.create(session=annual, step="swot", kind=kind, text=text, author=self.u[who], sort=i)
 

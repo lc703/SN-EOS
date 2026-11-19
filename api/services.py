@@ -16,6 +16,7 @@ from django.utils import timezone
 from core.models import Quarter, Team, User, monday_of
 from core.permissions import can_edit_owned, can_edit_team_item, can_edit_todo, is_admin, is_team_member
 from issues.models import Issue
+from planning.models import Session, SessionItem
 from meetings.models import CascadingMessage, Headline, Meeting, MeetingRating
 from rocks.models import RAG_CHOICES, RED, Rock, RockUpdate
 from scorecard.models import Measurable, ScoreEntry
@@ -353,6 +354,36 @@ def get_meeting(user, meeting_id):
     return meeting_json(_get(Meeting, meeting_id, "meeting"), detail=True)
 
 
+def session_json(s, detail=False):
+    out = {
+        "id": s.pk, "team": s.team.slug, "kind": s.kind, "date": s.date.isoformat(),
+        "plans_quarter": s.quarter.name if s.quarter_id else None, "current_step": s.current_step,
+        "concluded": s.is_concluded, "average_rating": s.average_rating,
+    }
+    if detail:
+        out["agenda"] = [{"key": k, "title": t} for k, t, _ in s.agenda]
+        out["items"] = [
+            {"id": i.pk, "step": i.step, "kind": i.kind, "text": i.text, "author": i.author.display_name if i.author_id else None,
+             "promoted_to": i.rag or None}
+            for i in s.items.select_related("author")
+        ]
+        out["notes"] = s.notes
+    return out
+
+
+@tool("list_sessions", "Quarterly and annual planning sessions for a team.", {"team": TEAM})
+def list_sessions(user, team=None):
+    team = _team(user, team)
+    qs = Session.objects.filter(team=team).select_related("team", "quarter").prefetch_related("ratings")
+    return {"team": team.slug, "sessions": [session_json(x) for x in qs[:20]]}
+
+
+@tool("get_session", "One planning session: agenda, brainstorm items (SWOT, lessons, rock ideas, feedback) and notes.",
+      {"session_id": {"type": "integer"}}, ["session_id"])
+def get_session(user, session_id):
+    return session_json(_get(Session, session_id, "session"), detail=True)
+
+
 # ---------------------------------------------------------------- write tools
 
 @tool(
@@ -642,9 +673,30 @@ def add_cascading_message(user, meeting_id, text, to_everyone=None, to_teams=Non
     return {"id": c.pk, "meeting_id": meeting.pk, "text": c.text, "to_everyone": everyone, "to_teams": [t.slug for t in c.to_teams.all()]}
 
 
+@tool(
+    "add_session_item",
+    "Add a brainstorm item to a planning session step, e.g. a SWOT strength, a lesson learned or a Rock idea.",
+    {"session_id": {"type": "integer"}, "step": {"type": "string"}, "kind": {"type": "string", "description": "Bucket, e.g. swot_strength, lesson, rock_idea, news."}, "text": {"type": "string"}},
+    ["session_id", "step", "kind", "text"],
+    write=True,
+)
+def add_session_item(user, session_id, step, kind, text):
+    from planning.agendas import STEP_ITEMS
+
+    s = _get(Session, session_id, "session")
+    _member_or_admin(user, s.team)
+    buckets = {k for k, _, _ in STEP_ITEMS.get(step, [])}
+    if step not in s.step_keys or kind not in buckets:
+        raise ApiError(400, f"Step {step!r} takes kinds: {', '.join(sorted(buckets)) or 'none'}")
+    if not str(text).strip():
+        raise ApiError(400, "text is required")
+    item = SessionItem.objects.create(session=s, step=step, kind=kind, text=str(text).strip(), author=user, sort=s.items.filter(step=step).count())
+    return {"id": item.pk, "session_id": s.pk, "step": step, "kind": kind, "text": item.text}
+
+
 # ---------------------------------------------------------------- runner
 
-OBJECT_ID_KEYS = ("rock_id", "issue_id", "todo_id", "measurable_id", "meeting_id")
+OBJECT_ID_KEYS = ("rock_id", "issue_id", "todo_id", "measurable_id", "meeting_id", "session_id")
 
 
 def run(token, name, args, channel, ip=None, action=None):

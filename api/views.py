@@ -60,6 +60,9 @@ ROUTES = [
     ("POST", r"meetings/(?P<id>\d+)/rating", "rate_meeting", {"id": "meeting_id"}),
     ("POST", r"meetings/(?P<id>\d+)/notes", "add_meeting_notes", {"id": "meeting_id"}),
     ("POST", r"meetings/(?P<id>\d+)/cascades", "add_cascading_message", {"id": "meeting_id"}),
+    ("GET", r"sessions", "list_sessions", {}),
+    ("GET", r"sessions/(?P<id>\d+)", "get_session", {"id": "session_id"}),
+    ("POST", r"sessions/(?P<id>\d+)/items", "add_session_item", {"id": "session_id"}),
 ]
 COMPILED = [(m, re.compile(rf"^{p}/?$"), t, a) for m, p, t, a in ROUTES]
 

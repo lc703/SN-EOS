@@ -183,3 +183,18 @@ def test_token_page_creates_and_revokes(as_user, member):
 def test_cannot_revoke_someone_elses_token(as_user, member, other):
     token, _ = ApiToken.issue(other, "Theirs")
     assert as_user(member).post(f"/settings/api/{token.pk}/revoke/").status_code == 404
+
+
+def test_session_read_and_brainstorm(token, member, other, teams, quarter):
+    from planning.models import Session
+
+    _, raw = token
+    s = Session.objects.create(team=teams["ky"], quarter=quarter, kind=Session.ANNUAL)
+    r = call(raw, "POST", f"/api/v1/sessions/{s.pk}/items", {"step": "swot", "kind": "swot_threat", "text": "Freight costs"})
+    assert r.status_code == 200, r.content
+    assert call(raw, "POST", f"/api/v1/sessions/{s.pk}/items", {"step": "swot", "kind": "lesson", "text": "x"}).status_code == 400
+    data = call(raw, "GET", f"/api/v1/sessions/{s.pk}").json()
+    assert data["items"][0]["text"] == "Freight costs" and len(data["agenda"]) == 10
+    assert AuditLog.objects.filter(is_write=True, ok=True, object_type="session", object_id=str(s.pk)).exists()
+    other_s = Session.objects.create(team=teams["lr"], quarter=quarter)
+    assert call(raw, "POST", f"/api/v1/sessions/{other_s.pk}/items", {"step": "segue", "kind": "news", "text": "x"}).status_code == 403

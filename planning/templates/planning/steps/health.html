@@ -1,0 +1,9 @@
+{% load sn %}
+{% if can_run %}
+<form class="card card-pad mb-4" hx-post="{% url 'session_update' s.pk %}" hx-trigger="change" hx-swap="none">{% csrf_token %}
+  <input type="hidden" name="attendees_present" value="1">
+  <div class="flex items-center justify-between mb-3"><span class="section-title">Who's here</span><span class="text-xs text-neutral-500">{{ attendee_ids|length }} of {{ members|length }}</span></div>
+  <div class="flex flex-wrap gap-2">{% for m in members %}<label class="chip-toggle"><input type="checkbox" name="attendees" value="{{ m.pk }}" class="sr-only" {% if m.pk in attendee_ids %}checked{% endif %}>{% avatar m "sm" %}{{ m.first|default:m.display_name }}</label>{% endfor %}</div>
+</form>
+{% endif %}
+{% include "planning/_board.html" with promote_issue=1 %}

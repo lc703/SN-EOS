@@ -74,6 +74,15 @@ urlpatterns = [
     path("meetings/<int:pk>/recap/send/", meetings.send_recap, name="meeting_send_recap"),
     # Quarterly & annual sessions
     path("sessions/", planning.sessions_list, name="sessions"),
+    path("sessions/new/", planning.session_new, name="session_new"),
+    path("sessions/<int:pk>/", planning.session_view, name="session"),
+    path("sessions/<int:pk>/update/", planning.session_update, name="session_update"),
+    path("sessions/<int:pk>/items/", planning.item_add, name="session_item_add"),
+    path("sessions/<int:pk>/rocks/", planning.rock_add, name="session_rock_add"),
+    path("sessions/<int:pk>/goals/", planning.goal_add, name="session_goal_add"),
+    path("sessions/<int:pk>/rate/", planning.session_rate, name="session_rate"),
+    path("sessions/<int:pk>/conclude/", planning.session_conclude, name="session_conclude"),
+    path("session-items/<int:pk>/", planning.item_action, name="session_item_action"),
     # Vision
     path("vto/", vision.vto, name="vto"),
     path("vto/edit/", vision.vto_edit, name="vto_edit"),
