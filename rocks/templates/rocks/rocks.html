@@ -1,19 +1,17 @@
 {% extends "base.html" %}
+{% load sn %}
 {% block title %}Rocks{% endblock %}
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
   <div>
     <div class="eyebrow">{{ team.label }} · {{ quarter.name }}</div>
     <h1 class="text-2xl">Rocks</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">
-      {{ summary.total }} rocks · <span class="text-green-700 font-semibold">{{ summary.on_track }} on track</span> ·
-      <span class="text-red-700 font-semibold">{{ summary.off_track }} off track</span> · {{ summary.done }} done
-    </p>
+    <p class="text-sm text-neutral-500 mt-0.5">The three to seven most important things for the next 90 days. Update each one green, yellow or red every week.</p>
   </div>
   {% if can_add %}
     <div x-data="{open:false}">
-      <button type="button" class="btn btn-primary" @click="open=!open">+ Rock</button>
-      <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 mt-2 w-[min(34rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
+      <button type="button" class="btn btn-primary" @click="open=!open" data-shortcut="new">+ Rock</button>
+      <div x-cloak x-show="open" @click.outside="open=false" @keydown.escape.window="open=false" class="absolute right-4 mt-2 w-[min(34rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
         <form method="post" action="{% url 'rock_new' %}">{% csrf_token %}
           {% include "_form.html" %}
           <div class="mt-4 flex justify-end gap-2"><button type="button" class="btn" @click="open=false">Cancel</button><button class="btn btn-primary">Add rock</button></div>
@@ -23,21 +21,39 @@
   {% endif %}
 </div>
 
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+  <div class="card stat"><div class="stat-label">Rocks</div><div class="stat-value">{{ summary.total }}</div></div>
+  <div class="card stat"><div class="stat-label">On track</div><div class="stat-value text-[#15803d]">{{ summary.on_track }}</div></div>
+  <div class="card stat"><div class="stat-label">Off track</div><div class="stat-value {% if summary.off_track %}text-[#b42318]{% endif %}">{{ summary.off_track }}</div></div>
+  <div class="card stat"><div class="stat-label">Done</div><div class="stat-value">{{ summary.done }}</div>{% if summary.total %}{% widthratio summary.done summary.total 100 as done_pct %}<div class="bar-track mt-2"><div class="bar-fill" style="width: {{ done_pct }}%"></div></div>{% endif %}</div>
+</div>
+
+{% if strip_weeks %}
+  <div class="hidden md:flex items-center justify-end gap-3 text-[11px] text-neutral-500 mb-1.5 pr-4">
+    <span>13-week status: {{ strip_weeks.0|date:"M j" }} – {{ strip_weeks|last|date:"M j" }}</span>
+    <span class="flex items-center gap-1"><span class="dot dot-green"></span>On track</span>
+    <span class="flex items-center gap-1"><span class="dot dot-yellow"></span>At risk</span>
+    <span class="flex items-center gap-1"><span class="dot dot-red"></span>Off track</span>
+  </div>
+{% endif %}
+
 <section class="mb-8">
   <div class="flex items-center justify-between mb-2">
     <h2 class="section-title">Company rocks</h2>
     <span class="text-xs text-neutral-500">Leadership team priorities for {{ quarter.name }}</span>
   </div>
-  <div class="list-group">
-    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No company rocks this quarter.</p>{% endfor %}
+  <div class="list-group" {% if company_sortable %}data-sortable="{% url 'rocks_sort' %}"{% endif %}>
+    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" sortable=company_sortable %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No company rocks yet" text="Company rocks are the leadership team's three to seven priorities for the quarter." icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
   </div>
 </section>
 
 {% if not team.is_leadership or team_rocks %}
 <section>
-  <h2 class="section-title mb-2">{{ team.name }} rocks</h2>
-  <div class="list-group">
-    {% for r in team_rocks %}{% include "rocks/_rock.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No {{ team.name }} rocks this quarter.</p>{% endfor %}
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="section-title">{{ team.name }} rocks <span class="text-neutral-400 font-medium">Departmental</span></h2>
+  </div>
+  <div class="list-group" {% if can_reorder %}data-sortable="{% url 'rocks_sort' %}"{% endif %}>
+    {% for r in team_rocks %}{% include "rocks/_rock.html" with sortable=can_reorder %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No departmental rocks yet" text="Each person on the team owns one to three rocks that support the company rocks." icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
   </div>
 </section>
 {% endif %}

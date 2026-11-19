@@ -8,9 +8,38 @@
   {% if rock.status == 'off_track' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=rock.pk %}{% endif %}
   {% status_pill rock %}
 </div>
-<p class="-mt-3 mb-5 text-sm text-neutral-500">
-  {{ rock.owner.display_name|default:"No owner" }} · {{ rock.team.name }}{% if rock.is_company %} · Company rock{% endif %} · {{ rock.quarter.name }}{% if rock.due_date %} · due {{ rock.due_date|date:"M j, Y" }}{% endif %}
+<p class="-mt-3 mb-5 text-sm text-neutral-500 flex flex-wrap items-center gap-x-2">
+  <span class="badge {% if rock.is_company %}badge-ink{% endif %}">{{ rock.kind_label }}</span>
+  {{ rock.owner.display_name|default:"No owner" }} · {{ rock.team.name }} · {{ rock.quarter.name }}{% if rock.due_date %} · due {{ rock.due_date|date:"M j, Y" }}{% endif %}
 </p>
+
+<section class="card card-pad mb-6">
+  <div class="flex flex-wrap items-center gap-3 mb-3">
+    <h2 class="section-title flex-1">13-week status</h2>
+    <span class="flex items-center gap-3 text-[11px] text-neutral-500"><span class="flex items-center gap-1"><span class="dot dot-green"></span>On track</span><span class="flex items-center gap-1"><span class="dot dot-yellow"></span>At risk</span><span class="flex items-center gap-1"><span class="dot dot-red"></span>Off track</span></span>
+    {% if editable and rock.status != 'done' %}<button type="button" class="btn btn-primary btn-sm" data-panel="{% url 'rock_update' rock.pk %}?reload=1" data-shortcut="new">Weekly update</button>{% endif %}
+  </div>
+  {% if strip %}
+    <div class="overflow-x-auto">{% rock_strip strip today True %}</div>
+    <div class="mt-1 flex justify-between text-[11px] text-neutral-400 tabular-nums"><span>{{ strip.0.0|date:"M j" }}</span><span>{{ strip|last|first|date:"M j" }}</span></div>
+  {% endif %}
+  {% if updates %}
+    <ul class="mt-4 divide-y divide-black/[.05] border-t border-black/[.06]">
+      {% for u in updates %}
+        <li class="py-2.5 flex gap-3 text-sm">
+          <span class="w-24 shrink-0 text-neutral-500 tabular-nums">{{ u.week_start|date:"M j" }}</span>
+          <span class="badge {{ u.color|color_badge }} shrink-0 self-start">{{ u.get_color_display }}</span>
+          <div class="min-w-0 flex-1">
+            {% if u.note %}<div class="text-neutral-800">{{ u.note|linebreaksbr }}</div>{% endif %}
+            {% if u.recovery_plan %}<div class="text-[#b42318] mt-0.5"><strong>Recovery plan:</strong> {{ u.recovery_plan|linebreaksbr }}</div>{% endif %}
+            {% if not u.note and not u.recovery_plan %}<span class="text-neutral-400">No note</span>{% endif %}
+          </div>
+          <span class="text-xs text-neutral-400 shrink-0">{{ u.author.first|default:"" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="mt-3 text-sm text-neutral-500">No weekly updates yet. Each week, mark the rock green, yellow or red with a short note.</p>{% endif %}
+</section>
 
 <div class="grid lg:grid-cols-[1fr_22rem] gap-6 items-start">
   <div class="space-y-6">
@@ -56,18 +85,6 @@
       </section>
     {% endif %}
 
-    {% if history %}
-      <details class="card card-pad">
-        <summary class="section-title cursor-pointer">Weekly status history (Battle Planner)</summary>
-        <ul class="mt-3 space-y-2 text-sm">
-          {% for h in history %}
-            <li class="flex gap-3"><span class="w-20 shrink-0 text-neutral-500">{{ h.week_start }}</span>
-              <span class="pill {% if h.rag == 'red' %}st-off_track{% elif h.rag == 'complete' %}st-done{% else %}st-on_track{% endif %}">{{ h.rag|title }}</span>
-              <span class="text-neutral-600">{{ h.note }}{% if h.recovery_plan %} <em>Recovery: {{ h.recovery_plan }}</em>{% endif %}</span></li>
-          {% endfor %}
-        </ul>
-      </details>
-    {% endif %}
   </div>
 
   <aside>
