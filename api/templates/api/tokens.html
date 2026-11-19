@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}API & AI connections{% endblock %}
+{% block content %}
+<div class="mb-5">
+  <div class="eyebrow">Integrations</div>
+  <h1 class="text-2xl">API &amp; AI connections</h1>
+  <p class="text-sm text-neutral-500 mt-0.5 max-w-2xl">Connect your AI assistant (Claude, ChatGPT, Cursor, or anything that speaks MCP) so it can fill in your own Scorecard numbers, Rock check-ins, Issues, To-Dos and Headlines. A token acts as you, with your permissions. Every change it makes is logged.</p>
+</div>
+
+{% if new_token %}
+  <div class="card card-pad mb-5 border-black" x-data="{copied:false}" style="box-shadow: inset 0 3px 0 var(--bolt)">
+    <div class="flex items-center gap-2 mb-2"><span class="badge badge-bolt">New</span><h2 class="section-title">Copy your token now</h2></div>
+    <p class="text-sm text-neutral-600 mb-3">This is the only time it's shown. Treat it like a password.</p>
+    <div class="flex gap-2">
+      <input readonly value="{{ new_token }}" class="flex-1 font-mono text-[13px] rounded-lg border bg-neutral-50 px-3 h-10" x-ref="t" @focus="$el.select()">
+      <button type="button" class="btn btn-primary h-10" @click="navigator.clipboard.writeText($refs.t.value); copied=true" x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid lg:grid-cols-[1fr_24rem] gap-6 items-start">
+  <div class="space-y-6">
+    <section>
+      <div class="flex items-center justify-between mb-2"><h2 class="section-title">Your tokens</h2></div>
+      <div class="card overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+          <tbody>
+            {% for t in tokens %}
+              <tr class="{% if t.revoked_at %}opacity-50{% endif %}">
+                <td><div class="font-semibold">{{ t.name }}</div><div class="font-mono text-[11.5px] text-neutral-500">{{ t.prefix }}…</div></td>
+                <td>{% if t.can_write %}<span class="badge badge-ink">Read &amp; write</span>{% else %}<span class="badge">Read only</span>{% endif %}</td>
+                <td class="text-neutral-600 whitespace-nowrap">{{ t.created_at|date:"M j, Y" }}</td>
+                <td class="text-neutral-600 whitespace-nowrap">{% if t.last_used_at %}{{ t.last_used_at|ago }}{% else %}Never{% endif %}</td>
+                <td class="text-right">{% if t.revoked_at %}<span class="text-xs text-neutral-500">Revoked</span>{% else %}
+                  <form method="post" action="{% url 'api_token_revoke' t.pk %}" onsubmit="return confirm('Revoke this token? Anything using it stops working.')">{% csrf_token %}<button class="btn btn-sm btn-ghost btn-danger">Revoke</button></form>{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5">{% include "_empty.html" with title="No tokens yet" text="Create one for each AI assistant or script you use, so you can revoke them separately." icon="M15 7a3 3 0 11-6 0 3 3 0 016 0zM12 10v11M9 17h6" %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <h2 class="section-title mb-3">Connect an AI assistant (MCP)</h2>
+      <div class="space-y-3 text-sm">
+        <div><div class="eyebrow mb-1">Server URL (Streamable HTTP)</div><code class="block rounded-lg bg-neutral-50 border px-3 py-2 font-mono text-[13px]">{{ base_url }}/mcp</code></div>
+        <div><div class="eyebrow mb-1">Header</div><code class="block rounded-lg bg-neutral-50 border px-3 py-2 font-mono text-[13px]">Authorization: Bearer &lt;your token&gt;</code></div>
+        <div><div class="eyebrow mb-1">Claude Code</div><code class="block rounded-lg bg-neutral-50 border px-3 py-2 font-mono text-[12.5px] whitespace-pre-wrap break-all">claude mcp add --transport http sn-eos {{ base_url }}/mcp --header "Authorization: Bearer &lt;your token&gt;"</code></div>
+        <div><div class="eyebrow mb-1">Cursor / Claude Desktop (mcp.json)</div><pre class="rounded-lg bg-neutral-50 border px-3 py-2 font-mono text-[12.5px] overflow-x-auto">{"mcpServers": {"sn-eos": {"url": "{{ base_url }}/mcp",
+  "headers": {"Authorization": "Bearer &lt;your token&gt;"}}}}</pre></div>
+        <div><div class="eyebrow mb-1">REST</div><code class="block rounded-lg bg-neutral-50 border px-3 py-2 font-mono text-[12.5px] whitespace-pre-wrap break-all">curl -H "Authorization: Bearer &lt;token&gt;" {{ base_url }}/api/v1/my90</code></div>
+      </div>
+    </section>
+
+    {% if others %}
+    <section>
+      <h2 class="section-title mb-2">Everyone's active tokens <span class="text-xs font-normal text-neutral-500">(admins only)</span></h2>
+      <div class="card overflow-x-auto"><table class="table">
+        <thead><tr><th>Person</th><th>Name</th><th>Access</th><th>Last used</th><th></th></tr></thead>
+        <tbody>{% for t in others %}<tr>
+          <td>{{ t.user.display_name }}</td><td>{{ t.name }} <span class="font-mono text-[11.5px] text-neutral-500">{{ t.prefix }}…</span></td>
+          <td>{% if t.can_write %}Read &amp; write{% else %}Read only{% endif %}</td>
+          <td class="text-neutral-600">{% if t.last_used_at %}{{ t.last_used_at|ago }}{% else %}Never{% endif %}</td>
+          <td class="text-right"><form method="post" action="{% url 'api_token_revoke' t.pk %}" onsubmit="return confirm('Revoke {{ t.user.first }}’s token?')">{% csrf_token %}<button class="btn btn-sm btn-ghost btn-danger">Revoke</button></form></td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="space-y-5">
+    <form method="post" class="card card-pad space-y-3">{% csrf_token %}
+      <h2 class="section-title">New token</h2>
+      <div><label class="block text-[13px] font-semibold text-neutral-700 mb-1" for="tok-name">Name</label>
+        <input id="tok-name" name="name" required maxlength="80" placeholder="e.g. Claude on my laptop" data-shortcut="new" class="block w-full rounded-lg border bg-white px-3 py-2 text-[15px]"></div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <label class="status-choice"><input type="radio" name="access" value="write" checked><span>Read &amp; write</span></label>
+        <label class="status-choice"><input type="radio" name="access" value="read"><span>Read only</span></label>
+      </div>
+      <button class="btn btn-primary w-full">Create token</button>
+    </form>
+    <div class="card card-pad">
+      <div class="flex items-center justify-between mb-2"><h2 class="section-title">Recent AI &amp; API activity</h2><a href="{% url 'audit_log' %}?mine=1" class="text-xs link">Full log</a></div>
+      <ul class="space-y-2 text-[13px]">
+        {% for e in recent %}<li><div class="font-medium">{{ e.summary|default:e.action }}</div><div class="text-xs text-neutral-500">{{ e.get_source_display }} · {{ e.token.name|default:"" }} · {{ e.created_at|ago }}</div></li>
+        {% empty %}<li class="text-neutral-500">Nothing yet.</li>{% endfor %}
+      </ul>
+    </div>
+    <div class="card card-pad">
+      <h2 class="section-title mb-2">Tools</h2>
+      <ul class="space-y-1.5 text-[12.5px]">{% for name, desc, write in tool_list %}<li><code class="font-mono font-semibold">{{ name }}</code>{% if write %} <span class="badge badge-outline">write</span>{% endif %}<div class="text-neutral-500">{{ desc }}</div></li>{% endfor %}</ul>
+      <p class="mt-3 text-xs text-neutral-500">1:1s, Quarterly Conversations and People Analyzer data are never available through the API.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
