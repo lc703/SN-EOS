@@ -198,3 +198,19 @@ def test_session_read_and_brainstorm(token, member, other, teams, quarter):
     assert AuditLog.objects.filter(is_write=True, ok=True, object_type="session", object_id=str(s.pk)).exists()
     other_s = Session.objects.create(team=teams["lr"], quarter=quarter)
     assert call(raw, "POST", f"/api/v1/sessions/{other_s.pk}/items", {"step": "segue", "kind": "news", "text": "x"}).status_code == 403
+
+
+def test_vto_and_chart_reads(token, member, teams):
+    from vision.models import VTO, Goal, Seat
+
+    v = VTO.load()
+    v.ten_year_target = "$100M"
+    v.save()
+    Goal.objects.create(title="One ERP", tactics="Pick vendor\nMigrate")
+    boss = Seat.objects.create(title="Visionary", person=member, roles="Ideas\nCulture")
+    Seat.objects.create(title="Integrator", parent=boss)
+    raw = token[1]
+    vto = call(raw, "GET", "/api/v1/vto").json()
+    assert vto["ten_year_target"] == "$100M" and vto["one_year_plan"]["goals"][0]["tactics"] == ["Pick vendor", "Migrate"]
+    seats = call(raw, "GET", "/api/v1/chart").json()["seats"]
+    assert seats[0]["roles"] == ["Ideas", "Culture"] and seats[1]["parent_id"] == boss.pk and seats[1]["status"] == "open"

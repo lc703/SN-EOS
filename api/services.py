@@ -16,11 +16,12 @@ from django.utils import timezone
 from core.models import Quarter, Team, User, monday_of
 from core.permissions import can_edit_owned, can_edit_team_item, can_edit_todo, is_admin, is_team_member
 from issues.models import Issue
-from planning.models import Session, SessionItem
 from meetings.models import CascadingMessage, Headline, Meeting, MeetingRating
+from planning.models import Session, SessionItem
 from rocks.models import RAG_CHOICES, RED, Rock, RockUpdate
 from scorecard.models import Measurable, ScoreEntry
 from todos.models import Todo, default_due
+from vision.models import VTO, CoreValue, Goal, Seat
 
 from .models import AuditLog
 
@@ -382,6 +383,37 @@ def list_sessions(user, team=None):
       {"session_id": {"type": "integer"}}, ["session_id"])
 def get_session(user, session_id):
     return session_json(_get(Session, session_id, "session"), detail=True)
+
+
+def _lines(text):
+    return [x.strip() for x in (text or "").splitlines() if x.strip()]
+
+
+@tool("get_vto", "The company Vision/Traction Organizer: core values, core focus, 10-year target, marketing strategy, 3-year picture, 1-year plan and goals.")
+def get_vto(user):
+    v = VTO.load()
+    return {
+        "core_values": [{"name": c.name, "description": c.description} for c in CoreValue.objects.filter(active=True)],
+        "core_focus": {"purpose": v.purpose, "niche": v.niche},
+        "ten_year_target": v.ten_year_target,
+        "marketing_strategy": {"target_market": v.target_market, "uniques": _lines(v.uniques), "proven_process": v.proven_process, "guarantee": v.guarantee},
+        "three_year_picture": {"date": v.three_year_date, "revenue": v.three_year_revenue, "profit": v.three_year_profit,
+                               "measurables": _lines(v.three_year_measurables), "looks_like": _lines(v.three_year_picture)},
+        "one_year_plan": {"date": v.one_year_date, "revenue": v.one_year_revenue, "profit": v.one_year_profit,
+                          "measurables": _lines(v.one_year_measurables),
+                          "goals": [{"id": g.pk, "title": g.title, "owner": g.owner.display_name if g.owner_id else None,
+                                     "tactics": _lines(g.tactics), "done": g.done} for g in Goal.objects.select_related("owner")]},
+    }
+
+
+@tool("get_accountability_chart", "The Accountability Chart: every seat with its holder, five roles, status and parent seat.")
+def get_accountability_chart(user):
+    seats = Seat.objects.select_related("person", "team")
+    return {"seats": [
+        {"id": x.pk, "title": x.title, "holder": x.holder or None, "parent_id": x.parent_id, "team": x.team.slug if x.team_id else None,
+         "status": x.effective_status, "roles": x.role_list}
+        for x in seats
+    ]}
 
 
 # ---------------------------------------------------------------- write tools
