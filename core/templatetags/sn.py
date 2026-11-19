@@ -76,3 +76,52 @@ def avatar(user, size=""):
 @register.inclusion_tag("_status_pill.html")
 def status_pill(rock):
     return {"rock": rock}
+
+
+@register.simple_tag
+def sparkline(values, goal=None, ok=None, width=96, height=26):
+    from django.utils.safestring import mark_safe
+
+    from core.charts import sparkline as draw
+
+    return mark_safe(draw(values, goal=goal, ok=ok, width=width, height=height))
+
+
+@register.simple_tag
+def rock_strip(strip, today=None, large=False):
+    """strip: [(week, RockUpdate|None)] -> 13 colored squares; the current week is outlined."""
+    from django.utils.html import format_html_join
+    from django.utils.safestring import mark_safe
+
+    from core.models import monday_of
+
+    now = monday_of(today or timezone.localdate())
+    letters = {"green": "g", "yellow": "y", "red": "r"}
+    labels = {"green": "On track", "yellow": "At risk", "red": "Off track"}
+    cells = []
+    for week, upd in strip:
+        cls = letters.get(getattr(upd, "color", ""), "")
+        if week == now:
+            cls += " now"
+        tip = f"Week of {week:%b %-d}: " + (labels.get(upd.color, "") if upd else "no update")
+        cells.append((cls.strip(), tip))
+    inner = format_html_join("", '<span class="{}" title="{}"></span>', cells)
+    return mark_safe(f'<span class="strip{" strip-lg" if large else ""}" aria-label="13-week status">{inner}</span>')
+
+
+@register.filter
+def color_dot(color):
+    return {"green": "dot-green", "yellow": "dot-yellow", "red": "dot-red"}.get(color or "", "dot-none")
+
+
+@register.filter
+def color_badge(color):
+    return {"green": "badge-green", "yellow": "badge-yellow", "red": "badge-red"}.get(color or "", "")
+
+
+@register.filter
+def get_item(mapping, key):
+    try:
+        return mapping.get(key)
+    except AttributeError:
+        return None

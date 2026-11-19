@@ -1,1 +1,1 @@
-{% if u %}<span class="avatar {% if size == 'lg' %}avatar-lg{% endif %}" title="{{ u.display_name }}">{{ u.initials }}</span>{% else %}<span class="avatar !bg-neutral-200 !text-neutral-500" title="Unassigned">?</span>{% endif %}
+{% if u %}<span class="avatar {% if size == 'lg' %}avatar-lg{% elif size == 'sm' %}avatar-sm{% endif %}" title="{{ u.display_name }}">{{ u.initials }}</span>{% else %}<span class="avatar {% if size == 'sm' %}avatar-sm{% endif %} !bg-neutral-200 !text-neutral-500" title="Unassigned">?</span>{% endif %}

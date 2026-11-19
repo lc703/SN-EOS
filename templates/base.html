@@ -26,8 +26,10 @@
   {% endif %}
   <link rel="stylesheet" href="{% static 'css/sn.css' %}">
   <script src="{% static 'js/htmx.min.js' %}"></script>
-  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static 'js/chart.js' %}" defer></script>
   {% block head %}{% endblock %}
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
 </head>
 <body class="bg-paper text-neutral-900 min-h-screen font-sans text-[15px] leading-normal"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' {% if user.is_authenticated %}hx-boost="true"{% endif %}>
@@ -42,21 +44,30 @@
       <nav class="hidden lg:flex items-center gap-0.5 text-[13px] font-medium">
         {% include "_nav_links.html" with desktop=1 %}
       </nav>
-      <div class="flex items-center gap-2 shrink-0" x-data="{open:false}">
+      <div class="flex items-center gap-1.5 shrink-0" x-data="{open:false}">
+        <button type="button" @click="$store.ui.palette=true" class="hidden xl:inline-flex items-center gap-2 h-8 pl-2.5 pr-1.5 rounded-lg bg-white/[.07] hover:bg-white/[.12] text-neutral-300 text-xs" title="Search and jump (Ctrl K)">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span>Jump to…</span><span class="kbd kbd-dark">Ctrl K</span>
+        </button>
         <button type="button" @click="open=!open" class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-white/10" aria-label="Account">
           <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-bolt text-black text-[11px] font-bold">{{ user.initials }}</span>
           <span class="hidden sm:inline text-xs text-neutral-300">{{ user.first }}</span>
         </button>
-        <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 top-12 w-56 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
+        <div x-cloak x-show="open" x-transition.opacity.duration.100ms @click.outside="open=false" class="absolute right-4 top-12 w-60 rounded-xl bg-white text-neutral-900 shadow-xl border border-black/10 py-1 text-sm">
           <div class="px-3 py-2 border-b border-black/5">
             <div class="font-semibold">{{ user.display_name }}</div>
             <div class="text-xs text-neutral-500 truncate">{{ user.email }}{% if is_admin %} · Admin{% endif %}</div>
           </div>
           <a href="{% url 'person' user.pk %}" class="block px-3 py-2 hover:bg-neutral-50">My profile</a>
+          <a href="{% url 'api_tokens' %}" class="block px-3 py-2 hover:bg-neutral-50">API &amp; AI connections</a>
+          <button type="button" @click="open=false; $store.ui.help=true" class="w-full text-left px-3 py-2 hover:bg-neutral-50">Keyboard shortcuts <span class="kbd float-right">?</span></button>
           {% if is_admin %}
+            <div class="border-t border-black/5 my-1"></div>
+            <a href="{% url 'audit_log' %}" class="block px-3 py-2 hover:bg-neutral-50">Audit log</a>
             <a href="/admin/" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Django admin</a>
             <a href="{% url 'export_json' %}" class="block px-3 py-2 hover:bg-neutral-50" hx-boost="false">Download backup (.json)</a>
           {% endif %}
+          <div class="border-t border-black/5 my-1"></div>
           <form method="post" action="{% url 'account_logout' %}" hx-boost="false">{% csrf_token %}
             <button class="w-full text-left px-3 py-2 hover:bg-neutral-50 text-neutral-600">Sign out</button>
           </form>
@@ -74,8 +85,9 @@
     {% if messages %}
       <div class="space-y-2 mb-4 print:hidden">
         {% for msg in messages %}
-          <div class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm border {% if msg.tags == 'error' %}bg-red-50 border-red-200 text-red-900{% else %}bg-white border-black/10{% endif %}">
-            <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {% if msg.tags == 'error' %}bg-red-500{% else %}bg-bolt ring-2 ring-black/80{% endif %}"></span>{{ msg }}
+          <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false, 6000)" x-transition.opacity class="flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-sm border shadow-sm {% if msg.tags == 'error' %}bg-red-50 border-red-200 text-red-900{% else %}bg-white border-black/10{% endif %}">
+            <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {% if msg.tags == 'error' %}bg-red-500{% else %}bg-bolt ring-2 ring-black/80{% endif %}"></span><span class="flex-1">{{ msg }}</span>
+            <button type="button" @click="show=false" class="text-neutral-400 hover:text-black" aria-label="Dismiss">&times;</button>
           </div>
         {% endfor %}
       </div>
@@ -85,11 +97,13 @@
 
   {% if user.is_authenticated %}
   <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-black text-white pb-[env(safe-area-inset-bottom)] print:hidden" x-data="{more:false}">
-    <div x-cloak x-show="more" @click.outside="more=false" class="absolute bottom-full right-2 mb-2 w-48 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
+    <div x-cloak x-show="more" @click.outside="more=false" class="absolute bottom-full right-2 mb-2 w-56 rounded-xl bg-white text-neutral-900 shadow-lg border border-black/10 py-1 text-sm">
       <a href="{% url 'scorecard' %}" class="block px-4 py-2.5">Scorecard</a>
+      <a href="{% url 'planning' %}" class="block px-4 py-2.5">Quarterly &amp; Annual Planning</a>
       <a href="{% url 'vto' %}" class="block px-4 py-2.5">V/TO</a>
       <a href="{% url 'chart' %}" class="block px-4 py-2.5">Accountability Chart</a>
       <a href="{% url 'people' %}" class="block px-4 py-2.5">People</a>
+      <a href="{% url 'conversations' %}" class="block px-4 py-2.5">Quarterly Conversations</a>
     </div>
     <div class="grid grid-cols-6 text-[11px] font-medium">
       {% include "_nav_links.html" with mobile=1 %}
@@ -98,6 +112,70 @@
       </button>
     </div>
   </nav>
+
+  {{ sn_nav|json_script:"sn-nav" }}
+
+  {# Side panel (drawer). Links with data-panel load into #panel-body. #}
+  <div x-data x-cloak x-show="$store.ui.panel" class="fixed inset-0 z-40 print:hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/25 backdrop-blur-[1px]" x-show="$store.ui.panel" x-transition.opacity @click="$store.ui.closePanel()"></div>
+    <aside class="drawer" :class="$store.ui.panelWide && 'drawer-wide'" x-show="$store.ui.panel"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
+      <button type="button" class="drawer-close" @click="$store.ui.closePanel()" aria-label="Close panel">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div id="panel-body" hx-target="this" hx-select="unset"></div>
+    </aside>
+  </div>
+
+  {# Command palette #}
+  <div x-data="palette" x-cloak x-show="$store.ui.palette" class="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 print:hidden"
+       x-effect="if ($store.ui.palette) { active = 0; $nextTick(() => $refs.q.focus()) }">
+    <div class="absolute inset-0 bg-black/40" @click="$store.ui.palette=false"></div>
+    <div class="modal w-full max-w-lg" @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.enter.prevent="go()">
+      <div class="flex items-center gap-2 px-4 border-b border-black/[.06]">
+        <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input x-ref="q" x-model="q" @input="active=0" type="text" placeholder="Jump to a page, switch team, or create…" class="palette-input">
+        <span class="kbd">Esc</span>
+      </div>
+      <ul class="max-h-80 overflow-y-auto py-1.5">
+        <template x-for="(item, i) in items" :key="item.label + item.url">
+          <li>
+            <a :href="item.url" @click.prevent="go(item)" @mouseenter="active=i" :data-active="i===active"
+               class="flex items-center gap-3 px-4 py-2 text-sm" :class="i===active ? 'bg-bolt/40' : ''">
+              <span class="eyebrow w-14 shrink-0" x-text="item.group"></span>
+              <span class="flex-1 font-medium" x-text="item.label"></span>
+              <span class="kbd" x-show="item.hint" x-text="item.hint"></span>
+            </a>
+          </li>
+        </template>
+        <li x-show="!items.length" class="px-4 py-6 text-sm text-center text-neutral-500">Nothing matches.</li>
+      </ul>
+    </div>
+  </div>
+
+  {# Keyboard shortcut help #}
+  <div x-data x-cloak x-show="$store.ui.help" class="fixed inset-0 z-50 flex items-center justify-center px-4 print:hidden">
+    <div class="absolute inset-0 bg-black/40" @click="$store.ui.help=false"></div>
+    <div class="modal w-full max-w-md p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg">Keyboard shortcuts</h2>
+        <button type="button" class="btn btn-ghost btn-sm" @click="$store.ui.help=false">Close</button>
+      </div>
+      <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+        {% for s in sn_nav.shortcuts %}<div class="flex items-center justify-between"><span class="text-neutral-600">{{ s.label }}</span><span class="kbd">{{ s.key }}</span></div>{% endfor %}
+        <div class="flex items-center justify-between"><span class="text-neutral-600">Jump to…</span><span class="kbd">Ctrl K</span></div>
+        <div class="flex items-center justify-between"><span class="text-neutral-600">New item on page</span><span class="kbd">n</span></div>
+        <div class="flex items-center justify-between"><span class="text-neutral-600">Close panel</span><span class="kbd">Esc</span></div>
+        <div class="flex items-center justify-between"><span class="text-neutral-600">This help</span><span class="kbd">?</span></div>
+      </div>
+      <p class="mt-4 text-xs text-neutral-500">In the Scorecard, Enter saves a cell and moves to the next week.</p>
+    </div>
+  </div>
+
+  <div id="save-indicator" data-state="idle" class="save-indicator print:hidden" aria-live="polite">
+    <span class="save-dot"></span><span data-label></span>
+  </div>
   {% endif %}
   {% endwith %}
 </body>

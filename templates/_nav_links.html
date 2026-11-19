@@ -10,15 +10,16 @@
   <a href="{% url 'todos' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if '/todos' in p %}text-bolt{% else %}text-neutral-400{% endif %}">
     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg>To-Dos</a>
 {% else %}
-  {% with c="px-2.5 xl:px-3 h-9 inline-flex items-center rounded-md" on="bg-white/10 text-bolt" off="text-neutral-300 hover:text-white hover:bg-white/5" %}
+  {% with c="px-2 xl:px-3 h-9 inline-flex items-center rounded-md" on="bg-white/10 text-bolt" off="text-neutral-300 hover:text-white hover:bg-white/5" %}
   <a href="{% url 'home' %}" class="{{ c }} {% if p == '/' %}{{ on }}{% else %}{{ off }}{% endif %}">My 90</a>
   <a href="{% url 'scorecard' %}" class="{{ c }} {% if '/scorecard' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Scorecard</a>
   <a href="{% url 'rocks' %}" class="{{ c }} {% if '/rocks' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Rocks</a>
   <a href="{% url 'issues' %}" class="{{ c }} {% if '/issues' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Issues</a>
   <a href="{% url 'todos' %}" class="{{ c }} {% if '/todos' in p %}{{ on }}{% else %}{{ off }}{% endif %}">To-Dos</a>
   <a href="{% url 'meetings' %}" class="{{ c }} {% if '/meetings' in p %}{{ on }}{% else %}{{ off }}{% endif %}">L10</a>
+  <a href="{% url 'planning' %}" class="{{ c }} {% if '/planning' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Planning</a>
   <a href="{% url 'vto' %}" class="{{ c }} {% if '/vto' in p %}{{ on }}{% else %}{{ off }}{% endif %}">V/TO</a>
   <a href="{% url 'chart' %}" class="{{ c }} {% if '/chart' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Chart</a>
-  <a href="{% url 'people' %}" class="{{ c }} {% if '/people' in p %}{{ on }}{% else %}{{ off }}{% endif %}">People</a>
+  <a href="{% url 'people' %}" class="{{ c }} {% if '/people' in p or '/conversations' in p %}{{ on }}{% else %}{{ off }}{% endif %}">People</a>
   {% endwith %}
 {% endif %}

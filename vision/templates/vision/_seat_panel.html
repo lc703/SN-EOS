@@ -1,0 +1,85 @@
+{% load sn %}
+<div class="panel-head">
+  <div class="eyebrow">{% if obj %}Seat{% if obj.team %} · {{ obj.team.name }}{% endif %}{% else %}New seat{% endif %}</div>
+  <h2 class="text-lg leading-tight">{% if obj %}{{ obj.title }}{% else %}Add a seat{% endif %}</h2>
+  {% if obj %}<div class="mt-1.5 flex items-center gap-2">{% include "vision/_seat_status.html" with seat=obj %}{% if obj.parent %}<span class="text-xs text-neutral-500">Reports to {{ obj.parent.title }}</span>{% endif %}</div>{% endif %}
+</div>
+<div class="panel-body space-y-5">
+  {% if can_edit %}
+    <form {% if obj %}hx-post="{% url 'seat_panel' obj.pk %}" hx-trigger="input delay:700ms, change delay:60ms"{% else %}hx-post="{% url 'seat_panel_new' %}"{% endif %}
+          hx-target="#panel-body" hx-swap="innerHTML" class="space-y-4">
+      {% csrf_token %}
+      {% for e in form.non_field_errors %}<p class="text-sm text-red-700">{{ e }}</p>{% endfor %}
+      {% include "_field.html" with field=form.title %}
+      <div class="grid grid-cols-2 gap-3">
+        {% include "_field.html" with field=form.person %}
+        {% include "_field.html" with field=form.person_name %}
+      </div>
+      <div>
+        <div class="block text-[13px] font-semibold text-neutral-700 mb-1.5">Seat status</div>
+        <div class="grid grid-cols-3 gap-2">
+          {% for choice in form.status %}
+            <label class="status-choice status-choice-{{ choice.data.value }}">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>
+          {% endfor %}
+        </div>
+        <label class="mt-2.5 flex items-center gap-2 text-sm">{{ form.agency }} Staffed by an agency / temp</label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        {% include "_field.html" with field=form.parent %}
+        {% include "_field.html" with field=form.team %}
+      </div>
+      <div x-data="{n: {{ obj.role_list|length|default:0 }}}">
+        <label for="{{ form.roles.id_for_label }}" class="flex items-center justify-between text-[13px] font-semibold text-neutral-700 mb-1">
+          <span>Roles</span><span class="text-xs font-medium" :class="n > 5 ? 'text-amber-700' : 'text-neutral-500'" x-text="n + (n === 1 ? ' role' : ' roles') + (n > 5 ? ' (EOS: aim for five)' : '')"></span>
+        </label>
+        <textarea name="roles" id="{{ form.roles.id_for_label }}" rows="6" placeholder="One per line. Aim for five." class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]"
+                  @input="n = $el.value.split('\n').filter(x => x.trim()).length">{{ form.roles.value|default:"" }}</textarea>
+        {% for e in form.roles.errors %}<p class="mt-1 text-xs text-red-700">{{ e }}</p>{% endfor %}
+      </div>
+      {% if obj %}
+        <p class="text-xs text-neutral-500 flex items-center gap-1.5"><span class="dot dot-green"></span>Changes save automatically.</p>
+      {% else %}
+        <button class="btn btn-primary">Create seat</button>
+      {% endif %}
+    </form>
+  {% else %}
+    <div class="space-y-3">
+      <div class="flex items-center gap-2">{% if obj.person %}{% avatar obj.person %}{% endif %}<span class="font-semibold">{{ obj.holder|default:"Open seat" }}</span></div>
+      {% if obj.role_list %}
+        <div><div class="eyebrow mb-1.5">Roles</div><ul class="space-y-1 text-sm">{% for r in obj.role_list %}<li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 rounded-full bg-black shrink-0"></span>{{ r }}</li>{% endfor %}</ul></div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if flags %}
+    <div class="rounded-xl border border-black/[.08] p-3.5 bg-[#fcfcfb]">
+      <div class="flex items-center justify-between mb-2"><div class="eyebrow">People signals</div><span class="text-[11px] text-neutral-400">Private to you</span></div>
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        {% if flags.gwc %}<span class="flex items-center gap-1.5">{% include "vision/_seat_flags.html" with flags=flags %}</span>{% endif %}
+        {% if flags.pa %}<span>People Analyzer: <b>{% if flags.pa == 'ok' %}all +{% elif flags.pa == 'watch' %}some +/-{% else %}below the bar{% endif %}</b></span>{% endif %}
+        {% if flags.convo %}<span>Last conversation {{ flags.convo.date|date:"M j" }}: <span class="dot dot-green"></span> {{ flags.convo.color_counts.green }} <span class="dot dot-yellow"></span> {{ flags.convo.color_counts.yellow }} <span class="dot dot-red"></span> {{ flags.convo.color_counts.red }}</span>{% endif %}
+      </div>
+      {% if obj.person %}<a href="{% url 'person' obj.person.pk %}" class="mt-2 inline-block text-xs link">Open {{ obj.person.first }}'s profile</a>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if obj %}
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="eyebrow">Direct reports ({{ reports|length }})</div>
+        {% if can_edit %}<a href="{% url 'seat_panel_new' %}?parent={{ obj.pk }}" data-panel="{% url 'seat_panel_new' %}?parent={{ obj.pk }}" class="btn btn-sm">+ Report</a>{% endif %}
+      </div>
+      {% if reports %}
+        <ul class="list-group">
+          {% for r in reports %}<li><a href="{% url 'seat_panel' r.pk %}" data-panel="{% url 'seat_panel' r.pk %}" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-bolt/10"><span class="font-medium flex-1 truncate">{{ r.title }}</span><span class="text-neutral-500 text-xs truncate">{{ r.holder|default:"Open" }}</span></a></li>{% endfor %}
+        </ul>
+      {% else %}<p class="text-sm text-neutral-500">No one reports to this seat.</p>{% endif %}
+    </div>
+    {% if can_edit %}
+      <form hx-post="{% url 'seat_panel' obj.pk %}" hx-confirm="Remove this seat? Its reports move up a level." class="pt-2 border-t border-black/[.06]">
+        {% csrf_token %}<input type="hidden" name="delete" value="1">
+        <button class="btn btn-ghost btn-danger btn-sm">Remove seat</button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>

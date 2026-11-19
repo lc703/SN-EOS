@@ -1,24 +1,40 @@
-{% load sn %}
-<li>
-  <div class="seat-card card px-3 py-2.5 {% if node.depth == 0 %}ring-2 ring-black{% endif %}">
-    <div class="flex items-start gap-2">
-      <div class="min-w-0 flex-1">
-        <div class="font-display font-bold text-[13.5px] leading-tight">{{ node.seat.title }}</div>
-        <div class="text-[12.5px] {% if node.seat.holder %}text-neutral-700{% else %}text-amber-700 font-semibold{% endif %}">{{ node.seat.holder|default:"Open seat" }}</div>
-      </div>
-      {% if can_edit %}<a href="{% url 'seat_edit' node.seat.pk %}" class="text-neutral-300 hover:text-black" title="Edit seat"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg></a>{% endif %}
+{% load sn %}{% with s=node.seat st=node.seat.display_status %}
+<li data-node="{{ s.pk }}" data-depth="{{ node.depth }}"{% if node.children %} data-has-children{% endif %}>
+  <div class="seat seat-{{ st }}{% if node.depth == 0 %} seat-root{% endif %}" data-seat="{{ s.pk }}" data-panel="{% url 'seat_panel' s.pk %}" tabindex="0" role="button"
+       aria-label="{{ s.title }}{% if s.holder %}, {{ s.holder }}{% endif %}"
+       {% if can_edit %}draggable="true" @dragstart="dragStart($event, {{ s.pk }})" @dragend="dragEnd()" @dragover="dragOver($event, {{ s.pk }})" @dragleave="dragLeave({{ s.pk }})" @drop="drop($event, {{ s.pk }})"{% endif %}
+       :class="{'drop-target': dropId === '{{ s.pk }}', 'is-dragging': dragId === '{{ s.pk }}'}" @keydown.enter="$el.click()">
+    <div class="seat-title">{{ s.title }}</div>
+    <div class="seat-person">
+      {% if s.person %}{% avatar s.person "sm" %}<span class="truncate">{{ s.holder }}</span>
+      {% elif s.holder %}<span class="avatar avatar-sm avatar-ghost">{{ s.holder|slice:":1"|upper }}</span><span class="truncate">{{ s.holder }}</span>
+      {% elif st == "future" %}<span class="text-neutral-500 italic">Future seat</span>
+      {% else %}<span class="font-semibold text-[#c2410c]">Open · hiring</span>{% endif %}
+      {% if s.agency %}<span class="badge badge-outline ml-auto">Agency</span>{% endif %}
     </div>
-    {% with roles=node.seat.role_list %}{% if roles %}
-      <ul class="mt-1.5 space-y-0.5 text-[11.5px] text-neutral-600 leading-snug">
-        {% for r in roles|slice:":5" %}<li class="flex gap-1.5"><span class="mt-[5px] h-1 w-1 rounded-full bg-neutral-400 shrink-0"></span><span>{{ r }}</span></li>{% endfor %}
-        {% if roles|length > 5 %}<li class="text-neutral-400">+{{ roles|length|add:"-5" }} more</li>{% endif %}
+    {% with roles=s.role_list %}{% if roles %}
+      <ul class="seat-roles">
+        {% for r in roles|slice:":5" %}<li>{{ r }}</li>{% endfor %}
+        {% if roles|length > 5 %}<li class="more">+{{ roles|length|add:"-5" }} more roles</li>{% endif %}
       </ul>
     {% endif %}{% endwith %}
-    {% if node.children and node.depth >= 2 %}<div class="mt-1.5 text-[11px] text-neutral-400">{{ node.children|length }} report{{ node.children|length|pluralize }}</div>{% endif %}
+    {% if node.flags or node.children %}
+      <div class="seat-foot">
+        {% if node.flags %}{% include "vision/_seat_flags.html" with flags=node.flags %}{% endif %}
+        {% if node.children %}
+          <button type="button" class="seat-toggle" data-no-panel @click.stop="toggle({{ s.pk }})" :aria-expanded="!isCollapsed({{ s.pk }})"
+                  :title="isCollapsed({{ s.pk }}) ? 'Show reports' : 'Hide reports'">
+            <svg class="h-3 w-3 transition-transform" :class="isCollapsed({{ s.pk }}) && '-rotate-90'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+            {{ node.size|add:"-1" }}
+          </button>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
   {% if node.children %}
-    <ul class="{% if node.depth < 2 %}h{% else %}v{% endif %}">
+    <ul class="{% if node.stack %}v{% else %}h{% endif %}">
       {% for child in node.children %}{% include "vision/_seat_node.html" with node=child %}{% endfor %}
     </ul>
   {% endif %}
 </li>
+{% endwith %}

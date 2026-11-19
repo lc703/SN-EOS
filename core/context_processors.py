@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.urls import reverse
 
 from .context import current_quarter, current_team
 from .models import Quarter, Team
@@ -21,4 +22,36 @@ def app(request):
             quarter=getattr(request, "_quarter", None) or current_quarter(request),
             is_admin=request.user.is_admin,
         )
+        ctx["sn_nav"] = nav_data(ctx["all_teams"])
     return ctx
+
+
+SHORTCUTS = [
+    ("h", "home", "My 90"),
+    ("s", "scorecard", "Scorecard"),
+    ("r", "rocks", "Rocks"),
+    ("i", "issues", "Issues"),
+    ("t", "todos", "To-Dos"),
+    ("l", "meetings", "Level 10 Meetings"),
+    ("q", "planning", "Quarterly & Annual Planning"),
+    ("v", "vto", "V/TO"),
+    ("c", "chart", "Accountability Chart"),
+    ("p", "people", "People"),
+    ("o", "conversations", "Quarterly Conversations"),
+]
+
+
+def nav_data(teams):
+    nav = {key: reverse(name) for key, name, _ in SHORTCUTS}
+    palette = [{"label": label, "url": reverse(name), "group": "Go to", "hint": f"g {key}"} for key, name, label in SHORTCUTS]
+    palette += [
+        {"label": "New issue", "url": reverse("issues") + "#add", "group": "Create", "keywords": "ids add"},
+        {"label": "New to-do", "url": reverse("todos") + "#add", "group": "Create", "keywords": "task add"},
+        {"label": "New rock", "url": reverse("rock_new"), "group": "Create", "keywords": "quarterly priority"},
+        {"label": "New measurable", "url": reverse("measurable_new"), "group": "Create", "keywords": "scorecard kpi"},
+        {"label": "Start Level 10 meeting", "url": reverse("meetings"), "group": "Create", "keywords": "l10 weekly"},
+        {"label": "Core Processes", "url": reverse("vto") + "#processes", "group": "Go to", "keywords": "process fba"},
+        {"label": "API tokens & AI connections", "url": reverse("api_tokens"), "group": "Settings", "keywords": "mcp claude integrations"},
+    ]
+    palette += [{"label": f"Switch to {t.name}", "url": f"?team={t.slug}", "group": "Team"} for t in teams]
+    return {"nav": nav, "palette": palette, "shortcuts": [{"key": f"g {k}", "label": label} for k, _, label in SHORTCUTS]}
