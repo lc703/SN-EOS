@@ -82,8 +82,12 @@ def step_context(request, session, step):
         prev = previous_quarter(session) if session.kind == Session.QUARTERLY else None
         span = (prev.start_date, prev.end_date) if prev else (session.date - dt.timedelta(days=365), session.date)
         qs = Rock.objects.filter(quarter__end_date__gte=span[0], quarter__start_date__lte=span[1]).select_related("owner").prefetch_related("updates")
-        rocks = list(qs.filter(is_company=True) if team.is_leadership else qs.filter(team=team))
+        rocks = list((qs.filter(is_company=True) if team.is_leadership else qs.filter(team=team)).select_related("quarter"))
+        today = timezone.localdate()
+        for r in rocks:
+            r.in_progress = r.status != Rock.DONE and r.quarter.end_date >= today
         summary = rock_summary(rocks)
+        finished = [r for r in rocks if not r.in_progress]
         last_monday = monday_of(min(span[1], timezone.localdate())) - dt.timedelta(weeks=1)
         weeks = prev.weeks() if prev else [last_monday - dt.timedelta(weeks=i) for i in range(51, -1, -1)]
         rows = build_rows(Measurable.objects.filter(team=team, active=True).select_related("owner", "team"), weeks, request.user) if weeks else []
@@ -93,7 +97,8 @@ def step_context(request, session, step):
         due = [(d, t) for _, _, d, t in todo if t]
         ctx.update(
             review_label=prev.name if prev else "the last 12 months", rocks=rocks, summary=summary, donut=summary_donut(summary),
-            rock_pct=round(100 * summary["done"] / summary["total"]) if summary["total"] else None,
+            rock_pct=round(100 * summary["done"] / len(finished)) if finished else None,
+            rocks_open=len(rocks) - len(finished),
             sc_pct=round(100 * sum(s["on"] for s in scored) / sum(s["scored"] for s in scored)) if scored else None,
             todo_pct=round(100 * sum(d for d, _ in due) / sum(t for _, t in due)) if due else None,
             goals=Goal.objects.all() if session.kind == Session.ANNUAL else [],

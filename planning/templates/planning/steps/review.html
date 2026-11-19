@@ -2,7 +2,7 @@
 <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
   <div class="card card-pad flex items-center gap-4">
     {{ donut|safe }}
-    <div><div class="eyebrow">Rocks · {{ review_label }}</div><div class="mt-1 font-display text-3xl font-extrabold {% if rock_pct >= 80 %}text-[var(--green-ink)]{% elif rock_pct is not None %}text-[var(--red-ink)]{% endif %}">{% if rock_pct is None %}—{% else %}{{ rock_pct }}%{% endif %}</div><p class="text-xs text-neutral-500">done · aim for 80%+</p></div>
+    <div><div class="eyebrow">Rocks · {{ review_label }}</div><div class="mt-1 font-display text-3xl font-extrabold {% if rock_pct >= 80 %}text-[var(--green-ink)]{% elif rock_pct is not None %}text-[var(--red-ink)]{% endif %}">{% if rock_pct is None %}—{% else %}{{ rock_pct }}%{% endif %}</div><p class="text-xs text-neutral-500">done · aim for 80%+{% if rocks_open %} · {{ rocks_open }} still running{% endif %}</p></div>
   </div>
   <div class="card card-pad"><div class="eyebrow">Scorecard on goal</div><div class="mt-1 font-display text-3xl font-extrabold">{% if sc_pct is None %}—{% else %}{{ sc_pct }}%{% endif %}</div><p class="text-xs text-neutral-500">of all weekly numbers</p></div>
   <div class="card card-pad"><div class="eyebrow">To-dos done</div><div class="mt-1 font-display text-3xl font-extrabold {% if todo_pct >= 90 %}text-[var(--green-ink)]{% endif %}">{% if todo_pct is None %}—{% else %}{{ todo_pct }}%{% endif %}</div><p class="text-xs text-neutral-500">aim for 90%+</p></div>
@@ -15,7 +15,7 @@
       <div class="flex items-center gap-3 px-4 py-2.5">
         {% avatar r.owner "sm" %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 text-sm font-medium hover:underline truncate">{{ r.title }}</a>
         <div class="hidden sm:block">{% rock_strip r %}</div>
-        {% if r.status == 'done' %}<span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Done</span>{% else %}<span class="pill pill-muted">Not done</span>{% endif %}
+        {% if r.status == 'done' %}<span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Done</span>{% elif r.in_progress %}<span class="pill pill-muted">In progress</span>{% else %}<span class="pill pill-muted">Not done</span>{% endif %}
       </div>
     {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No rocks for {{ review_label }}.</p>{% endfor %}
   </div>

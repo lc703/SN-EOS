@@ -18,6 +18,9 @@ PAGES = [
     ("vto", "/vto/"),
     ("chart", "/chart/"),
     ("people", "/people/"),
+    ("conversations", "/people/conversations/"),
+    ("sessions", "/sessions/"),
+    ("api", "/settings/api/"),
 ]
 
 
