@@ -18,7 +18,7 @@
   <a href="{% url 'session_recap' session.pk %}" class="btn">Recap</a>
 </div>
 
-<div class="grid lg:grid-cols-[15rem_1fr] gap-5 items-start">
+<div class="grid lg:grid-cols-[17rem_1fr] gap-5 items-start">
   <nav class="rail card p-1.5 lg:sticky lg:top-[4.5rem] flex lg:flex-col gap-0.5 overflow-x-auto" aria-label="Agenda">
     {% for key, title, prompt in agenda %}
       <a href="?s={{ key }}" class="{% if key == section %}on{% endif %}">

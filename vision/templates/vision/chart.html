@@ -4,14 +4,18 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-3 mb-4 print:mb-2">
   <div>
-    <div class="eyebrow">{{ team.label }}</div>
+    <div class="eyebrow">{% if whole %}Whole company{% else %}{{ team.name }}{% endif %}</div>
     <h1 class="text-2xl">Accountability Chart</h1>
     <p class="text-sm text-neutral-500 mt-0.5 print:hidden">Right people, right seats. Each seat has about five roles. {% if can_edit %}Drag a seat onto another to change who it reports to.{% endif %}</p>
   </div>
   <div class="flex flex-wrap items-center gap-2 print:hidden">
     <div class="seg">
-      <a href="?view=tree" class="{% if view != 'list' %}on{% endif %}">Chart</a>
-      <a href="?view=list" class="{% if view == 'list' %}on{% endif %}">List</a>
+      <a href="?view={{ view }}&all=1" class="{% if whole %}on{% endif %}">Whole company</a>
+      <a href="?view={{ view }}&all=0" class="{% if not whole %}on{% endif %}">{{ team.name }}</a>
+    </div>
+    <div class="seg">
+      <a href="?view=tree&{{ scope_q }}" class="{% if view != 'list' %}on{% endif %}">Chart</a>
+      <a href="?view=list&{{ scope_q }}" class="{% if view == 'list' %}on{% endif %}">List</a>
     </div>
     {% if can_edit %}<a href="{% url 'seat_new' %}" data-panel="{% url 'seat_panel_new' %}" data-shortcut="new" class="btn btn-primary">+ Seat</a>{% endif %}
   </div>
@@ -39,10 +43,10 @@
 {% if view == 'list' %}
   <div class="flex items-center gap-2 mb-3 print:hidden">
     <div class="seg text-xs">
-      <a href="?view=list" class="{% if not status_filter %}on{% endif %}">All</a>
-      <a href="?view=list&status=filled" class="{% if status_filter == 'filled' %}on{% endif %}">Filled</a>
-      <a href="?view=list&status=future" class="{% if status_filter == 'future' %}on{% endif %}">Future</a>
-      <a href="?view=list&status=open" class="{% if status_filter == 'open' %}on{% endif %}">Open / hiring</a>
+      <a href="?view=list&{{ scope_q }}" class="{% if not status_filter %}on{% endif %}">All</a>
+      <a href="?view=list&status=filled&{{ scope_q }}" class="{% if status_filter == 'filled' %}on{% endif %}">Filled</a>
+      <a href="?view=list&status=future&{{ scope_q }}" class="{% if status_filter == 'future' %}on{% endif %}">Future</a>
+      <a href="?view=list&status=open&{{ scope_q }}" class="{% if status_filter == 'open' %}on{% endif %}">Open / hiring</a>
     </div>
   </div>
   <div class="card overflow-x-auto">
@@ -65,7 +69,7 @@
     </table>
   </div>
 {% else %}
-  <div class="chart-shell" x-data="orgChart({team: '{{ team.slug }}', canEdit: {{ can_edit|yesno:'true,false' }}, csrf: '{{ csrf_token }}'})" @keydown.window="key($event)">
+  <div class="chart-shell" x-data="orgChart({team: '{% if whole %}all{% else %}{{ team.slug }}{% endif %}', canEdit: {{ can_edit|yesno:'true,false' }}, csrf: '{{ csrf_token }}'})" @keydown.window="key($event)">
     <div class="chart-toolbar print:hidden">
       <div class="flex items-center gap-1">
         <button type="button" class="btn btn-sm btn-icon" @click="zoomOut()" title="Zoom out (-)" aria-label="Zoom out"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14"/></svg></button>

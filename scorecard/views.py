@@ -59,6 +59,8 @@ def trailing_for(m, values):
     values = [Decimal(v) for v in values if v is not None]
     if not values:
         return None, ""
+    if m.unit == Measurable.UNIT_YESNO:
+        return f"{sum(1 for v in values if v)}/{len(values)}", "yes"
     if m.trailing == Measurable.TRAIL_TOTAL:
         return sum(values), "total"
     return (sum(values) / len(values)).quantize(Decimal("0.01")), "avg"
@@ -84,7 +86,7 @@ def build_rows(measurables, weeks, user):
                 values.append(v)
                 row.latest_state = state
         trailing, row.trailing_label = trailing_for(m, values)
-        row.trailing = m.format_value(trailing) if trailing is not None else ""
+        row.trailing = trailing if isinstance(trailing, str) else m.format_value(trailing) if trailing is not None else ""
         rows.append(row)
     return rows
 

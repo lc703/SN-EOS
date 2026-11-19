@@ -179,7 +179,9 @@ def chart(request):
     from people.flags import people_flags
 
     team, _ = scope(request)
-    seats = list(Seat.objects.filter(team=team).select_related("person", "parent", "parent__person"))
+    whole = request.GET.get("all") == "1" or (bool(team and team.is_leadership) and request.GET.get("all") != "0")
+    seats = Seat.objects.select_related("person", "parent", "parent__person", "team")
+    seats = list(seats if whole else seats.filter(team=team))
     flags = people_flags(request.user, [s.person_id for s in seats])
     status = request.GET.get("status", "")
     listed = sorted(seats, key=lambda s: ((s.parent.title if s.parent else ""), s.sort, s.title))
@@ -193,6 +195,8 @@ def chart(request):
         "view": request.GET.get("view", "tree"),
         "status_filter": status,
         "show_flags": bool(flags),
+        "whole": whole,
+        "scope_q": "all=1" if whole else "all=0",
         "wide": True,
     }
     if is_htmx(request) and request.GET.get("part") == "tree":

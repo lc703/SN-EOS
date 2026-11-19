@@ -37,7 +37,7 @@ def sessions_list(request):
     team, _ = scope(request)
     sessions = Session.objects.filter(team=team).select_related("quarter", "next_quarter", "facilitator").prefetch_related("ratings", "items")
     return render(request, "planning/sessions.html", {
-        "sessions": sessions, "can_run": is_admin(request.user) or is_team_member(request.user, team),
+        "sessions": sessions, "can_run": team is not None and (is_admin(request.user) or is_team_member(request.user, team)),
         "agendas": [(k, label, AGENDAS[k]) for k, label in KIND_CHOICES],
     })
 
@@ -45,7 +45,7 @@ def sessions_list(request):
 @require_POST
 def session_start(request):
     team, quarter = scope(request)
-    require(is_admin(request.user) or is_team_member(request.user, team))
+    require(team is not None and (is_admin(request.user) or is_team_member(request.user, team)))
     kind = request.POST.get("kind") if request.POST.get("kind") in dict(KIND_CHOICES) else QUARTERLY
     session = Session.objects.create(
         kind=kind, team=team, quarter=quarter, next_quarter=next_quarter_for(quarter), facilitator=request.user,

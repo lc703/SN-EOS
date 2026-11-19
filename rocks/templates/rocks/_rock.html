@@ -13,11 +13,12 @@
       {% if not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
       {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
     </div>
+    {% if r.strip and mode == 'home' %}<div class="mt-1.5">{% rock_strip r.strip %}</div>{% endif %}
     {% if r.this_week.color == 'red' and r.this_week.recovery_plan %}<p class="mt-1 text-[12px] text-[#b42318] line-clamp-1"><strong>Recovery:</strong> {{ r.this_week.recovery_plan }}</p>{% endif %}
   </div>
-  {% if r.strip %}<div class="hidden md:block shrink-0">{% rock_strip r.strip %}</div>{% endif %}
-  <div class="flex items-center gap-2 shrink-0">
-    {% if r.status == 'off_track' and mode != 'home' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}{% endif %}
+  {% if r.status == 'off_track' and mode != 'home' %}<div class="shrink-0">{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}</div>{% endif %}
+  {% if r.strip and mode != 'home' %}<div class="hidden md:block shrink-0">{% rock_strip r.strip %}</div>{% endif %}
+  <div class="flex items-center justify-end gap-2 shrink-0 {% if mode != 'home' %}md:w-[13rem]{% endif %}">
     {% if user.is_admin or r.owner_id == user.pk or not r.owner_id %}
       {% if r.status != 'done' %}
         <button type="button" class="btn btn-sm !h-8 gap-1.5" data-panel="{% url 'rock_update' r.pk %}" title="Weekly G/Y/R update">
