@@ -1,0 +1,31 @@
+<div class="relative" x-data="personPicker">
+  {{ picker|json_script:"person-picker" }}
+  <button type="button" class="btn" @click="toggle()" :aria-expanded="open.toString()" aria-haspopup="listbox">
+    View someone’s 90
+  </button>
+  <div x-show="open" x-cloak @click.outside="open = false" @keydown.escape.window="open = false"
+       class="absolute right-0 z-40 mt-1.5 w-[22rem] max-w-[calc(100vw-2rem)] card overflow-hidden">
+    <div class="p-2 border-b border-black/[.06]">
+      <input x-ref="q" x-model="q" type="search" placeholder="Search people" autocomplete="off"
+             class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" aria-label="Search people">
+    </div>
+    <div class="max-h-80 overflow-y-auto py-1" role="listbox">
+      <template x-for="group in filtered" :key="group.team">
+        <div>
+          <div class="px-3 pt-2 pb-1 eyebrow" x-text="group.team"></div>
+          <template x-for="p in group.people" :key="group.team + '-' + p.id">
+            <a :href="p.url" class="flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-bolt/30" role="option">
+              <span class="avatar avatar-sm" x-text="p.initials"></span>
+              <span class="min-w-0 flex-1">
+                <span class="font-medium block truncate" x-text="p.name"></span>
+                <span class="text-[11px] text-neutral-500 block truncate" x-text="p.seat" x-show="p.seat"></span>
+              </span>
+              <span class="pill pill-bolt" x-show="p.me">You</span>
+            </a>
+          </template>
+        </div>
+      </template>
+      <p x-show="filtered.length === 0" class="px-3 py-6 text-sm text-center text-neutral-500">No one matches.</p>
+    </div>
+  </div>
+</div>

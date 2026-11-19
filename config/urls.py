@@ -76,6 +76,7 @@ urlpatterns = [
     path("chart/seats/<int:pk>/move/", vision.seat_move, name="seat_move"),
     # People
     path("people/", people.people_list, name="people"),
+    path("people/<int:pk>/dashboard/", core.person_dashboard, name="person_dashboard"),
     path("people/<int:pk>/", people.person, name="person"),
     path("people/<int:pk>/one-on-ones/", people.one_on_one_add, name="one_on_one_add"),
     path("people/<int:pk>/reviews/", people.review_add, name="review_add"),

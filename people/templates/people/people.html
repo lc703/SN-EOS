@@ -12,15 +12,17 @@
 </div>
 <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
   {% for p in people %}
-    <a href="{% url 'person' p.pk %}" class="card card-pad flex items-start gap-3 hover:border-black/40">
-      {% avatar p "lg" %}
-      <div class="min-w-0 flex-1">
-        <div class="font-semibold leading-tight">{{ p.display_name }}{% if p.is_admin %} <span class="pill pill-bolt ml-1 !h-5 !text-[10px]">Admin</span>{% endif %}</div>
-        <div class="text-[12.5px] text-neutral-600 truncate">{% for s in p.seats.all|slice:":2" %}{{ s.title }}{% if not forloop.last %}, {% endif %}{% empty %}{{ p.title|default:"—" }}{% endfor %}</div>
-        <div class="mt-1 flex flex-wrap gap-1">{% for t in p.teams.all %}<span class="pill pill-muted !h-5 !text-[10.5px]">{{ t.short_code|default:t.name }}</span>{% endfor %}
-          {% if not p.can_sign_in %}<span class="pill !h-5 !text-[10.5px] bg-amber-50 text-amber-800">No login</span>{% endif %}</div>
-      </div>
-    </a>
+    <div class="card card-pad flex items-start gap-3 hover:border-black/40">
+      <a href="{% url 'person' p.pk %}" class="flex items-start gap-3 min-w-0 flex-1">{% avatar p "lg" %}
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold leading-tight">{{ p.display_name }}{% if p.is_admin %} <span class="pill pill-bolt ml-1 !h-5 !text-[10px]">Admin</span>{% endif %}</div>
+          <div class="text-[12.5px] text-neutral-600 truncate">{% for s in p.seats.all|slice:":2" %}{{ s.title }}{% if not forloop.last %}, {% endif %}{% empty %}{{ p.title|default:"—" }}{% endfor %}</div>
+          <div class="mt-1 flex flex-wrap gap-1">{% for t in p.teams.all %}<span class="pill pill-muted !h-5 !text-[10.5px]">{{ t.short_code|default:t.name }}</span>{% endfor %}
+            {% if not p.can_sign_in %}<span class="pill !h-5 !text-[10.5px] bg-amber-50 text-amber-800">No login</span>{% endif %}</div>
+        </div>
+      </a>
+      <a href="{% url 'person_dashboard' p.pk %}" class="btn btn-sm shrink-0">Dashboard</a>
+    </div>
   {% empty %}<p class="text-sm text-neutral-500">Nobody here yet.</p>{% endfor %}
 </div>
 {% endblock %}

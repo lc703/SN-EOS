@@ -2,7 +2,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from .context import current_quarter, current_team
-from .models import Quarter, Team
+from .models import Quarter, Team, User
 
 
 def app(request):
@@ -22,7 +22,7 @@ def app(request):
             quarter=getattr(request, "_quarter", None) or current_quarter(request),
             is_admin=request.user.is_admin,
         )
-        ctx["sn_nav"] = nav_data(ctx["all_teams"])
+        ctx["sn_nav"] = nav_data(ctx["all_teams"], request.user)
     return ctx
 
 
@@ -41,7 +41,7 @@ SHORTCUTS = [
 ]
 
 
-def nav_data(teams):
+def nav_data(teams, user=None):
     nav = {key: reverse(name) for key, name, _ in SHORTCUTS}
     palette = [{"label": label, "url": reverse(name), "group": "Go to", "hint": f"g {key}"} for key, name, label in SHORTCUTS]
     palette += [
@@ -54,4 +54,13 @@ def nav_data(teams):
         {"label": "API tokens & AI connections", "url": reverse("api_tokens"), "group": "Settings", "keywords": "mcp claude integrations"},
     ]
     palette += [{"label": f"Switch to {t.name}", "url": f"?team={t.slug}", "group": "Team"} for t in teams]
+    if user is not None and getattr(user, "is_authenticated", False):
+        for person in User.objects.filter(is_active=True).order_by("name", "id"):
+            mine = person.pk == user.pk
+            palette.append({
+                "label": "My dashboard" if mine else f"{person.display_name}'s dashboard",
+                "url": reverse("home") if mine else reverse("person_dashboard", args=[person.pk]),
+                "group": "People",
+                "keywords": f"{person.display_name} {person.email} dashboard 90",
+            })
     return {"nav": nav, "palette": palette, "shortcuts": [{"key": f"g {k}", "label": label} for k, _, label in SHORTCUTS]}

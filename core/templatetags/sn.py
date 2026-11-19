@@ -120,6 +120,14 @@ def color_badge(color):
 
 
 @register.filter
+def editable_by(todo, user):
+    """True when this viewer may check off the to-do. Private to-dos stay with their owner."""
+    from core.permissions import can_edit_todo
+
+    return can_edit_todo(user, todo)
+
+
+@register.filter
 def get_item(mapping, key):
     try:
         return mapping.get(key)

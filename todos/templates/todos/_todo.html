@@ -1,9 +1,14 @@
 {% load sn %}
 <div id="todo-{{ t.pk }}" class="flex items-start gap-3 px-4 py-2.5 {% if t.done %}bg-neutral-50/60{% endif %}">
-  <input type="checkbox" name="done" value="1" class="mt-1 h-[18px] w-[18px] shrink-0 cursor-pointer" {% if t.done %}checked{% endif %}
-         aria-label="Done: {{ t.title }}"
-         hx-post="{% url 'todo_toggle' t.pk %}" hx-vals='{"partial": "1", "compact": "{{ compact|default:"" }}"}'
-         hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset">
+  {% if t|editable_by:user %}
+    <input type="checkbox" name="done" value="1" class="mt-1 h-[18px] w-[18px] shrink-0 cursor-pointer" {% if t.done %}checked{% endif %}
+           aria-label="Done: {{ t.title }}"
+           hx-post="{% url 'todo_toggle' t.pk %}" hx-vals='{"partial": "1", "compact": "{{ compact|default:"" }}"}'
+           hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset">
+  {% else %}
+    <input type="checkbox" disabled class="mt-1 h-[18px] w-[18px] shrink-0" {% if t.done %}checked{% endif %}
+           aria-label="Done: {{ t.title }}" title="Only {{ t.owner.first }} can check this off">
+  {% endif %}
   <div class="min-w-0 flex-1">
     <a href="{% url 'todo_edit' t.pk %}?next={{ request.get_full_path|urlencode }}" class="block leading-snug {% if t.done %}line-through text-neutral-400{% else %}font-medium hover:underline{% endif %}" hx-select="unset" hx-target="unset" hx-swap="unset">{{ t.title }}</a>
     <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">

@@ -2,7 +2,7 @@
 <div class="panel-head">
   <div class="eyebrow">{% if obj %}Seat{% if obj.team %} · {{ obj.team.name }}{% endif %}{% else %}New seat{% endif %}</div>
   <h2 class="text-lg leading-tight">{% if obj %}{{ obj.title }}{% else %}Add a seat{% endif %}</h2>
-  {% if obj %}<div class="mt-1.5 flex items-center gap-2">{% include "vision/_seat_status.html" with seat=obj %}{% if obj.parent %}<span class="text-xs text-neutral-500">Reports to {{ obj.parent.title }}</span>{% endif %}</div>{% endif %}
+  {% if obj %}<div class="mt-1.5 flex flex-wrap items-center gap-2">{% include "vision/_seat_status.html" with seat=obj %}{% if obj.parent %}<span class="text-xs text-neutral-500">Reports to {{ obj.parent.title }}</span>{% endif %}{% if obj.person %}<a href="{% url 'person_dashboard' obj.person.pk %}" class="text-xs link">{{ obj.person.first }}'s dashboard</a>{% endif %}</div>{% endif %}
 </div>
 <div class="panel-body space-y-5">
   {% if can_edit %}

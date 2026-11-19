@@ -10,6 +10,7 @@
     <p class="text-sm text-neutral-500">{% if person.can_sign_in %}{{ person.email }}{% else %}No login{% endif %}{% if person.is_admin %} · Admin{% endif %}
       {% for t in person.teams.all %}{% if forloop.first %} · {% endif %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
   </div>
+  <a href="{% url 'person_dashboard' person.pk %}" class="btn">View dashboard</a>
 </div>
 
 <div class="grid lg:grid-cols-[1fr_24rem] gap-6 items-start">

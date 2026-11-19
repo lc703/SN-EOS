@@ -69,6 +69,35 @@
         },
       };
     });
+
+    window.Alpine.data("personPicker", function () {
+      return {
+        open: false,
+        q: "",
+        groups: [],
+        init() {
+          const el = this.$root.querySelector("script[type='application/json']");
+          this.groups = el ? JSON.parse(el.textContent) : [];
+        },
+        get filtered() {
+          const q = this.q.trim().toLowerCase();
+          return this.groups
+            .map(function (g) {
+              return {
+                team: g.team,
+                people: g.people.filter(function (p) {
+                  return !q || (p.name + " " + (p.seat || "") + " " + g.team).toLowerCase().indexOf(q) !== -1;
+                }),
+              };
+            })
+            .filter(function (g) { return g.people.length; });
+        },
+        toggle() {
+          this.open = !this.open;
+          if (this.open) this.$nextTick(() => { if (this.$refs.q) this.$refs.q.focus(); });
+        },
+      };
+    });
   });
 
   /* ---- Side panel: <a data-panel href="..."> loads the URL into the drawer. ---- */

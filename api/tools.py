@@ -242,18 +242,37 @@ def list_teams(actor):
     return [{"slug": t.slug, "name": t.name, "leadership": t.is_leadership, "members": t.members.count()} for t in Team.objects.all()]
 
 
-@tool("my_90", "Your own open to-dos, this quarter's rocks, measurables and open issues.")
-def my_90(actor):
+@tool(
+    "my_90",
+    "Open to-dos, this quarter's rocks, measurables, open issues, seats and upcoming meetings. "
+    "Defaults to you. Pass person (email, name, or id) for someone else's 90. "
+    "Private to-dos are included only when you can already see them. "
+    "1:1s, Quarterly Conversations, GWC and People Analyzer are never included.",
+    {"person": {"type": "string", "description": "Optional email, name, or id. Omit for yourself."}},
+)
+def my_90(actor, person=None):
     q = Quarter.objects.current()
-    u = actor.user
+    subject = _person(person, actor.user) if person else actor.user
     weeks = q.weeks() if q else []
     this = monday_of(timezone.localdate())
     weeks = [w for w in weeks if w <= this][-4:]
+    todos = Todo.objects.visible_to(actor.user).filter(owner=subject, done=False).select_related("team", "owner")
+    meetings = Meeting.objects.filter(
+        team__in=subject.teams.all(),
+        concluded_at__isnull=True,
+        date__gte=timezone.localdate() - dt.timedelta(days=1),
+    ).select_related("team").order_by("date", "id").distinct()[:5]
     return {
-        "todos": [_todo(t) for t in Todo.objects.filter(owner=u, done=False).select_related("team", "owner")[:50]],
-        "rocks": [_rock(r) for r in Rock.objects.filter(owner=u, quarter=q).select_related("team", "owner", "quarter").prefetch_related("milestones", "updates")] if q else [],
-        "measurables": [_measurable(m, weeks) for m in u.measurables.filter(active=True).select_related("team", "owner")],
-        "issues": [_issue(i) for i in Issue.objects.filter(owner=u, status=Issue.OPEN).select_related("team", "owner")[:50]],
+        "person": _user(subject),
+        "todos": [_todo(t) for t in todos[:50]],
+        "rocks": [_rock(r) for r in Rock.objects.filter(owner=subject, quarter=q).select_related("team", "owner", "quarter").prefetch_related("milestones", "updates")] if q else [],
+        "measurables": [_measurable(m, weeks) for m in subject.measurables.filter(active=True).select_related("team", "owner")],
+        "issues": [_issue(i) for i in Issue.objects.filter(owner=subject, status=Issue.OPEN).select_related("team", "owner")[:50]],
+        "seats": [
+            {"id": s.pk, "title": s.title, "team": s.team.slug if s.team_id else None}
+            for s in subject.seats.select_related("team")
+        ],
+        "meetings": [{"id": m.pk, "team": m.team.slug, "date": m.date.isoformat()} for m in meetings],
     }
 
 

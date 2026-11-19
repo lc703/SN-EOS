@@ -182,7 +182,7 @@ Same tools over JSON at `/api/v1/`, same bearer token. Responses are `{"data": .
 
 | Method | Path | Tool |
 | --- | --- | --- |
-| GET | `/api/v1/me`, `/teams`, `/my90` | whoami, list_teams, my_90 |
+| GET | `/api/v1/me`, `/teams`, `/my90` | whoami, list_teams, my_90. `my90` takes an optional `?person=` (email, name, or id) for someone else's 90. Private to-dos stay with the people who can already see them. 1:1s, Quarterly Conversations and People Analyzer are never returned. |
 | GET | `/api/v1/scorecard?team=company` | get_scorecard |
 | POST | `/api/v1/measurables/<id>/values` `{"value": 12, "week": "2026-11-16"}` | set_measurable_value |
 | GET | `/api/v1/rocks`, `/rocks/<id>` | list_rocks, get_rock |

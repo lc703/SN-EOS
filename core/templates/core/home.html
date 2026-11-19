@@ -1,15 +1,23 @@
 {% extends "base.html" %}
 {% load sn %}
-{% block title %}My 90{% endblock %}
+{% block title %}{% if viewing_other %}{{ subject.display_name }}'s dashboard{% else %}My 90{% endif %}{% endblock %}
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-  <div>
+  <div class="min-w-0">
     <div class="eyebrow">{{ quarter.name }} · {{ today|date:"l, F j" }}</div>
-    <h1 class="text-2xl sm:text-3xl">Hi {{ user.first }}, here’s your 90.</h1>
+    {% if viewing_other %}
+      <h1 class="text-2xl sm:text-3xl">{{ subject.display_name }}'s dashboard</h1>
+      <p class="mt-1 text-sm text-neutral-500">The same 90 you see on your own page. Read-only except where you already edit. <a href="{% url 'home' %}" class="link font-semibold">My dashboard</a></p>
+    {% else %}
+      <h1 class="text-2xl sm:text-3xl">Hi {{ user.first }}, here’s your 90.</h1>
+    {% endif %}
   </div>
-  <div class="flex flex-wrap gap-2">
-    {% for m in open_meetings %}<a href="{% url 'meeting' m.pk %}" class="btn btn-bolt">▶ Rejoin {{ m.team.name }} L10</a>{% endfor %}
-    {% if not open_meetings %}<a href="{% url 'meetings' %}" class="btn">L10 meetings</a>{% endif %}
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "core/_person_picker.html" %}
+    {% if not viewing_other %}
+      {% for m in open_meetings %}<a href="{% url 'meeting' m.pk %}" class="btn btn-bolt">▶ Rejoin {{ m.team.name }} L10</a>{% endfor %}
+      {% if not open_meetings %}<a href="{% url 'meetings' %}" class="btn">L10 meetings</a>{% endif %}
+    {% endif %}
   </div>
 </div>
 
@@ -17,7 +25,7 @@
   <section class="card card-pad flex items-center gap-5">
     <div class="shrink-0">{{ rock_chart }}</div>
     <div class="min-w-0">
-      <div class="stat-label">My rocks · {{ quarter.name }}</div>
+      <div class="stat-label">{% if viewing_other %}{{ subject.first }}'s rocks{% else %}My rocks{% endif %} · {{ quarter.name }}</div>
       <ul class="mt-1.5 space-y-1 text-sm">
         <li class="flex items-center gap-2"><span class="dot dot-green"></span>On track <strong class="ml-auto tabular-nums">{{ rock_summary.on_track }}</strong></li>
         <li class="flex items-center gap-2"><span class="dot dot-red"></span>Off track <strong class="ml-auto tabular-nums">{{ rock_summary.off_track }}</strong></li>
@@ -26,9 +34,9 @@
     </div>
   </section>
   <section class="card card-pad">
-    <div class="flex items-baseline justify-between"><div class="stat-label">My to-do completion</div>{% with last=completion|last %}<span class="text-sm font-bold {{ last.1|pct_class }}">{% if last.1 is None %}—{% else %}{{ last.1 }}%{% endif %} <span class="text-[11px] font-medium text-neutral-500">this week</span></span>{% endwith %}</div>
+    <div class="flex items-baseline justify-between"><div class="stat-label">{% if viewing_other %}{{ subject.first }}'s to-do completion{% else %}My to-do completion{% endif %}</div>{% with last=completion|last %}<span class="text-sm font-bold {{ last.1|pct_class }}">{% if last.1 is None %}—{% else %}{{ last.1 }}%{% endif %} <span class="text-[11px] font-medium text-neutral-500">this week</span></span>{% endwith %}</div>
     <div class="mt-2">{{ todo_chart }}</div>
-    <div class="text-[11px] text-neutral-500">EOS target: 90% of to-dos done each week. {{ todos|length }} open, {{ issues|length }} issue{{ issues|length|pluralize }} you own.</div>
+    <div class="text-[11px] text-neutral-500">EOS target: 90% of to-dos done each week. {{ todos|length }} open, {{ issues|length }} issue{{ issues|length|pluralize }} {% if viewing_other %}{{ subject.first }} owns{% else %}you own{% endif %}.</div>
   </section>
   {% if pulse %}
     <section class="card card-pad md:col-span-2 xl:col-span-1">
@@ -43,28 +51,57 @@
   {% endif %}
 </div>
 
+<div class="grid md:grid-cols-2 gap-4 mb-6">
+  <section class="card card-pad">
+    <div class="stat-label mb-2">{% if viewing_other %}{{ subject.first }}'s seats{% else %}My seats{% endif %}</div>
+    {% if seats %}
+      <ul class="space-y-2">
+        {% for s in seats %}
+          <li class="text-sm">
+            <span class="font-semibold">{{ s.title }}</span>
+            <span class="text-neutral-500">{% if s.team %} · {{ s.team.name }}{% endif %}{% if s.parent %} · reports to {{ s.parent.title }}{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="text-sm text-neutral-500">No seat on the Accountability Chart.</p>{% endif %}
+  </section>
+  <section class="card card-pad">
+    <div class="stat-label mb-2">Upcoming meetings</div>
+    {% if open_meetings %}
+      <ul class="space-y-2">
+        {% for m in open_meetings %}
+          <li class="flex items-center justify-between gap-2 text-sm">
+            <a href="{% url 'meeting' m.pk %}" class="font-semibold hover:underline">{{ m.team.name }} L10</a>
+            <span class="text-neutral-500">{{ m.date|date:"D, M j" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="text-sm text-neutral-500">Nothing on the calendar.</p>{% endif %}
+  </section>
+</div>
+
 <div class="grid lg:grid-cols-2 gap-6 items-start">
   <section>
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My to-dos</h2><a href="{% url 'todos' %}" class="text-xs link">All to-dos</a></div>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if viewing_other %}{{ subject.first }}'s to-dos{% else %}My to-dos{% endif %}</h2><a href="{% url 'todos' %}" class="text-xs link">All to-dos</a></div>
     <div class="list-group">
       {% for t in todos %}{% include "todos/_todo.html" with compact=1 %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
     </div>
   </section>
 
   <section>
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My rocks</h2><a href="{% url 'rocks' %}" class="text-xs link">All rocks</a></div>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if viewing_other %}{{ subject.first }}'s rocks{% else %}My rocks{% endif %}</h2><a href="{% url 'rocks' %}" class="text-xs link">All rocks</a></div>
     <div class="list-group">
       {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No rocks this quarter" text="Rocks are your one to three most important priorities for the next 90 days." cta_url="/rocks/" cta_label="Go to Rocks" icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
     </div>
   </section>
 
   <section class="lg:col-span-2">
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My measurables</h2><a href="{% url 'scorecard' %}" class="text-xs link">Scorecard</a></div>
-    {% if rows %}{% include "scorecard/_table.html" with mode="home" show_trend=True show_trailing=True %}{% else %}<div class="card card-pad text-sm text-neutral-500">You don’t own any measurables yet.</div>{% endif %}
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if viewing_other %}{{ subject.first }}'s measurables{% else %}My measurables{% endif %}</h2><a href="{% url 'scorecard' %}" class="text-xs link">Scorecard</a></div>
+    {% if rows %}{% include "scorecard/_table.html" with mode="home" show_trend=True show_trailing=True %}{% else %}<div class="card card-pad text-sm text-neutral-500">{% if viewing_other %}{{ subject.first }} doesn’t own any measurables.{% else %}You don’t own any measurables yet.{% endif %}</div>{% endif %}
   </section>
 
   <section class="lg:col-span-2">
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My issues</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if viewing_other %}{{ subject.first }}'s issues{% else %}My issues{% endif %}</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
     <div class="list-group">
       {% for i in issues|slice:":10" %}
         <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5">
@@ -72,7 +109,7 @@
           <span class="flex-1 text-sm font-medium truncate">{{ i.title }}</span>
           <span class="pill pill-muted">{{ i.team.name }}</span><span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
         </a>
-      {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open issues you own.</p>{% endfor %}
+      {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">{% if viewing_other %}No open issues {{ subject.first }} owns.{% else %}No open issues you own.{% endif %}</p>{% endfor %}
       {% if issues|length > 10 %}<a href="{% url 'issues' %}" class="block px-4 py-2.5 text-xs link">{{ issues|length|add:"-10" }} more on the Issues lists</a>{% endif %}
     </div>
   </section>

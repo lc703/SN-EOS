@@ -9,6 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -24,36 +25,78 @@ from todos.models import Todo, weekly_completion
 
 from . import charts
 from .adapters import email_allowed
-from .models import User, monday_of
+from .models import Team, User, monday_of
 from .utils import scope
 
 EXPORT_APPS = ["core", "scorecard", "rocks", "issues", "todos", "meetings", "vision", "people", "planning"]
 
 
 def home(request):
+    """Your own 90. `/?person=<id>` is the shareable alias of someone else's dashboard."""
+    raw = request.GET.get("person")
+    if raw not in (None, ""):
+        subject = _dashboard_subject(raw)
+        if subject.pk != request.user.pk:
+            return redirect("person_dashboard", pk=subject.pk)
+        return redirect("home")
+    return _render_dashboard(request, request.user)
+
+
+def person_dashboard(request, pk):
+    """The personal dashboard, for someone else. Your own id redirects home."""
+    subject = get_object_or_404(User, pk=pk, is_active=True)
+    if subject.pk == request.user.pk:
+        return redirect("home")
+    return _render_dashboard(request, subject)
+
+
+def _dashboard_subject(raw):
+    if not str(raw).isdigit():
+        raise Http404("No person matches that.")
+    return get_object_or_404(User, pk=int(raw), is_active=True)
+
+
+def _render_dashboard(request, subject):
     team, quarter = scope(request)
-    user = request.user
+    viewer = request.user
     today = timezone.localdate()
-    todos = Todo.objects.filter(owner=user, done=False).select_related("team", "rock", "issue").order_by("due_date")
+    # Private to-dos follow the same rule as the to-do list: the owner, and whoever created it.
+    todos = (
+        Todo.objects.visible_to(viewer)
+        .filter(owner=subject, done=False)
+        .select_related("team", "rock", "issue", "owner")
+        .order_by("due_date")
+    )
     rocks = (
-        with_strips(Rock.objects.filter(owner=user, quarter=quarter).select_related("team", "quarter").prefetch_related("milestones", "updates"), quarter)
+        with_strips(
+            Rock.objects.filter(owner=subject, quarter=quarter)
+            .select_related("team", "quarter", "owner")
+            .prefetch_related("milestones", "updates"),
+            quarter,
+        )
         if quarter
         else []
     )
-    issues = Issue.objects.filter(owner=user, status=Issue.OPEN).select_related("team")
-    measurables = user.measurables.filter(active=True).select_related("team", "owner")
+    issues = Issue.objects.filter(owner=subject, status=Issue.OPEN).select_related("team", "owner")
+    measurables = subject.measurables.filter(active=True).select_related("team", "owner")
     weeks = []
     if quarter:
-        this_monday = monday_of(today)
-        weeks = [w for w in quarter.weeks() if w <= this_monday][-5:] or quarter.weeks()[:5]
-    if quarter:
         weeks = [w for w in quarter.weeks() if w <= monday_of(today)][-8:] or quarter.weeks()[:8]
-    rows = build_rows(measurables, weeks, user)
-    completion = weekly_completion(Todo.objects.filter(owner=user), weeks=6, today=today)
-    my_teams = user.teams.all()
-    open_meetings = Meeting.objects.filter(
-        team__in=my_teams, concluded_at__isnull=True, date__gte=today - dt.timedelta(days=1)
-    ).select_related("team")[:3]
+    # Pass the viewer, not the subject, so someone else's cells stay read-only.
+    rows = build_rows(measurables, weeks, viewer)
+    completion = weekly_completion(
+        Todo.objects.visible_to(viewer).filter(owner=subject), weeks=6, today=today
+    )
+    their_teams = subject.teams.all()
+    open_meetings = (
+        Meeting.objects.filter(
+            team__in=their_teams, concluded_at__isnull=True, date__gte=today - dt.timedelta(days=1)
+        )
+        .select_related("team")
+        .order_by("date", "id")
+        .distinct()[:4]
+    )
+    seats = subject.seats.select_related("team", "parent")
     summary = rock_summary(rocks)
     rock_chart = charts.donut(
         [(summary["done"], charts.INK), (summary["on_track"], charts.GREEN), (summary["off_track"], charts.RED)],
@@ -68,6 +111,8 @@ def home(request):
         request,
         "core/home.html",
         {
+            "subject": subject,
+            "viewing_other": viewer.pk != subject.pk,
             "rock_summary": summary,
             "rock_chart": mark_safe(rock_chart),
             "todo_chart": mark_safe(todo_chart),
@@ -78,12 +123,41 @@ def home(request):
             "rows": rows,
             "weeks": weeks,
             "completion": completion,
-            "my_teams": my_teams,
             "open_meetings": open_meetings,
+            "seats": seats,
+            "picker": people_picker(viewer),
             "today": today,
             "statuses": Rock.STATUS_CHOICES,
         },
     )
+
+
+def people_picker(viewer):
+    """Active people, grouped by team, for the dashboard switcher."""
+    teams = list(Team.objects.order_by("sort", "name"))
+    buckets = {t.pk: [] for t in teams}
+    loose = []
+    users = User.objects.filter(is_active=True).prefetch_related("teams", "seats").order_by("name", "id")
+    for person in users:
+        held = list(person.seats.all())
+        row = {
+            "id": person.pk,
+            "name": person.display_name,
+            "initials": person.initials,
+            "seat": held[0].title if held else (person.title or ""),
+            "url": reverse("home") if person.pk == viewer.pk else reverse("person_dashboard", args=[person.pk]),
+            "me": person.pk == viewer.pk,
+        }
+        memberships = [t for t in person.teams.all() if t.pk in buckets]
+        if memberships:
+            for team in memberships:
+                buckets[team.pk].append(row)
+        else:
+            loose.append(row)
+    groups = [{"team": t.name, "people": buckets[t.pk]} for t in teams if buckets[t.pk]]
+    if loose:
+        groups.append({"team": "No team", "people": loose})
+    return groups
 
 
 def team_pulse(team, quarter, today):
