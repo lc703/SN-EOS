@@ -47,8 +47,8 @@ document.addEventListener("alpine:init", function () {
         this.y = cy - (cy - this.y) * k;
         this.scale = next;
       },
-      zoomIn() { this.zoomAt(1.2); },
-      zoomOut() { this.zoomAt(1 / 1.2); },
+      zoomIn() { this.zoomAt(1.4); },
+      zoomOut() { this.zoomAt(1 / 1.4); },
       reset() {
         const vp = this.$refs.viewport;
         this.scale = 1;
@@ -66,7 +66,11 @@ document.addEventListener("alpine:init", function () {
       },
       wheel(e) {
         if (e.ctrlKey || e.metaKey) {
-          this.zoomAt(Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY);
+          // Continuous in the wheel delta, not a fixed step. A trackpad pinch arrives as a
+          // ctrl+wheel with small pixel deltas, so it gets a higher factor than a mouse notch.
+          const pinch = e.ctrlKey && !e.metaKey && e.deltaMode === 0 && Math.abs(e.deltaY) < 50;
+          const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * this.$refs.viewport.clientHeight : e.deltaY;
+          this.zoomAt(Math.exp(-dy * (pinch ? 0.015 : 0.005)), e.clientX, e.clientY);
         } else {
           this.x -= e.deltaX;
           this.y -= e.deltaY;
