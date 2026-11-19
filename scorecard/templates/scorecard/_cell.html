@@ -1,5 +1,5 @@
 {% load sn %}{% with m=row.measurable %}
-<td class="sc-cell px-0.5 py-0.5 text-center {% if c.state %}sc-{{ c.state }}{% endif %} {% if c.is_now %}sc-now{% endif %}" data-state="{{ c.state }}">
+<td class="sc-cell px-0.5 py-0.5 text-center {% if c.state %}sc-{{ c.state }}{% endif %} {% if c.is_now %}sc-now{% endif %} {% if c.is_future %}sc-future{% endif %}" data-state="{{ c.state }}" data-week="{{ c.week|date:'Y-m-d' }}">
   {% if row.editable %}
     {% if m.unit == 'yesno' %}
       <select name="value" aria-label="{{ m.title }} {{ c.week }}"
@@ -10,8 +10,8 @@
         <option value="no" {% if c.value == 0 and c.value is not None %}selected{% endif %}>No</option>
       </select>
     {% else %}
-      <input name="value" value="{{ c.value|num }}" inputmode="decimal" autocomplete="off" aria-label="{{ m.title }} {{ c.week }}"
-             hx-post="{% url 'scorecard_cell' m.pk c.week|date:'Y-m-d' %}" hx-trigger="change, keyup[key=='Enter']"
+      <input name="value" value="{{ c.value|cellnum }}" inputmode="decimal" autocomplete="off" aria-label="{{ m.title }} {{ c.week }}"
+             hx-post="{% url 'scorecard_cell' m.pk c.week|date:'Y-m-d' %}" hx-trigger="change"
              hx-target="closest td" hx-swap="outerHTML" hx-select="unset">
     {% endif %}
     {% if error %}<div class="text-[10px] text-red-700 leading-tight pb-0.5">{{ error }}</div>{% endif %}

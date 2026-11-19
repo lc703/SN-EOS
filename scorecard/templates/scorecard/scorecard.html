@@ -1,24 +1,51 @@
 {% extends "base.html" %}
+{% load sn %}
 {% block title %}Scorecard{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+<div class="page-head">
   <div>
     <div class="eyebrow">{{ team.label }} · {{ quarter.name }}</div>
-    <h1 class="text-2xl">Scorecard</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">Weekly measurables. Type a number in any week; green is on goal, red is off.</p>
+    <h1 class="page-title">Scorecard</h1>
+    <p class="page-sub">5–15 weekly numbers that tell you how the business is doing. Type into any week; green is on goal, red goes to the Issues List.</p>
   </div>
-  {% if can_add %}
-    <div x-data="{open:false}">
-      <button type="button" class="btn btn-primary" @click="open=!open">+ Measurable</button>
-      <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 mt-2 w-[min(32rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
-        <form method="post" action="{% url 'measurable_new' %}">{% csrf_token %}
-          {% include "_form.html" %}
-          <div class="mt-4 flex justify-end gap-2"><button type="button" class="btn" @click="open=false">Cancel</button><button class="btn btn-primary">Add</button></div>
-        </form>
-      </div>
-    </div>
-  {% endif %}
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="seg"><a href="?owner=" class="{% if not mine %}on{% endif %}">All</a><a href="?owner=me" class="{% if mine %}on{% endif %}">Mine</a></div>
+    {% if can_add %}<button type="button" class="btn btn-primary" data-shortcut-new hx-get="{% url 'measurable_new' %}" hx-target="#panel-content">{% icon "plus" %}Measurable</button>{% endif %}
+  </div>
 </div>
+
+<div id="sc-wrap" hx-get="{{ request.get_full_path }}" hx-select="#sc-wrap" hx-target="this" hx-swap="outerHTML" hx-trigger="scorecardChanged from:body" hx-disinherit="*">
+{% if rows %}
+<div class="grid md:grid-cols-3 gap-3 mb-4">
+  <div class="card card-pad flex items-center gap-4">
+    {% if last %}
+      {% donut last_segments 76 last.on|stringformat:"d" %}
+    {% endif %}
+    <div class="min-w-0">
+      <div class="stat-label">Last week on goal</div>
+      {% if last %}<div class="stat-value">{{ last.on }}<span class="text-neutral-400 text-lg font-semibold"> / {{ last.scored }}</span></div><div class="text-xs text-neutral-500">Week of {{ last.week|date:"M j" }}</div>{% else %}<div class="text-sm text-neutral-500 mt-1">No numbers yet this quarter.</div>{% endif %}
+    </div>
+  </div>
+  <div class="card card-pad">
+    <div class="flex items-center justify-between"><div class="stat-label">On goal by week</div><span class="text-[11px] text-neutral-400">% of numbers green</span></div>
+    <div class="mt-2">{% bars summary_bars 80 52 %}</div>
+  </div>
+  <div class="card card-pad">
+    <div class="stat-label">Your numbers for last week</div>
+    {% if missing %}
+      <div class="mt-1 text-sm"><span class="font-semibold text-amber-700">{{ missing|length }} missing</span> <span class="text-neutral-500">— enter them before the L10.</span></div>
+      <ul class="mt-2 flex flex-wrap gap-1.5">{% for r in missing|slice:":4" %}<li class="pill pill-outline">{{ r.measurable.title }}</li>{% endfor %}</ul>
+    {% else %}
+      <div class="mt-1 flex items-center gap-2 text-sm font-semibold text-green-700">{% icon "check" "h-4 w-4" "2.6" %}All in. Nice.</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {% include "scorecard/_table.html" with mode="scorecard" %}
-<p class="mt-3 text-xs text-neutral-500">Columns are the {{ weeks|length }} weeks of {{ quarter.name }} (week of Monday). The lime line marks this week.</p>
+<p class="mt-3 text-xs text-neutral-500 flex flex-wrap items-center gap-x-4 gap-y-1 no-print">
+  <span>Columns are the {{ weeks|length }} weeks of {{ quarter.name }} (week of Monday). The black line marks this week.</span>
+  <span class="hidden md:inline-flex items-center gap-1"><span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">←</span><span class="kbd">→</span> move between cells · <span class="kbd">Enter</span> save and go down</span>
+</p>
+</div>
 {% endblock %}

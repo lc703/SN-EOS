@@ -16,7 +16,8 @@ def oee(teams, member):
 
 def cell_states(html, title):
     """data-state of each cell in the row containing `title`."""
-    row = html.split(f">{title}<", 1)[1].split("</tr>", 1)[0]
+    grid = html.split("<tbody", 1)[1]
+    row = grid.split(f">{title}<", 1)[1].split("</tr>", 1)[0]
     return [chunk.split('"', 1)[0] for chunk in row.split('data-state="')[1:]]
 
 
@@ -87,3 +88,52 @@ def test_add_measurable(as_user, teams, member, quarter):
     assert r.status_code == 302
     m = Measurable.objects.get(title="Downtime hrs")
     assert m.team == teams["ky"] and m.goal == Decimal(4)
+
+
+def test_average_total_trend_and_footer(as_user, teams, member, quarter):
+    m = Measurable.objects.create(team=teams["ky"], title="Tons", owner=member, goal_compare="gte", goal=Decimal(100))
+    w = quarter.weeks()
+    for week, v in zip(w[:3], (90, 110, 130)):
+        ScoreEntry.objects.create(measurable=m, week_start=week, value=Decimal(v))
+    r = as_user(member, teams["ky"]).get("/scorecard/")
+    row = r.context["rows"][0]
+    assert (row.average, row.total, row.average_state, row.hit_rate) == ("110", "330", "green", 67)
+    assert "<polyline" in r.content.decode()  # sparkline
+    assert [s["on"] for s in r.context["summary"][:3]] == [0, 1, 1]
+
+
+def test_cell_entry_refreshes_trend_average_and_footer(as_user, teams, member, quarter, oee):
+    week = quarter.weeks()[0].isoformat()
+    cols = ",".join(x.isoformat() for x in quarter.weeks())
+    body = as_user(member, teams["ky"]).post(f"/scorecard/{oee.pk}/cell/{week}/", {"value": "70", "cols": cols, "trailing": "1"}, HTTP_HX_REQUEST="true").content.decode()
+    for oob_id in (f"mtrend-{oee.pk}", f"mtr-{oee.pk}", f"mtot-{oee.pk}", "wk-" + week.replace("-", "")):
+        assert f'id="{oob_id}"' in body
+
+
+def test_measurable_panel_and_autosave(as_user, teams, member, ky_peer, quarter, oee):
+    for week, v in zip(quarter.weeks()[:3], (60, 70, 80)):
+        ScoreEntry.objects.create(measurable=oee, week_start=week, value=Decimal(v))
+    c = as_user(member, teams["ky"])
+    html = c.get(f"/scorecard/{oee.pk}/panel/").content.decode()
+    assert "Last 26 weeks" in html and "<svg" in html and "Changes save automatically" in html
+    assert "Changes save automatically" not in as_user(ky_peer).get(f"/scorecard/{oee.pk}/panel/").content.decode()
+    data = {"title": "OEE %", "owner": member.pk, "unit": "percent", "goal_compare": "gte", "goal": "70", "trailing": "avg"}
+    r = c.post(f"/scorecard/{oee.pk}/edit/", data, HTTP_HX_REQUEST="true")
+    assert r.status_code == 204 and "scorecardChanged" in r["HX-Trigger"]
+    oee.refresh_from_db()
+    assert oee.title == "OEE %" and oee.goal == 70
+
+
+def test_new_measurable_from_panel(as_user, teams, member, quarter):
+    c = as_user(member, teams["ky"])
+    assert "New measurable" in c.get("/scorecard/new/", HTTP_HX_REQUEST="true").content.decode()
+    r = c.post("/scorecard/new/", {"title": "Calls", "owner": member.pk, "unit": "number", "goal_compare": "gte", "goal": "5", "trailing": ""}, HTTP_HX_REQUEST="true")
+    assert r.status_code == 200 and Measurable.objects.get(title="Calls").team == teams["ky"]
+
+
+def test_reorder_measurables(as_user, teams, member, other, quarter):
+    a = Measurable.objects.create(team=teams["ky"], title="A", sort=0)
+    b = Measurable.objects.create(team=teams["ky"], title="B", sort=1)
+    assert as_user(member, teams["ky"]).post("/scorecard/reorder/", {"ids": [b.pk, a.pk]}).status_code == 204
+    assert list(Measurable.objects.filter(team=teams["ky"]).values_list("title", flat=True)) == ["B", "A"]
+    assert as_user(other, teams["ky"]).post("/scorecard/reorder/", {"ids": [a.pk, b.pk]}).status_code == 403

@@ -1,0 +1,20 @@
+{% load sn %}
+<div class="panel-head">
+  <div><div class="eyebrow">Scorecard · {{ team.name }}</div><h2 class="text-lg leading-tight">New measurable</h2></div>
+  <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="$store.ui.closePanel()" aria-label="Close">{% icon "x" %}</button>
+</div>
+<form hx-post="{% url 'measurable_new' %}" hx-swap="none" class="panel-body space-y-4">
+  {% csrf_token %}
+  <div class="rounded-xl bg-bolt/30 border border-black/10 px-3 py-2.5 text-[13px] text-neutral-700">A good measurable is a weekly <b>activity</b> number one person owns, with a goal that says “on track.”</div>
+  <label class="block"><span class="label">Title</span><input name="title" class="input" required maxlength="160" placeholder="e.g. Tons shipped" autofocus></label>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="block"><span class="label">Owner</span>{{ form.owner }}</label>
+    <label class="block"><span class="label">Unit</span>{{ form.unit }}</label>
+  </div>
+  <div class="grid grid-cols-3 gap-3">
+    <label class="block"><span class="label">Goal is</span>{{ form.goal_compare }}</label>
+    <label class="block"><span class="label">Goal</span>{{ form.goal }}</label>
+    <label class="block"><span class="label">Highlight</span>{{ form.trailing }}</label>
+  </div>
+  <div class="flex items-center gap-2 pt-1"><button class="btn btn-primary">{% icon "plus" %}Add measurable</button><button type="button" class="btn btn-ghost" @click="$store.ui.closePanel()">Cancel</button></div>
+</form>

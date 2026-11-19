@@ -31,6 +31,8 @@ urlpatterns = [
     path("scorecard/", scorecard.scorecard, name="scorecard"),
     path("scorecard/new/", scorecard.measurable_new, name="measurable_new"),
     path("scorecard/<int:pk>/edit/", scorecard.measurable_edit, name="measurable_edit"),
+    path("scorecard/<int:pk>/panel/", scorecard.measurable_panel, name="measurable_panel"),
+    path("scorecard/reorder/", scorecard.measurable_reorder, name="measurable_reorder"),
     path("scorecard/<int:pk>/cell/<str:week>/", scorecard.cell, name="scorecard_cell"),
     # Rocks
     path("rocks/", rocks.rocks_list, name="rocks"),

@@ -69,7 +69,7 @@
   });
   document.addEventListener("htmx:afterSwap", function (e) {
     if (e.detail.target && e.detail.target.id === "panel-content") {
-      var first = e.detail.target.querySelector("[autofocus], input:not([type=hidden]), textarea, select");
+      var first = e.detail.target.querySelector("[autofocus]");
       if (first && window.matchMedia("(min-width: 768px)").matches) first.focus();
     }
   });
@@ -148,6 +148,40 @@
   }
   document.addEventListener("DOMContentLoaded", function () { initSortables(document); });
   document.addEventListener("htmx:load", function (e) { initSortables(e.detail.elt); });
+
+  /* ---------- scorecard grid: arrows move between cells, Enter saves and moves down ---------- */
+  function cellInput(td) { return td && td.querySelector("input, select"); }
+  document.addEventListener("keydown", function (e) {
+    var input = e.target;
+    if (!input.closest || !input.closest(".sc-cell")) return;
+    var td = input.closest("td"), tr = td.parentElement;
+    var idx = Array.prototype.indexOf.call(tr.children, td);
+    var target = null;
+    var isText = input.tagName === "INPUT";
+    var atStart = isText && input.selectionStart === 0 && input.selectionEnd === 0;
+    var atEnd = isText && input.selectionStart === input.value.length;
+    if (e.key === "ArrowDown" || (e.key === "Enter" && !e.shiftKey)) {
+      var next = tr.nextElementSibling;
+      while (next && !cellInput(next.children[idx])) next = next.nextElementSibling;
+      target = next && next.children[idx];
+      if (e.key === "Enter" && !target) { input.blur(); e.preventDefault(); return; }
+    } else if (e.key === "ArrowUp" || (e.key === "Enter" && e.shiftKey)) {
+      var prev = tr.previousElementSibling;
+      while (prev && !cellInput(prev.children[idx])) prev = prev.previousElementSibling;
+      target = prev && prev.children[idx];
+    } else if (e.key === "ArrowLeft" && (atStart || !isText)) {
+      target = td.previousElementSibling;
+      while (target && !cellInput(target)) target = target.previousElementSibling;
+    } else if (e.key === "ArrowRight" && (atEnd || !isText)) {
+      target = td.nextElementSibling;
+      while (target && !cellInput(target)) target = target.nextElementSibling;
+    } else return;
+    var to = cellInput(target);
+    if (!to) return;
+    e.preventDefault();
+    to.focus();
+    if (to.select) to.select();
+  });
 
   /* ---------- keyboard shortcuts ---------- */
   var GO = { h: "/", s: "/scorecard/", r: "/rocks/", t: "/todos/", i: "/issues/", l: "/meetings/", q: "/sessions/", v: "/vto/", c: "/chart/", p: "/people/" };

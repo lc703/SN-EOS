@@ -18,6 +18,18 @@ def num(value):
 
 
 @register.filter
+def cellnum(value):
+    """Like num, with thousands separators for big numbers: 476930 -> 476,930."""
+    text = num(value)
+    if not text:
+        return text
+    whole, _, frac = text.partition(".")
+    sign = "-" if whole.startswith("-") else ""
+    whole = f"{int(whole.lstrip('-') or 0):,}"
+    return sign + whole + ("." + frac if frac else "")
+
+
+@register.filter
 def lines(value):
     return [x.strip() for x in (value or "").splitlines() if x.strip()]
 

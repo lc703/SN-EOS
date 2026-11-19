@@ -1,7 +1,9 @@
-<tr id="m-{{ row.measurable.pk }}" class="list-row"
+{% load sn %}<tr id="m-{{ row.measurable.pk }}" class="list-row" data-id="{{ row.measurable.pk }}"
     hx-vals='{"cols": "{{ cols }}", "mode": "{{ mode }}", "meeting": "{{ meeting_id|default:"" }}", "trailing": "{% if show_trailing %}1{% endif %}"}'>
+  {% if can_reorder and mode == 'scorecard' %}<td class="sc-handle"><span class="drag-handle" title="Drag to reorder">{% icon "grip" "h-4 w-4" %}</span></td>{% endif %}
   {% include "scorecard/_title_cell.html" %}
   <td class="px-2 py-1 text-center whitespace-nowrap text-neutral-600 font-medium">{{ row.measurable.goal_display }}</td>
+  {% include "scorecard/_trend_cell.html" %}
   {% for c in row.cells %}{% include "scorecard/_cell.html" %}{% endfor %}
   {% if show_trailing %}{% include "scorecard/_trail_cell.html" %}{% endif %}
 </tr>

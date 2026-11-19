@@ -1,0 +1,1 @@
+{% load sn %}<td id="mtrend-{{ row.measurable.pk }}" class="px-2 py-1 text-center" {% if oob %}hx-swap-oob="true"{% endif %}>{% sparkline row.spark row.measurable.goal row.spark_states 84 24 %}</td>

@@ -1,7 +1,9 @@
 from django.conf import settings
 
+from django.utils import timezone
+
 from .context import current_quarter, current_team
-from .models import Quarter, Team
+from .models import Quarter, Team, monday_of
 
 SHORTCUTS = [
     (["G", "H"], "My 90 (home)"),
@@ -49,5 +51,6 @@ def app(request):
             is_admin=request.user.is_admin,
             shortcuts=SHORTCUTS,
             mobile_nav=MOBILE_NAV,
+            this_monday=monday_of(timezone.localdate()),
         )
     return ctx

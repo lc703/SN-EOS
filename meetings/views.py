@@ -18,7 +18,7 @@ from issues.models import Issue
 from rocks.models import Rock
 from rocks.views import rock_summary
 from scorecard.models import Measurable
-from scorecard.views import build_rows
+from scorecard.views import build_rows, week_summary
 from todos.models import Todo, default_due, weekly_completion
 from todos.views import TodoForm
 
@@ -70,7 +70,8 @@ def section_context(request, meeting, section):
         rows = build_rows(Measurable.objects.filter(team=team, active=True).select_related("owner", "team"), weeks, request.user)
         ctx.update(
             rows=rows, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
-            show_trailing=any(r.measurable.trailing for r in rows),
+            show_trailing=True,
+            summary=week_summary(rows, weeks),
             off_count=sum(1 for r in rows if r.is_red),
         )
     elif section == "rocks":
