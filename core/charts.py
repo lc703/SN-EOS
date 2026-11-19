@@ -1,5 +1,6 @@
 """Small server-rendered SVG charts. No JS, prints cleanly, works in emails."""
 
+import math
 from decimal import Decimal
 from html import escape
 
@@ -87,21 +88,38 @@ def compact(v):
     return f"{v:.1f}".rstrip("0").rstrip(".")
 
 
-def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=str, axis_fmt=None):
-    """Line chart with goal line, colored points and x labels."""
+def _nice_ticks(lo, hi, count=6):
+    """Round values between lo and hi to label the axis with, e.g. $8,000,000, $9,000,000."""
+    raw = max((hi - lo) / max(count - 1, 1), 1e-9)
+    mag = 10 ** math.floor(math.log10(raw))
+    step = next((m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw), 10 * mag)
+    step = max(step, 1)
+    tick = math.ceil(lo / step) * step
+    ticks = []
+    while tick <= hi + step * 1e-9:
+        ticks.append(round(tick, 6))
+        tick += step
+    return ticks
+
+
+def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=str, axis_fmt=None, nice_ticks=False):
+    """Line chart with goal line, colored points and x labels. `nice_ticks` puts the axis on round values."""
     axis_fmt = axis_fmt or fmt
     vals = [_num(v) for v in values]
     g = _num(goal)
-    left, right, top, bottom = 44, 12, 14, 26
-    w, h = width - left - right, height - top - bottom
+    right, top, bottom = 12, 14, 26
     lo, hi = _scale(vals, g, pad=0.12)
+    ticks = _nice_ticks(lo, hi) if nice_ticks else [lo + (hi - lo) * i / 3 for i in range(4)]
+    axis_labels = [axis_fmt(v) for v in ticks]
+    # Wide labels such as $11,000,000 get the room they need.
+    left = max(44, 14 + 5.8 * max((len(t) for t in axis_labels), default=0))
+    w, h = width - left - right, height - top - bottom
     pts = _points(vals, w, h, lo, hi, left, top)
     out = [f'<svg class="w-full h-auto" viewBox="0 0 {width} {height}" role="img" aria-label="Trend">']
-    for i in range(4):
-        v = lo + (hi - lo) * i / 3
+    for v, label in zip(ticks, axis_labels):
         y = round(top + h - (v - lo) / (hi - lo) * h, 1)
         out.append(f'<line x1="{left}" y1="{y}" x2="{width-right}" y2="{y}" stroke="#000" stroke-opacity=".06"/>')
-        out.append(f'<text x="{left-8}" y="{y+3.5}" text-anchor="end" font-size="10" fill="#8a8a8a">{escape(axis_fmt(v))}</text>')
+        out.append(f'<text x="{left-8}" y="{y+3.5}" text-anchor="end" font-size="10" fill="#8a8a8a">{escape(label)}</text>')
     if g is not None:
         gy = round(top + h - (g - lo) / (hi - lo) * h, 1)
         out.append(f'<line x1="{left}" y1="{gy}" x2="{width-right}" y2="{gy}" stroke="{INK}" stroke-width="1.2" stroke-dasharray="4 3"/>')

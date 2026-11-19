@@ -24,6 +24,7 @@ from people.models import ConversationScore, OneOnOne, PeopleReview, SuccessStat
 from planning.models import ANNUAL, Session, SessionItem
 from rocks.models import Milestone, Rock, RockUpdate
 from scorecard.models import Measurable, ScoreEntry
+from scorecard.units import SOURCE_NOTES, unit_from_text
 from todos.models import Todo
 from vision.models import VTO, CoreValue, Seat
 
@@ -33,21 +34,11 @@ RAG_TO_STATUS = {"green": Rock.ON_TRACK, "yellow": Rock.ON_TRACK, "red": Rock.OF
 RAG_TO_VALUE = {"green": ValueRating.PLUS, "yellow": ValueRating.MIXED, "red": ValueRating.MINUS}
 # Old evaluations scored each criterion red/yellow/green; we average these into the 1-10 L10 rating.
 RAG_TO_RATING = {"green": 10, "yellow": 7, "red": 4}
-UNIT_MAP = {
-    "%": Measurable.UNIT_PERCENT,
-    "percent": Measurable.UNIT_PERCENT,
-    "count": Measurable.UNIT_NUMBER,
-    "number": Measurable.UNIT_NUMBER,
-    "#": Measurable.UNIT_NUMBER,
-    "$": Measurable.UNIT_CURRENCY,
-    "currency": Measurable.UNIT_CURRENCY,
-    "yes/no": Measurable.UNIT_YESNO,
-    "yesno": Measurable.UNIT_YESNO,
-}
 DIRECTION_TO_COMPARE = {"up": Measurable.GTE, "down": Measurable.LTE}
 GOAL_SUFFIX = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
-# Old metrics fed by an integration. SN EOS has no integrations yet, so these are typed in weekly.
-AUTO_SOURCES = {"iquote_quotes", "iquote_rd", "attio_prelim", "attio_rd", "attio_final"}
+# Old metrics fed by an integration. SN EOS keeps no connectors: an assistant posts them weekly over the API/MCP,
+# and `--values-csv` loads a backfill. They get a "Filled weekly by assistant" source note.
+AUTO_SOURCES = set(SOURCE_NOTES)
 STEP_TO_SECTION = {"open": "segue", "rocks": "rocks", "todos": "todos", "issues": "ids", "evaluate": "conclude"}
 
 HANDLED = {
@@ -97,7 +88,7 @@ def parse_goal(raw, unit):
     """'40%' -> 40, '$11M' -> 11000000, '' -> None. Raises ValueError if unreadable."""
     from decimal import Decimal
 
-    text = (raw or "").strip().replace(" ", "")
+    text = re.sub(r"(?i)usd|dollars?", "", raw or "").strip().replace(" ", "")
     mult = 1
     if text[-1:].lower() in GOAL_SUFFIX and unit != Measurable.UNIT_YESNO:
         mult, text = GOAL_SUFFIX[text[-1].lower()], text[:-1]
@@ -488,7 +479,7 @@ class BattlePlannerImporter:
         unmatched, bad_goals, auto = set(), [], []
         for pk, f in self.fields("core.scorecardmetric"):
             team = self.teams.get(f.get("facility")) or lead
-            unit = UNIT_MAP.get((f.get("unit") or "").strip().lower(), Measurable.UNIT_NUMBER)
+            unit = unit_from_text(f.get("unit"))
             direction = (f.get("direction") or "").strip().lower()
             goal_compare = Measurable.EQ if unit == Measurable.UNIT_YESNO else DIRECTION_TO_COMPARE.get(direction, Measurable.GTE)
             goal = None
@@ -511,13 +502,20 @@ class BattlePlannerImporter:
                  "owner": owner, "sort": f.get("sort", 0), "active": f.get("active", True), "legacy": legacy},
                 label="Measurables",
             )
+            note = SOURCE_NOTES.get(source)
+            if note and not obj.source:
+                obj.source = note
+                obj.save(update_fields=["source"])
             self.measurables[pk] = obj
         if unmatched:
             self.notes.append(f"measurables: no unique user for owner initials {', '.join(sorted(unmatched))}; owner left blank")
         if bad_goals:
             self.notes.append(f"measurables: could not read goal for {'; '.join(bad_goals)}; goal left blank")
         if auto:
-            self.notes.append(f"measurables: {', '.join(auto)} were auto-filled by iQuote/Attio in the old app; type them in weekly for now")
+            self.notes.append(
+                f"measurables: {', '.join(auto)} were auto-filled by iQuote/Attio in the old app. "
+                "Have an assistant post them weekly (API/MCP), or backfill with --values-csv"
+            )
         self.import_score_entries()
 
     def import_score_entries(self):

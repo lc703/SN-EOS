@@ -4,13 +4,20 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from core.importer import BattlePlannerImporter
+from scorecard.values_csv import load_values_csv
 
 
 class Command(BaseCommand):
     help = "Import a Battle Planner dumpdata JSON export. Safe to run more than once."
 
     def add_arguments(self, parser):
-        parser.add_argument("path", help="Path to the export .json file")
+        parser.add_argument("path", nargs="?", help="Path to the export .json file (optional with --values-csv)")
+        parser.add_argument(
+            "--values-csv",
+            metavar="FILE",
+            help="Also load weekly Scorecard values from a CSV with columns metric, facility, week_start, value. "
+            "Each row is an upsert, so re-running is safe. Works on its own, without an export path.",
+        )
         parser.add_argument(
             "--refresh",
             action="store_true",
@@ -24,7 +31,34 @@ class Command(BaseCommand):
             "file are deactivated, not deleted.",
         )
 
-    def handle(self, path, refresh=False, sync=False, **opts):
+    def handle(self, path=None, refresh=False, sync=False, values_csv=None, **opts):
+        if not path and not values_csv:
+            raise CommandError("Give the export path, --values-csv FILE, or both.")
+        if path:
+            self.import_export(path, refresh, sync)
+        if values_csv:
+            self.import_values_csv(values_csv)
+        self.stdout.write(self.style.SUCCESS("Done."))
+
+    def import_values_csv(self, path):
+        file = Path(path)
+        if not file.exists():
+            raise CommandError(f"File not found: {file}")
+        try:
+            result = load_values_csv(file.read_text(encoding="utf-8-sig"))
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+        self.stdout.write(self.style.MIGRATE_HEADING(f"Scorecard values from {file.name}"))
+        counts = result.counts
+        self.stdout.write(
+            "  " + ", ".join(f"{counts[k]} {k}" for k in ("created", "updated", "unchanged", "skipped"))
+        )
+        if result.notes:
+            self.stdout.write(self.style.MIGRATE_HEADING("Notes:"))
+            for note in result.notes:
+                self.stdout.write(f"  - {note}")
+
+    def import_export(self, path, refresh, sync):
         file = Path(path)
         if not file.exists():
             raise CommandError(f"File not found: {file}")
@@ -63,4 +97,3 @@ class Command(BaseCommand):
                 self.stdout.write(f"  {label.ljust(width)}  {n}")
             if importer.deactivated:
                 self.stdout.write(f"  {'Users deactivated'.ljust(width)}  {importer.deactivated}")
-        self.stdout.write(self.style.SUCCESS("Done."))

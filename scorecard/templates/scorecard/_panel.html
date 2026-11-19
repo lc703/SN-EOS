@@ -6,6 +6,7 @@
       <div class="eyebrow">Measurable · {{ m.team.name }}</div>
       <h2 class="text-lg leading-snug">{{ m.title }}</h2>
       <div class="text-xs text-neutral-500">{{ m.owner.display_name|default:"No owner" }} · Goal {{ m.goal_display }}{% if m.trailing %} · {{ m.get_trailing_display }} column{% endif %}</div>
+      {% if m.source %}<div class="text-[11px] italic text-neutral-400">{{ m.source }}</div>{% endif %}
     </div>
   </div>
 </div>

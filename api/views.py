@@ -30,6 +30,7 @@ REST_ROUTES = [
     ("GET", r"my90", "my_90"),
     ("GET", r"scorecard", "get_scorecard"),
     ("POST", r"measurables/(?P<measurable_id>\d+)/values", "set_measurable_value"),
+    ("POST", r"measurables/values", "set_measurable_value"),
     ("GET", r"rocks", "list_rocks"),
     ("GET", r"rocks/(?P<rock_id>\d+)", "get_rock"),
     ("POST", r"rocks/(?P<rock_id>\d+)/updates", "update_rock_status"),

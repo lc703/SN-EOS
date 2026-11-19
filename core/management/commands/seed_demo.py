@@ -156,9 +156,13 @@ class Command(BaseCommand):
             (sales, "Farm visits", "ruby", Measurable.UNIT_NUMBER, Measurable.GTE, 12, "total", (8, 16)),
             (sales, "Quotes sent", "owen", Measurable.UNIT_NUMBER, Measurable.GTE, 20, "total", (14, 28)),
             (sales, "Quote win rate", "owen", Measurable.UNIT_PERCENT, Measurable.GTE, 35, "avg", (24, 46)),
+            (lead, "Total pipeline", "mia", Measurable.UNIT_CURRENCY, Measurable.GTE, 11000000, "", (9200000, 11800000)),
         ]
         for i, (team, title, owner, unit, cmp, goal, trail, (lo, hi)) in enumerate(sc):
-            m = Measurable.objects.create(team=team, title=title, owner=u[owner], unit=unit, goal_compare=cmp, goal=Decimal(goal), trailing=trail, sort=i)
+            m = Measurable.objects.create(
+                team=team, title=title, owner=u[owner], unit=unit, goal_compare=cmp, goal=Decimal(goal), trailing=trail, sort=i,
+                source="Filled weekly by assistant from Attio" if title == "Total pipeline" else "",
+            )
             base = random.uniform(lo, hi)
             for wi, w in enumerate(weeks):
                 if w == this_monday and random.random() < 0.5:

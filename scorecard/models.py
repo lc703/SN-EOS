@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from core.models import LegacyMixin
+from core.money import format_dollars
 
 
 class Measurable(LegacyMixin):
@@ -35,6 +36,10 @@ class Measurable(LegacyMixin):
     trailing = models.CharField(
         "Trailing column", max_length=5, choices=TRAIL_CHOICES, default=TRAIL_NONE, blank=True
     )
+    source = models.CharField(
+        "Source note", max_length=160, blank=True,
+        help_text="Where the numbers come from, shown under the name. E.g. “Filled weekly by assistant from Attio”.",
+    )
     sort = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
 
@@ -43,6 +48,10 @@ class Measurable(LegacyMixin):
 
     def __str__(self):
         return self.title
+
+    @property
+    def is_currency(self):
+        return self.unit == self.UNIT_CURRENCY
 
     def is_on_goal(self, value):
         """True/False against the goal, or None when there is no value or no goal."""
@@ -61,11 +70,11 @@ class Measurable(LegacyMixin):
         value = Decimal(value)
         if self.unit == self.UNIT_YESNO:
             return "Yes" if value else "No"
+        if self.unit == self.UNIT_CURRENCY:
+            return format_dollars(value)
         text = f"{value:,.2f}".rstrip("0").rstrip(".")
         if self.unit == self.UNIT_PERCENT:
             return f"{text}%"
-        if self.unit == self.UNIT_CURRENCY:
-            return f"${text}"
         return text
 
     @property

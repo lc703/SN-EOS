@@ -172,12 +172,14 @@ def _user(u):
 def _measurable(m, weeks=None):
     out = {
         "id": m.pk, "title": m.title, "team": m.team.slug, "owner": _user(m.owner), "unit": m.unit,
+        "source": m.source,
         "goal": {"compare": m.goal_compare, "value": m.goal, "display": m.goal_display},
     }
     if weeks is not None:
         entries = {e.week_start: e for e in m.entries.filter(week_start__in=weeks)}
         out["weeks"] = [
             {"week": w, "value": entries[w].value if w in entries else None,
+             "display": m.format_value(entries[w].value) if w in entries else "",
              "on_goal": m.is_on_goal(entries[w].value) if w in entries else None}
             for w in weeks
         ]
@@ -358,20 +360,56 @@ def get_l10(actor, team=None):
 
 # ---- write tools ---------------------------------------------------------------------------
 
-@tool("set_measurable_value", "Enter a weekly Scorecard number. `week` is any date in the week (defaults to this week). Empty value clears it.",
-      {"measurable_id": {"type": "integer"}, "value": {"type": ["string", "number", "null"], "description": "Number, or yes/no for Yes/No measurables."},
-       "week": {"type": "string", "description": "YYYY-MM-DD"}}, required=["measurable_id"], write=True)
-def set_measurable_value(actor, measurable_id, value=None, week=None):
-    m = _get(Measurable, measurable_id, "measurable")
+def _find_measurable(actor, measurable_id=None, measurable=None, team=None):
+    """A measurable by id, or by name (optionally within one team). Names must match exactly one."""
+    if measurable_id not in (None, ""):
+        return _get(Measurable, measurable_id, "measurable")
+    ref = "" if measurable is None else str(measurable).strip()
+    if not ref:
+        raise ToolError("Say which measurable: measurable_id, or measurable (its name or id).")
+    qs = Measurable.objects.filter(active=True).select_related("team", "owner")
+    if team not in (None, ""):
+        qs = qs.filter(team=_team(actor, team))
+    if ref.isdigit():
+        by_id = qs.filter(pk=int(ref)).first()
+        if by_id:
+            return by_id
+    found = list(qs.filter(title__iexact=ref)[:6])
+    if not found:
+        raise ToolError(f"No active measurable named '{ref}'. Use list_teams and get_scorecard to see the names.")
+    if len(found) > 1:
+        teams = ", ".join(sorted({m.team.slug for m in found}))
+        raise ToolError(f"More than one measurable is named '{ref}' (teams: {teams}). Pass team, or use measurable_id.")
+    return found[0]
+
+
+@tool("set_measurable_value",
+      "Enter or replace a weekly Scorecard number (an upsert: the same week again updates it). Name the measurable by "
+      "`measurable` (its name or id; add `team` if the name is on several teams) or by `measurable_id`. `week` is any "
+      "date in the week (defaults to this week). An empty value clears the week.",
+      {"measurable_id": {"type": "integer"},
+       "measurable": {"type": ["string", "integer"], "description": "Name or id, e.g. 'Prelim Proposal Deal Value'."},
+       "team": {"type": "string", "description": "Team slug, only needed when several teams share a measurable name."},
+       "value": {"type": ["string", "number", "null"], "description": "Number, or yes/no for Yes/No measurables. Dollars may be sent as 11000000 or $11,000,000."},
+       "week": {"type": "string", "description": "YYYY-MM-DD"}}, write=True)
+def set_measurable_value(actor, measurable_id=None, value=None, week=None, measurable=None, team=None):
+    m = _find_measurable(actor, measurable_id, measurable, team)
     _allow(can_edit_owned(actor.user, m), "Only the measurable's owner (or an admin) can enter its numbers.")
     monday = monday_of(_date(week, "week") or timezone.localdate())
     try:
         parsed = Measurable.parse("" if value is None else str(value), m.unit)
     except ValueError as exc:
         raise ToolError(str(exc))
-    entry, _ = ScoreEntry.objects.update_or_create(measurable=m, week_start=monday, defaults={"value": parsed, "updated_by": actor.user})
+    if parsed is None:
+        created = False
+        ScoreEntry.objects.filter(measurable=m, week_start=monday).delete()
+    else:
+        _, created = ScoreEntry.objects.update_or_create(measurable=m, week_start=monday, defaults={"value": parsed, "updated_by": actor.user})
     actor.log("scorecard.set_value", m, f"{m.title} week of {monday:%b %-d}: {m.format_value(parsed) or 'cleared'}", week=monday, value=parsed)
-    return {"measurable_id": m.pk, "week": monday, "value": parsed, "display": m.format_value(parsed), "on_goal": m.is_on_goal(parsed)}
+    return {
+        "measurable_id": m.pk, "measurable": m.title, "team": m.team.slug, "week": monday, "value": parsed,
+        "display": m.format_value(parsed), "on_goal": m.is_on_goal(parsed), "created": created,
+    }
 
 
 @tool("update_rock_status", "Weekly rock check-in: green (on track), yellow (at risk) or red (off track). Red requires a recovery_plan.",

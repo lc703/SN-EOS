@@ -6,6 +6,7 @@
     <div class="min-w-0 flex-1">
       <button type="button" class="font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}" data-panel-wide title="Trend and details">{{ m.title }}</button>
       <div class="text-[11.5px] text-neutral-500 truncate">{% if m.owner %}{{ m.owner.display_name }}{% else %}No owner{% endif %}{% if mode == 'home' %} · {{ m.team.name }}{% endif %}</div>
+      {% if m.source %}<div class="text-[10.5px] italic leading-tight text-neutral-400" title="{{ m.source }}">{{ m.source }}</div>{% endif %}
     </div>
     {% if mode != 'home' %}
       {% if row.is_red %}

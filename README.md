@@ -68,6 +68,23 @@ The command is idempotent: every imported row stores its old id in `legacy_id`, 
 
 `--sync` implies `--refresh` and then deletes imported rows (ones with a `legacy_id`) that are no longer in the file, so a database can be made to mirror the export exactly. Rows created in SN EOS, which have no `legacy_id`, are kept, unless they hang off a parent the sync deleted. Users who are missing from the export are deactivated rather than deleted, and passwords and Google logins are never touched. The command prints what it removed.
 
+### Weekly values the old app filled by itself
+
+Battle Planner filled five Company rows without storing entries: Prelim quotes sent and R&D formulas sent (iQuote), and Prelim Proposal, R&D Stage and Final Proposal Deal Value (Attio deal totals by stage). SN EOS does not rebuild those connectors. An assistant with the iQuote and Attio MCP servers posts the numbers each week through `set_measurable_value`, and the import marks those rows with a quiet source note, "Filled weekly by assistant from Attio" (or iQuote). Anyone who can edit a measurable can change the note.
+
+To load a backfill, give the importer a CSV with the columns `metric`, `facility`, `week_start`, `value` (leave `facility` blank for Company rows):
+
+```
+python manage.py import_battle_planner --values-csv weekly-values.csv
+python manage.py import_battle_planner battle-planner-export.json --values-csv weekly-values.csv
+```
+
+Each row is an upsert on (measurable, week): new weeks are created, a changed value replaces the old one, an identical one is left alone, so re-running is safe. A date in the middle of a week lands on that week's Monday, and a blank value never clears a week. Rows it can't match or read are skipped and listed.
+
+### Dollar measurables
+
+A measurable with the Currency unit shows `$11,000,000` or `$48,213` everywhere: scorecard grid and cells, goals, the side panel, trend chart axis and tooltips, the dashboard, the L10 scorecard segment, and the API's `display` fields. Whole dollars, thousands separators, halves rounded up. Stored values and the API's raw `value` fields are never rounded. The importer reads `$`, `USD`, `$M`, `$k` and "dollars" as Currency.
+
 | Battle Planner | SN EOS |
 | --- | --- |
 | facility (+ its team members) | Team (Company becomes the leadership team) |
@@ -185,6 +202,7 @@ Same tools over JSON at `/api/v1/`, same bearer token. Responses are `{"data": .
 | GET | `/api/v1/me`, `/teams`, `/my90` | whoami, list_teams, my_90. `my90` takes an optional `?person=` (email, name, or id) for someone else's 90. Private to-dos stay with the people who can already see them. 1:1s, Quarterly Conversations and People Analyzer are never returned. |
 | GET | `/api/v1/scorecard?team=company` | get_scorecard |
 | POST | `/api/v1/measurables/<id>/values` `{"value": 12, "week": "2026-11-16"}` | set_measurable_value |
+| POST | `/api/v1/measurables/values` `{"measurable": "Prelim Proposal Deal Value", "value": 1250000, "week": "2026-11-16"}` | set_measurable_value by name (add `"team"` if the name is on several teams). Posting the same week again replaces it. |
 | GET | `/api/v1/rocks`, `/rocks/<id>` | list_rocks, get_rock |
 | POST | `/api/v1/rocks/<id>/updates` `{"color": "red", "note": "...", "recovery_plan": "..."}` | update_rock_status |
 | POST | `/api/v1/rocks/<id>/done`, `/rocks/<id>/milestones` | set_rock_done, set_milestone |

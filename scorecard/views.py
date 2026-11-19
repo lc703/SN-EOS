@@ -63,7 +63,9 @@ def trailing_for(m, values):
         return f"{sum(1 for v in values if v)}/{len(values)}", "yes"
     if m.trailing == Measurable.TRAIL_TOTAL:
         return sum(values), "total"
-    return (sum(values) / len(values)).quantize(Decimal("0.01")), "avg"
+    average = sum(values) / len(values)
+    # Dollars round once, at display time, so the average never rounds twice.
+    return (average if m.is_currency else average.quantize(Decimal("0.01"))), "avg"
 
 
 def build_rows(measurables, weeks, user):
@@ -167,13 +169,14 @@ class MeasurableForm(StyledForm, forms.ModelForm):
 
     class Meta:
         model = Measurable
-        fields = ["title", "owner", "unit", "goal_compare", "goal", "trailing", "sort"]
+        fields = ["title", "owner", "unit", "goal_compare", "goal", "trailing", "source", "sort"]
 
     def __init__(self, *args, team=None, **kwargs):
         super().__init__(*args, **kwargs)
         team = team or (self.instance.team if self.instance.team_id else None)
         self.fields["owner"].queryset = people_choices(team, include=[self.instance.owner_id])
         self.fields["goal"].widget.attrs["step"] = "any"
+        self.fields["source"].widget.attrs["placeholder"] = "Filled weekly by assistant from Attio"
 
 
 def measurable_new(request):
@@ -220,18 +223,19 @@ def measurable_panel(request, pk):
     def axis(v):
         if m.unit == Measurable.UNIT_YESNO:
             return "Yes" if v >= 0.99 else "No" if v <= 0.01 else ""
-        prefix = "$" if m.unit == Measurable.UNIT_CURRENCY else ""
-        return prefix + compact(v) + ("%" if m.unit == Measurable.UNIT_PERCENT else "")
+        if m.is_currency:
+            return m.format_value(Decimal(repr(v)))
+        return compact(v) + ("%" if m.unit == Measurable.UNIT_PERCENT else "")
 
     chart = trend_chart([w.strftime("%b %-d") for w in weeks], row.spark_values, goal=m.goal, ok=row.spark_ok,
-                        fmt=lambda v: m.format_value(Decimal(str(round(v, 2)))), axis_fmt=axis)
+                        fmt=lambda v: m.format_value(Decimal(repr(v))), axis_fmt=axis, nice_ticks=m.is_currency)
     values = [c.value for c in row.cells if c.value is not None]
     avg = sum(Decimal(v) for v in values) / len(values) if values else None
     hits = row.hits
     return render(request, "scorecard/_panel.html", {
         "m": m, "row": row, "chart": mark_safe(chart),
         "latest": next((c for c in reversed(row.cells) if c.value is not None), None),
-        "average": m.format_value(avg.quantize(Decimal("1") if abs(avg) >= 1000 else Decimal("0.01"))) if values else "",
+        "average": m.format_value(avg if m.is_currency else avg.quantize(Decimal("1") if abs(avg) >= 1000 else Decimal("0.01"))) if values else "",
         "hit_pct": round(100 * hits[0] / hits[1]) if hits else None, "hits": hits,
         "editable": can_edit_owned(request.user, m),
     })
