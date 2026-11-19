@@ -99,3 +99,57 @@ def test_export_is_admin_only_and_has_no_passwords(as_user, admin, member):
     rows = r.json()
     users = [row for row in rows if row["model"] == "core.user"]
     assert users and all("password" not in row["fields"] for row in users)
+
+
+def _password_user(email="pw@steuartnutrition.com"):
+    from core.models import User
+
+    user = User.objects.create_user(email=email, name="Pw User")
+    user.set_password("s3cret-pass")
+    user.save()
+    return user
+
+
+def test_password_login_off_by_default():
+    from django.conf import settings
+
+    assert settings.STAGING_PASSWORD_LOGIN is False
+    _password_user()
+    c = Client()
+    r = c.post("/accounts/password-login/", {"email": "pw@steuartnutrition.com", "password": "s3cret-pass"})
+    assert r.status_code == 404
+    assert c.get("/rocks/").status_code == 302
+    assert b"Or sign in with a password" not in c.get("/accounts/login/").content
+
+
+@override_settings(STAGING_PASSWORD_LOGIN=True)
+def test_password_login_when_enabled():
+    _password_user()
+    c = Client()
+    assert b"Or sign in with a password" in c.get("/accounts/login/").content
+    r = c.post("/accounts/password-login/", {"email": "PW@steuartnutrition.com", "password": "s3cret-pass", "next": "/rocks/"})
+    assert r.status_code == 302 and r.url == "/rocks/"
+    assert c.get("/rocks/").status_code == 200
+
+
+@override_settings(STAGING_PASSWORD_LOGIN=True)
+def test_password_login_rejects_bad_password_other_domain_and_open_redirect():
+    _password_user()
+    _password_user("pw@gmail.com")
+    c = Client()
+    assert c.post("/accounts/password-login/", {"email": "pw@steuartnutrition.com", "password": "nope"}).status_code == 400
+    assert c.post("/accounts/password-login/", {"email": "pw@gmail.com", "password": "s3cret-pass"}).status_code == 400
+    assert c.get("/rocks/").status_code == 302
+    r = c.post("/accounts/password-login/", {"email": "pw@steuartnutrition.com", "password": "s3cret-pass", "next": "https://evil.example/"})
+    assert r.status_code == 302 and r.url == "/"
+    assert c.get("/accounts/password-login/").status_code == 405
+
+
+@override_settings(STAGING_PASSWORD_LOGIN=True)
+def test_password_login_never_signs_up():
+    from core.models import User
+
+    c = Client()
+    r = c.post("/accounts/password-login/", {"email": "new@steuartnutrition.com", "password": "whatever"})
+    assert r.status_code == 400
+    assert not User.objects.filter(email="new@steuartnutrition.com").exists()

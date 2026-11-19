@@ -34,6 +34,9 @@ COMPANY_NAME = env("COMPANY_NAME", "Steuart Nutrition")
 SITE_URL = env("SITE_URL", "http://localhost:8000")
 ALLOWED_EMAIL_DOMAIN = env("ALLOWED_EMAIL_DOMAIN", "steuartnutrition.com").lower()
 DEV_LOGIN = False
+# Temporary email+password sign-in for staging while Google sign-in is pending.
+# Off unless STAGING_PASSWORD_LOGIN=1. Never set it in production.
+STAGING_PASSWORD_LOGIN = env_bool("STAGING_PASSWORD_LOGIN", False)
 TAILWIND_CDN = True
 
 INSTALLED_APPS = [

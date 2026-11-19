@@ -16,6 +16,7 @@ urlpatterns = [
     path("export.json", core.export_json, name="export_json"),
     path("dev-login/", core.dev_login, name="dev_login"),
     path("admin/", admin.site.urls),
+    path("accounts/password-login/", core.password_login, name="password_login"),
     path("accounts/", include("allauth.urls")),
     # Scorecard
     path("scorecard/", scorecard.scorecard, name="scorecard"),

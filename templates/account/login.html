@@ -10,6 +10,18 @@
     Continue with Google
   </button>
 </form>
+{% if STAGING_PASSWORD_LOGIN %}
+  <form method="post" action="{% url 'password_login' %}" class="mt-6 pt-5 border-t border-black/10 space-y-3">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% firstof next request.GET.next '/' %}">
+    <p class="text-sm font-semibold text-center">Or sign in with a password</p>
+    {% if password_error %}<p class="text-sm text-center text-red-600">{{ password_error }}</p>{% endif %}
+    <input type="email" name="email" value="{{ email|default:'' }}" required autocomplete="username" placeholder="you@{{ ALLOWED_EMAIL_DOMAIN }}" class="w-full h-12 rounded-xl border border-black/15 px-4">
+    <input type="password" name="password" required autocomplete="current-password" placeholder="Password" class="w-full h-12 rounded-xl border border-black/15 px-4">
+    <button class="w-full h-12 rounded-xl border border-black font-semibold hover:bg-neutral-100">Sign in</button>
+    <p class="text-xs text-center text-neutral-400">Temporary staging sign-in. Off in production.</p>
+  </form>
+{% endif %}
 {% if DEV_LOGIN %}
   <div class="mt-6 pt-5 border-t border-black/10 text-center">
     <a href="{% url 'dev_login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" class="text-sm font-semibold link">Dev quick login (pick a user)</a>

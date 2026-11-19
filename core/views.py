@@ -3,12 +3,14 @@ import json
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth import login
+from django.contrib.auth import authenticate, login
 from django.core import serializers
 from django.core.exceptions import PermissionDenied
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from issues.models import Issue
@@ -17,6 +19,7 @@ from rocks.models import Rock
 from scorecard.views import build_rows
 from todos.models import Todo, weekly_completion
 
+from .adapters import email_allowed
 from .models import User, monday_of
 from .utils import scope
 
@@ -95,3 +98,23 @@ def dev_login(request):
     users = User.objects.filter(is_active=True).order_by("-role", "name")
     users = [u for u in users if u.can_sign_in] or list(users)
     return render(request, "account/dev_login.html", {"users": users, "next": request.GET.get("next", "/")})
+
+
+@require_POST
+def password_login(request):
+    """Temporary staging sign-in. 404 unless STAGING_PASSWORD_LOGIN is on. No signup."""
+    if not settings.STAGING_PASSWORD_LOGIN:
+        raise Http404
+    email = (request.POST.get("email") or "").strip().lower()
+    password = request.POST.get("password") or ""
+    nxt = request.POST.get("next") or "/"
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        nxt = "/"
+    user = None
+    if email_allowed(email) and password:
+        user = authenticate(request, username=email, password=password)
+    if user is None or not user.is_active or not email_allowed(user.email):
+        ctx = {"password_error": "That email and password didn't work.", "email": email, "next": nxt}
+        return render(request, "account/login.html", ctx, status=400)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return redirect(nxt)
