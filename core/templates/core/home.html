@@ -13,15 +13,34 @@
   </div>
 </div>
 
-<div class="grid sm:grid-cols-4 gap-3 mb-6">
-  {% with last=completion|last %}
-  <div class="card card-pad"><div class="eyebrow">Open to-dos</div><div class="font-display font-extrabold text-2xl">{{ todos|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">Rocks</div><div class="font-display font-extrabold text-2xl">{{ rocks|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">My open issues</div><div class="font-display font-extrabold text-2xl">{{ issues|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">To-do completion</div>
-    <div class="flex items-end gap-2">{% for w, pct, done, total in completion %}<div class="text-center"><div class="font-display font-extrabold {% if forloop.last %}text-2xl{% else %}text-sm{% endif %} {{ pct|pct_class }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</div><div class="text-[10px] text-neutral-400">{{ w|date:"n/j" }}</div></div>{% endfor %}</div>
-  </div>
-  {% endwith %}
+<div class="grid md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr] gap-4 mb-6">
+  <section class="card card-pad flex items-center gap-5">
+    <div class="shrink-0">{{ rock_chart }}</div>
+    <div class="min-w-0">
+      <div class="stat-label">My rocks · {{ quarter.name }}</div>
+      <ul class="mt-1.5 space-y-1 text-sm">
+        <li class="flex items-center gap-2"><span class="dot dot-green"></span>On track <strong class="ml-auto tabular-nums">{{ rock_summary.on_track }}</strong></li>
+        <li class="flex items-center gap-2"><span class="dot dot-red"></span>Off track <strong class="ml-auto tabular-nums">{{ rock_summary.off_track }}</strong></li>
+        <li class="flex items-center gap-2"><span class="dot" style="background:#111"></span>Done <strong class="ml-auto tabular-nums">{{ rock_summary.done }}</strong></li>
+      </ul>
+    </div>
+  </section>
+  <section class="card card-pad">
+    <div class="flex items-baseline justify-between"><div class="stat-label">My to-do completion</div>{% with last=completion|last %}<span class="text-sm font-bold {{ last.1|pct_class }}">{% if last.1 is None %}—{% else %}{{ last.1 }}%{% endif %} <span class="text-[11px] font-medium text-neutral-500">this week</span></span>{% endwith %}</div>
+    <div class="mt-2">{{ todo_chart }}</div>
+    <div class="text-[11px] text-neutral-500">EOS target: 90% of to-dos done each week. {{ todos|length }} open, {{ issues|length }} issue{{ issues|length|pluralize }} you own.</div>
+  </section>
+  {% if pulse %}
+    <section class="card card-pad md:col-span-2 xl:col-span-1">
+      <div class="flex items-center justify-between mb-2"><div class="stat-label">{{ pulse.team.name }} pulse</div><span class="text-[11px] text-neutral-500">Week of {{ pulse.week|date:"M j" }}</span></div>
+      <div class="grid grid-cols-2 gap-x-5 gap-y-3">
+        <a href="{% url 'scorecard' %}" class="block group"><div class="text-[12px] text-neutral-500 group-hover:text-black">Scorecard on goal</div><div class="flex items-baseline gap-1.5"><span class="stat-value {{ pulse.scorecard_pct|pct_class }}">{% if pulse.scorecard_pct is None %}—{% else %}{{ pulse.scorecard_pct }}%{% endif %}</span><span class="text-[11px] text-neutral-400">{{ pulse.scorecard_n }}/{{ pulse.measurables }} reported</span></div><div class="bar-track mt-1"><div class="bar-fill" style="width: {{ pulse.scorecard_pct|default:0 }}%"></div></div></a>
+        <a href="{% url 'rocks' %}" class="block group"><div class="text-[12px] text-neutral-500 group-hover:text-black">{% if pulse.team.is_leadership %}Company rocks{% else %}Team rocks{% endif %} on track</div><div class="flex items-baseline gap-1.5"><span class="stat-value {{ pulse.rocks_pct|pct_class }}">{% if pulse.rocks_pct is None %}—{% else %}{{ pulse.rocks_pct }}%{% endif %}</span><span class="text-[11px] text-neutral-400">{{ pulse.rocks.total }} rocks</span></div><div class="bar-track mt-1"><div class="bar-fill" style="width: {{ pulse.rocks_pct|default:0 }}%"></div></div></a>
+        <a href="{% url 'todos' %}" class="block group"><div class="text-[12px] text-neutral-500 group-hover:text-black">Team to-dos done</div><span class="stat-value {{ pulse.todo_pct|pct_class }}">{% if pulse.todo_pct is None %}—{% else %}{{ pulse.todo_pct }}%{% endif %}</span></a>
+        <a href="{% url 'issues' %}" class="block group"><div class="text-[12px] text-neutral-500 group-hover:text-black">Open issues</div><span class="stat-value">{{ pulse.issues }}</span></a>
+      </div>
+    </section>
+  {% endif %}
 </div>
 
 <div class="grid lg:grid-cols-2 gap-6 items-start">
@@ -35,13 +54,13 @@
   <section>
     <div class="flex items-center justify-between mb-2"><h2 class="section-title">My rocks</h2><a href="{% url 'rocks' %}" class="text-xs link">All rocks</a></div>
     <div class="list-group">
-      {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No rocks this quarter.</p>{% endfor %}
+      {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No rocks this quarter" text="Rocks are your one to three most important priorities for the next 90 days." cta_url="/rocks/" cta_label="Go to Rocks" icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
     </div>
   </section>
 
   <section class="lg:col-span-2">
     <div class="flex items-center justify-between mb-2"><h2 class="section-title">My measurables</h2><a href="{% url 'scorecard' %}" class="text-xs link">Scorecard</a></div>
-    {% if rows %}{% include "scorecard/_table.html" with mode="home" %}{% else %}<div class="card card-pad text-sm text-neutral-500">You don’t own any measurables yet.</div>{% endif %}
+    {% if rows %}{% include "scorecard/_table.html" with mode="home" show_trend=True show_trailing=True %}{% else %}<div class="card card-pad text-sm text-neutral-500">You don’t own any measurables yet.</div>{% endif %}
   </section>
 
   <section class="lg:col-span-2">

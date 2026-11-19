@@ -12,18 +12,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 from issues.models import Issue
 from meetings.models import Meeting
 from rocks.models import Rock
+from rocks.views import rock_summary, with_strips
+from scorecard.models import Measurable, ScoreEntry
 from scorecard.views import build_rows
 from todos.models import Todo, weekly_completion
 
+from . import charts
 from .adapters import email_allowed
 from .models import User, monday_of
 from .utils import scope
 
-EXPORT_APPS = ["core", "scorecard", "rocks", "issues", "todos", "meetings", "vision", "people"]
+EXPORT_APPS = ["core", "scorecard", "rocks", "issues", "todos", "meetings", "vision", "people", "planning"]
 
 
 def home(request):
@@ -32,9 +36,9 @@ def home(request):
     today = timezone.localdate()
     todos = Todo.objects.filter(owner=user, done=False).select_related("team", "rock", "issue").order_by("due_date")
     rocks = (
-        Rock.objects.filter(owner=user, quarter=quarter).select_related("team").prefetch_related("milestones")
+        with_strips(Rock.objects.filter(owner=user, quarter=quarter).select_related("team", "quarter").prefetch_related("milestones", "updates"), quarter)
         if quarter
-        else Rock.objects.none()
+        else []
     )
     issues = Issue.objects.filter(owner=user, status=Issue.OPEN).select_related("team")
     measurables = user.measurables.filter(active=True).select_related("team", "owner")
@@ -42,16 +46,32 @@ def home(request):
     if quarter:
         this_monday = monday_of(today)
         weeks = [w for w in quarter.weeks() if w <= this_monday][-5:] or quarter.weeks()[:5]
+    if quarter:
+        weeks = [w for w in quarter.weeks() if w <= monday_of(today)][-8:] or quarter.weeks()[:8]
     rows = build_rows(measurables, weeks, user)
-    completion = weekly_completion(Todo.objects.filter(owner=user), weeks=4, today=today)
+    completion = weekly_completion(Todo.objects.filter(owner=user), weeks=6, today=today)
     my_teams = user.teams.all()
     open_meetings = Meeting.objects.filter(
         team__in=my_teams, concluded_at__isnull=True, date__gte=today - dt.timedelta(days=1)
     ).select_related("team")[:3]
+    summary = rock_summary(rocks)
+    rock_chart = charts.donut(
+        [(summary["done"], charts.INK), (summary["on_track"], charts.GREEN), (summary["off_track"], charts.RED)],
+        size=104, thickness=13, label=f'{summary["done"] + summary["on_track"]}/{summary["total"]}' if summary["total"] else "—",
+        sub="on track" if summary["total"] else "",
+    )
+    todo_chart = charts.bars(
+        [w.strftime("%-m/%-d") for w, *_ in completion], [pct for _, pct, *_ in completion],
+        width=300, height=96, goal=90, max_value=100, fmt=lambda v: f"{v:.0f}%",
+    )
     return render(
         request,
         "core/home.html",
         {
+            "rock_summary": summary,
+            "rock_chart": mark_safe(rock_chart),
+            "todo_chart": mark_safe(todo_chart),
+            "pulse": team_pulse(team, quarter, today) if team and quarter else None,
             "todos": todos,
             "rocks": rocks,
             "issues": issues,
@@ -64,6 +84,28 @@ def home(request):
             "statuses": Rock.STATUS_CHOICES,
         },
     )
+
+
+def team_pulse(team, quarter, today):
+    """Leadership-at-a-glance numbers for the team in scope."""
+    rocks = Rock.objects.filter(quarter=quarter)
+    rocks = rocks.filter(is_company=True) if team.is_leadership else rocks.filter(team=team)
+    rs = rock_summary(rocks)
+    last_week = monday_of(today) - dt.timedelta(days=7)
+    measurables = list(Measurable.objects.filter(team=team, active=True))
+    entries = {e.measurable_id: e.value for e in ScoreEntry.objects.filter(measurable__in=measurables, week_start=last_week)}
+    judged = [m.is_on_goal(entries.get(m.pk)) for m in measurables]
+    judged = [j for j in judged if j is not None]
+    team_completion = weekly_completion(Todo.objects.filter(team=team, is_private=False), weeks=1, today=today)
+    last = team_completion[-1] if team_completion else None
+    return {
+        "team": team, "rocks": rs,
+        "rocks_pct": round(100 * (rs["on_track"] + rs["done"]) / rs["total"]) if rs["total"] else None,
+        "scorecard_pct": round(100 * sum(judged) / len(judged)) if judged else None,
+        "scorecard_n": len(judged), "measurables": len(measurables), "week": last_week,
+        "issues": Issue.objects.filter(team=team, status=Issue.OPEN).count(),
+        "todo_pct": last[1] if last else None,
+    }
 
 
 def healthz(request):
