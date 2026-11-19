@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Quarterly & annual sessions{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Meetings</div><h1 class="page-title">Quarterly &amp; annual sessions</h1></div></div>
+<div class="card">
+  {% for s in sessions %}
+    <div class="px-4 py-3 border-b border-black/5">{{ s }}</div>
+  {% empty %}
+    {% empty "No sessions yet" "" "sessions" %}
+  {% endfor %}
+</div>
+{% endblock %}

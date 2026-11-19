@@ -1,9 +1,12 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+
+from api import views as api
 
 from core import views as core
 from issues import views as issues
 from meetings import views as meetings
+from planning import views as planning
 from people import views as people
 from rocks import views as rocks
 from scorecard import views as scorecard
@@ -18,6 +21,12 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/password-login/", core.password_login, name="password_login"),
     path("accounts/", include("allauth.urls")),
+    # API + MCP (bearer tokens)
+    re_path(r"^api/v1/(?P<path>.*)$", api.rest, name="api_rest"),
+    path("mcp", api.mcp, name="mcp"),
+    path("mcp/", api.mcp),
+    path("settings/api/", api.tokens, name="api_tokens"),
+    path("settings/api/<int:pk>/revoke/", api.token_revoke, name="api_token_revoke"),
     # Scorecard
     path("scorecard/", scorecard.scorecard, name="scorecard"),
     path("scorecard/new/", scorecard.measurable_new, name="measurable_new"),
@@ -56,6 +65,8 @@ urlpatterns = [
     path("meetings/<int:pk>/conclude/", meetings.conclude, name="meeting_conclude"),
     path("meetings/<int:pk>/recap/", meetings.recap, name="meeting_recap"),
     path("meetings/<int:pk>/recap/send/", meetings.send_recap, name="meeting_send_recap"),
+    # Quarterly & annual sessions
+    path("sessions/", planning.sessions_list, name="sessions"),
     # Vision
     path("vto/", vision.vto, name="vto"),
     path("vto/edit/", vision.vto_edit, name="vto_edit"),

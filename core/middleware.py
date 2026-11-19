@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.shortcuts import redirect
 
-PUBLIC_PREFIXES = ("/accounts/", "/healthz", "/dev-login", "/static/", "/favicon")
+# /api/ and /mcp authenticate with bearer tokens instead of the session.
+PUBLIC_PREFIXES = ("/accounts/", "/healthz", "/dev-login", "/static/", "/favicon", "/api/", "/mcp")
 
 
 class LoginRequiredMiddleware:

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}API & AI connections{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">Settings</div>
+    <h1 class="page-title">API &amp; AI connections</h1>
+    <p class="page-sub">Personal tokens let an AI assistant (over MCP) or a script (over REST) read and update EOS data as you. Everything they change is recorded under your name below.</p>
+  </div>
+</div>
+
+{% if new %}
+<div class="card card-pad mb-6 border-2 !border-black fade-in" x-data="{copied:false}">
+  <div class="flex items-start gap-3">
+    <span class="h-9 w-9 rounded-lg bg-bolt inline-flex items-center justify-center shrink-0">{% icon "key" "h-[18px] w-[18px]" %}</span>
+    <div class="min-w-0 flex-1">
+      <div class="font-semibold">Copy your new token now</div>
+      <p class="text-sm text-neutral-500">It won't be shown again. Store it in your AI client or a secrets manager.</p>
+      <div class="mt-3 flex items-center gap-2">
+        <code id="new-token" class="flex-1 min-w-0 truncate rounded-lg bg-neutral-950 text-bolt px-3 py-2 text-[13px] font-mono">{{ new.raw }}</code>
+        <button type="button" class="btn btn-primary" @click="navigator.clipboard.writeText(document.getElementById('new-token').textContent); copied=true; setTimeout(()=>copied=false,1500)">
+          {% icon "copy" %}<span x-text="copied ? 'Copied' : 'Copy'">Copy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-5 gap-6">
+  <div class="lg:col-span-3 space-y-6">
+    <section class="card">
+      <div class="card-head"><h2 class="section-title">Your tokens</h2><span class="text-xs text-neutral-500">{{ tokens|length }} total</span></div>
+      {% if tokens %}
+      <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Label</th><th>Token</th><th>Access</th><th>Last used</th><th></th></tr></thead>
+        <tbody>
+        {% for t in tokens %}
+          <tr class="{% if not t.is_live %}opacity-50{% endif %}">
+            <td class="font-medium">{{ t.label }}<div class="text-xs text-neutral-500">Created {{ t.created_at|date:"M j, Y" }}{% if t.expires_at %} · expires {{ t.expires_at|date:"M j, Y" }}{% endif %}</div></td>
+            <td><code class="text-xs">{{ t.prefix }}…</code></td>
+            <td>{% if t.revoked_at %}<span class="pill rag-red">Revoked</span>{% elif not t.is_live %}<span class="pill rag-red">Expired</span>{% elif t.can_write %}<span class="pill rag-green">Read &amp; write</span>{% else %}<span class="pill pill-muted">Read only</span>{% endif %}</td>
+            <td class="text-sm text-neutral-500 whitespace-nowrap">{% if t.last_used_at %}{{ t.last_used_at|timesince }} ago{% else %}Never{% endif %}</td>
+            <td class="text-right">{% if not t.revoked_at %}<form method="post" action="{% url 'api_token_revoke' t.pk %}" onsubmit="return confirm('Revoke this token? Anything using it will stop working.')">{% csrf_token %}<button class="btn btn-sm btn-ghost text-red-700">Revoke</button></form>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+        {% empty "No tokens yet" "Create one to connect Claude, Cursor or ChatGPT to SN EOS, or to push Scorecard numbers from a script." "key" %}
+      {% endif %}
+      <form method="post" class="border-t border-black/5 p-4 sm:p-5 grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end" hx-boost="false">
+        {% csrf_token %}
+        <label class="block"><span class="label">New token label</span><input name="label" class="input" placeholder="e.g. Claude desktop" required maxlength="120"></label>
+        <label class="block"><span class="label">Access</span><select name="scope" class="input"><option value="write">Read &amp; write</option><option value="read">Read only</option></select></label>
+        <label class="block"><span class="label">Expires</span><select name="expires" class="input"><option value="">Never</option><option value="30">30 days</option><option value="90" selected>90 days</option><option value="365">1 year</option></select></label>
+        <button class="btn btn-primary" data-shortcut-new>{% icon "plus" %}Create token</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="section-title">Activity</h2><span class="text-xs text-neutral-500">Last 40 calls with your tokens</span></div>
+      {% if logs %}
+      <div class="overflow-x-auto">
+      <table class="table text-sm">
+        <thead><tr><th>When</th><th>Via</th><th>Action</th><th>Object</th><th>Result</th></tr></thead>
+        <tbody>
+        {% for l in logs %}
+          <tr>
+            <td class="whitespace-nowrap text-neutral-500">{{ l.at|date:"M j, g:i a" }}</td>
+            <td><span class="pill pill-muted">{{ l.get_channel_display }}</span></td>
+            <td><code class="text-xs">{{ l.action }}</code>{% if l.is_write %} <span class="pill rag-green !text-[10px]">write</span>{% endif %}</td>
+            <td class="text-neutral-500">{% if l.object_type %}{{ l.object_type }} #{{ l.object_id }}{% else %}—{% endif %}</td>
+            <td>{% if l.ok %}<span class="text-green-700 font-medium">{{ l.status }}</span>{% else %}<span class="text-red-700 font-medium" title="{{ l.message }}">{{ l.status }} · {{ l.message|truncatechars:40 }}</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+        {% empty "No API activity yet" "Calls made with your tokens show up here, newest first." "list" compact=True %}
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="lg:col-span-2 space-y-6">
+    <section class="card card-pad" x-data="{tab:'claude'}">
+      <div class="flex items-center gap-2 mb-1">{% icon "sparkle" "h-[18px] w-[18px]" %}<h2 class="section-title">Connect an AI assistant</h2></div>
+      <p class="text-sm text-neutral-500">SN EOS is an MCP server (streamable HTTP). Point your client at:</p>
+      <code class="mt-2 block rounded-lg bg-neutral-100 px-3 py-2 text-[13px] font-mono break-all">{{ base_url }}/mcp</code>
+      <div class="seg mt-4">
+        <button type="button" :class="tab==='claude' && 'on'" @click="tab='claude'">Claude / Cursor</button>
+        <button type="button" :class="tab==='curl' && 'on'" @click="tab='curl'">REST</button>
+      </div>
+      <pre x-show="tab==='claude'" class="mt-3 rounded-lg bg-neutral-950 text-neutral-100 p-3 text-[12px] leading-relaxed overflow-x-auto">{
+  "mcpServers": {
+    "sn-eos": {
+      "url": "{{ base_url }}/mcp",
+      "headers": { "Authorization": "Bearer sneos_…" }
+    }
+  }
+}</pre>
+      <pre x-show="tab==='curl'" x-cloak class="mt-3 rounded-lg bg-neutral-950 text-neutral-100 p-3 text-[12px] leading-relaxed overflow-x-auto">curl -H "Authorization: Bearer sneos_…" \
+  {{ base_url }}/api/v1/rocks?mine=true
+
+curl -X POST -H "Authorization: Bearer sneos_…" \
+  -H "Content-Type: application/json" \
+  -d '{"week":"2026-11-16","value":42}' \
+  {{ base_url }}/api/v1/measurables/7/values</pre>
+      <p class="mt-3 text-xs text-neutral-500">Tokens act as you: they can only change what you can change in the app. Read-only tokens hide the write tools.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="section-title">Tools</h2><span class="text-xs text-neutral-500">{{ tools|length }}</span></div>
+      <ul class="divide-y divide-black/5">
+        {% for t in tools %}
+          <li class="px-4 sm:px-5 py-2.5">
+            <div class="flex items-center gap-2"><code class="text-[12.5px] font-semibold">{{ t.name }}</code>{% if t.write %}<span class="pill rag-green !text-[10px]">write</span>{% else %}<span class="pill pill-muted !text-[10px]">read</span>{% endif %}</div>
+            <div class="text-xs text-neutral-500 mt-0.5">{{ t.description }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
