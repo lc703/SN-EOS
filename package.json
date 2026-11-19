@@ -1,0 +1,13 @@
+{
+  "name": "sn-eos",
+  "private": true,
+  "description": "Front-end build for SN EOS: compiles Tailwind to static/css/app.css.",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i static/src/input.css -o static/css/app.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i static/src/input.css -o static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "sortablejs": "1.15.6"
+  }
+}

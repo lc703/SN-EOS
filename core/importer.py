@@ -11,14 +11,16 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
+from core.legacy_map import OFFSITE_ITEM_MODELS, OFFSITE_STEP, RAGS, box_goal, offsite_item, seat_status, targets_text
 from core.models import LegacyRecord, Quarter, Team, User
 from issues.models import Issue
 from meetings.models import Meeting, MeetingRating
-from people.models import OneOnOne, PeopleReview, SuccessStatement, ValueRating
-from rocks.models import Milestone, Rock
+from people.models import OneOnOne, OneOnOneScore, PeopleReview, SuccessStatement, ValueRating
+from planning.models import Session, SessionItem
+from rocks.models import Milestone, Rock, RockUpdate
 from scorecard.models import Measurable, ScoreEntry
 from todos.models import Todo
-from vision.models import VTO, CoreValue, Seat
+from vision.models import VTO, CoreValue, Goal, Seat
 
 RAG_TO_STATUS = {"green": Rock.ON_TRACK, "yellow": Rock.ON_TRACK, "red": Rock.OFF_TRACK, "complete": Rock.DONE}
 RAG_TO_VALUE = {"green": ValueRating.PLUS, "yellow": ValueRating.MIXED, "red": ValueRating.MINUS}
@@ -47,17 +49,19 @@ HANDLED = {
     "core.commitment", "core.scorecardmetric", "core.scorecardentry", "core.seat", "core.successstatement", "core.oneonone",
     "core.meeting", "core.meetingevaluation", "core.roundrobinanswer",
 }
-# Kept raw in LegacyRecord: no EOS equivalent in V1.
+# Offsites become quarterly sessions; their raw rows are also kept in LegacyRecord as an audit copy.
+SESSION_NOTE = "kept raw; also mapped to quarterly sessions"
 ARCHIVED_NOTE = {
-    "core.offsite": "offsite sessions",
-    "core.offsitereflection": "offsite reflections",
-    "core.offsitelesson": "offsite lessons",
-    "core.swotitem": "SWOT items",
-    "core.fourwhatsitem": "4 Whats items",
-    "core.priorityeval": "offsite priority votes",
-    "core.missioneval": "offsite mission evals",
-    "core.visioneval": "offsite vision evals",
-    "core.valueseval": "offsite values evals",
+    "core.offsite": f"offsite sessions ({SESSION_NOTE})",
+    "core.offsitereflection": f"offsite reflections ({SESSION_NOTE})",
+    "core.offsitelesson": f"offsite lessons ({SESSION_NOTE})",
+    "core.affirmation": f"offsite affirmations ({SESSION_NOTE})",
+    "core.swotitem": f"SWOT items ({SESSION_NOTE})",
+    "core.fourwhatsitem": f"4 Whats items ({SESSION_NOTE})",
+    "core.priorityeval": f"offsite priority votes ({SESSION_NOTE})",
+    "core.missioneval": f"offsite purpose checks ({SESSION_NOTE})",
+    "core.visioneval": f"offsite vision checks ({SESSION_NOTE})",
+    "core.valueseval": f"offsite values checks ({SESSION_NOTE})",
     "core.meetingcriterion": "L10 evaluation criteria",
     "core.roundrobinquestion": "round robin question bank",
 }
@@ -128,10 +132,24 @@ class BattlePlannerImporter:
     def _count(self, label, result):
         self.stats.setdefault(label, Counter())[result] += 1
 
-    def upsert(self, model, legacy_id, fields, label=None):
-        """Create by legacy_id, or update (refresh) / leave alone. Returns (obj, created)."""
+    def upsert(self, model, legacy_id, fields, label=None, match=None):
+        """Create by legacy_id, or update (refresh) / leave alone. Returns (obj, created).
+
+        `match` is a natural key used to adopt a row that already exists without a legacy_id
+        (for example one the backfill migrations made from V1's legacy JSON).
+        """
         label = label or model._meta.verbose_name_plural.title()
         obj = model.objects.filter(legacy_id=legacy_id).first()
+        if obj is None and match:
+            obj = model.objects.filter(legacy_id__isnull=True, **match).first()
+            if obj is not None:
+                obj.legacy_id = legacy_id
+                if self.refresh:
+                    for k, v in fields.items():
+                        setattr(obj, k, v)
+                obj.save()
+                self._count(label, "linked")
+                return obj, False
         if obj is None:
             obj = model(legacy_id=legacy_id, **fields)
             obj.save()
@@ -158,7 +176,9 @@ class BattlePlannerImporter:
         self.import_quarters()
         self.import_values()
         self.import_vto()
+        self.import_goals()
         self.import_rocks()
+        self.import_rock_updates()
         self.import_milestones()
         self.import_issues()
         self.import_measurables()
@@ -168,6 +188,7 @@ class BattlePlannerImporter:
         self.import_one_on_ones()
         self.import_meetings()
         self.import_ratings()
+        self.import_sessions()
         self.archive_rest()
         return self.stats
 
@@ -271,6 +292,8 @@ class BattlePlannerImporter:
         three_measurables = "\n".join(x for x in [doc.get("three_year_target", ""), doc.get("three_year_measurables", "")] if x)
         mapped = {
             "purpose": house.get("purpose", ""),
+            # The Battle Planner's "major business challenge" was its niche statement.
+            "niche": house.get("major_business_challenge", ""),
             "ten_year_target": doc.get("ten_year_target") or house.get("vision", ""),
             "target_market": doc.get("target_market", ""),
             "uniques": doc.get("uniques", ""),
@@ -284,7 +307,7 @@ class BattlePlannerImporter:
             "one_year_date": doc.get("one_year_date", ""),
             "one_year_revenue": doc.get("one_year_revenue", ""),
             "one_year_profit": doc.get("one_year_profit", ""),
-            "one_year_measurables": doc.get("one_year_measurables", ""),
+            "one_year_measurables": doc.get("one_year_measurables", "") or targets_text(house.get("targets")),
             "one_year_goals": doc.get("one_year_goals", ""),
         }
         changed = 0
@@ -310,8 +333,17 @@ class BattlePlannerImporter:
             changed += 1
         vto.save()
         self._count("V/TO", "updated" if changed else "unchanged")
-        if boxes:
-            self.stats["Strategy house boxes (kept in V/TO legacy)"] = Counter(archived=len(boxes))
+
+    def import_goals(self):
+        """Strategy House boxes become V/TO 1-year goals (strategy, tactics, DRI, due date)."""
+        self.goals = {}
+        for pk, f in self.fields("core.box"):
+            data = box_goal(f)
+            data["due_date"] = _date(data["due_date"])
+            data["owner"] = self.users.get(f.get("dri"))
+            data["legacy"] = {"kind": f.get("kind"), "house": f.get("house")}
+            obj, _ = self.upsert(Goal, pk, data, label="1-year goals (Strategy House boxes)", match={"title": data["title"]})
+            self.goals[pk] = obj
 
     def import_rocks(self):
         history = defaultdict(list)
@@ -348,13 +380,33 @@ class BattlePlannerImporter:
                     "quarter": quarter, "team": team, "is_company": team.is_leadership, "title": f["title"][:200],
                     "description": f.get("description", ""), "owner": self.users.get(f.get("owner")),
                     "due_date": _date(f.get("due_date")) or quarter.end_date, "status": status,
-                    "sort": f.get("sort", 0), "legacy": legacy,
+                    "sort": f.get("sort", 0), "legacy": legacy, "goal": self.goals.get(f.get("box")),
                 },
                 label="Rocks",
             )
+            if obj.goal_id is None and self.goals.get(f.get("box")):
+                obj.goal = self.goals[f["box"]]
+                obj.save(update_fields=["goal"])
             self.rocks[pk] = obj
-        if history:
-            self.stats["Rock statuses (latest -> status, history kept)"] = Counter(mapped=sum(len(v) for v in history.values()))
+
+    def import_rock_updates(self):
+        """Each weekly G/Y/R becomes a RockUpdate (one per rock per week)."""
+        from core.models import monday_of
+
+        for pk, f in self.fields("core.rockstatus"):
+            rock = self.rocks.get(f.get("rock"))
+            week = _date(f.get("week_start"))
+            if rock is None or week is None or f.get("rag") not in RAGS:
+                self._count("Rock weekly updates", "skipped")
+                continue
+            week = monday_of(week)
+            self.upsert(
+                RockUpdate, pk,
+                {"rock": rock, "week_start": week, "rag": f["rag"], "note": f.get("note") or "",
+                 "recovery_plan": f.get("recovery_plan") or "", "author": self.users.get(f.get("author")),
+                 "created_at": _dt(f.get("created_at")) or _day_start(week)},
+                label="Rock weekly updates", match={"rock": rock, "week_start": week},
+            )
 
     def import_milestones(self):
         for pk, f in self.fields("core.milestone"):
@@ -362,11 +414,14 @@ class BattlePlannerImporter:
             if not rock:
                 self.notes.append(f"milestone #{pk}: rock #{f['rock']} not imported, skipped")
                 continue
-            people = [self.users[u].display_name for u in f.get("people", []) if u in self.users]
+            people = [self.users[u] for u in f.get("people", []) if u in self.users]
+            done = f.get("is_done", False)
             self.upsert(
                 Milestone, pk,
-                {"rock": rock, "title": f["title"][:200], "due_date": _date(f.get("due_date")), "done": f.get("is_done", False),
-                 "legacy": {"people": people, "completed_at": f.get("completed_at")}},
+                {"rock": rock, "title": f["title"][:200], "due_date": _date(f.get("due_date")), "done": done,
+                 "done_at": (_dt(f.get("completed_at")) or timezone.now()) if done else None,
+                 "owner": people[0] if people else None,
+                 "legacy": {"people": [u.display_name for u in people], "completed_at": f.get("completed_at")}},
                 label="Milestones",
             )
 
@@ -521,6 +576,7 @@ class BattlePlannerImporter:
                 Seat, pk,
                 {"team": self.teams.get(f.get("facility")), "title": f["title"][:120], "person": person,
                  "person_name": "" if person else (f.get("person_name") or "")[:120], "roles": f.get("responsibilities", ""),
+                 "status": seat_status(f.get("status")), "is_agency": bool(f.get("agency")),
                  "sort": f.get("sort", 0), "legacy": {"status": f.get("status"), "agency": f.get("agency")}},
                 label="Seats",
             )
@@ -577,12 +633,32 @@ class BattlePlannerImporter:
             obj, created = self.upsert(
                 OneOnOne, pk,
                 {"person": person, "manager": manager, "date": date, "notes": "\n\n".join(lines),
+                 "highlight": f.get("highlight") or "", "completed_at": _dt(f.get("completed_at")),
                  "created_by": self.users.get(f.get("created_by")),
                  "created_at": _dt(f.get("completed_at")) or _day_start(date),
                  "legacy": {"scores": scores, "completed_at": f.get("completed_at")}},
                 label="1:1s",
             )
+            self._scores_for(obj, scores, created)
             self._review_from_one_on_one(obj, scores, created)
+
+    def _scores_for(self, one, scores, created):
+        """The 1:1 grid: one G/Y/R (and note) per success statement and core value."""
+        if not (created or self.refresh) and one.scores.exists():
+            return
+        for key, score in scores.items():
+            if not isinstance(score, dict) or not key[2:].isdigit():
+                continue
+            ref = int(key[2:])
+            target = {}
+            if key.startswith("ss") and ref in self.statements:
+                target = {"statement": self.statements[ref]}
+            elif key.startswith("cv") and ref in self.values:
+                target = {"value": self.values[ref]}
+            rag = score.get("rag") if score.get("rag") in RAGS else ""
+            if target and (rag or score.get("note")):
+                OneOnOneScore.objects.update_or_create(one_on_one=one, **target, defaults={"rag": rag, "note": score.get("note") or ""})
+                self._count("1:1 grid scores", "saved")
 
     def _review_from_one_on_one(self, one, scores, created):
         cv = {int(k[2:]): v.get("rag") for k, v in scores.items() if k.startswith("cv") and k[2:].isdigit()}
@@ -646,6 +722,60 @@ class BattlePlannerImporter:
                 existing.legacy_id = pk
                 existing.save(update_fields=["legacy_id"])
             self.upsert(MeetingRating, pk, {"meeting": meeting, "user": user, "rating": rating, "legacy": {"scores": f.get("scores")}}, label="Meeting ratings")
+
+    def import_sessions(self):
+        """Offsites become quarterly sessions; SWOT, 4 Whats, lessons, reflections and evals become session items."""
+        sessions = {}
+        lead = Team.objects.filter(is_leadership=True).first()
+        for pk, f in self.fields("core.offsite"):
+            team = self.teams.get(f.get("facility")) or lead
+            if team is None:
+                continue
+            obj, created = self.upsert(
+                Session, pk,
+                {"team": team, "quarter": self.quarters.get(f.get("quarter")), "kind": Session.QUARTERLY,
+                 "date": _date(f.get("date")) or timezone.localdate(),
+                 "current_step": OFFSITE_STEP.get(f.get("current_step"), "segue"), "notes": f.get("agenda_notes") or "",
+                 "concluded_at": _day_start(_date(f.get("date")) or timezone.localdate()) if f.get("status") == "complete" else None,
+                 "legacy": {"status": f.get("status")}},
+                label="Quarterly sessions (offsites)",
+            )
+            if created or self.refresh:
+                people = {self.users[u] for m in OFFSITE_ITEM_MODELS for _, r in self.fields(m)
+                          if r.get("offsite") == pk for u in (r.get("author"), r.get("user")) if u in self.users}
+                obj.attendees.add(*people)
+            sessions[pk] = obj
+        for model in sorted(OFFSITE_ITEM_MODELS):
+            for pk, f in self.fields(model):
+                session = sessions.get(f.get("offsite"))
+                item = offsite_item(model, f)
+                if session is None or not item:
+                    continue
+                data = {
+                    "session": session, "step": item["step"], "kind": item["kind"], "text": item["text"],
+                    "rag": item.get("rag") or "", "author": self.users.get(item.get("author")),
+                    "about": self.users.get(item.get("about")), "sort": item.get("sort") or 0,
+                    "legacy": {"model": model, "pk": pk},
+                }
+                existing = SessionItem.objects.filter(legacy__model=model, legacy__pk=pk).first()
+                if existing is None:
+                    SessionItem.objects.create(**data)
+                    self._count("Session items (SWOT, lessons, reflections…)", "created")
+                elif self.refresh:
+                    for k, v in data.items():
+                        setattr(existing, k, v)
+                    existing.save()
+                    self._count("Session items (SWOT, lessons, reflections…)", "updated")
+                else:
+                    self._count("Session items (SWOT, lessons, reflections…)", "unchanged")
+        lessons = [(h.get("quarter"), lesson) for _, h in self.fields("core.strategyhouse") for lesson in (h.get("lessons") or [])]
+        for quarter_pk, lesson in lessons:
+            session = next((s for s in sessions.values() if s.quarter == self.quarters.get(quarter_pk) and s.team.is_leadership), None)
+            if session is None or not isinstance(lesson, dict):
+                continue
+            text = (lesson.get("title") or "") + (f" — {lesson['body']}" if lesson.get("body") else "")
+            if text and not session.items.filter(kind="lesson", text=text).exists():
+                SessionItem.objects.create(session=session, step="review", kind="lesson", text=text, legacy={"model": "core.strategyhouse"})
 
     def archive_rest(self):
         for model, rows in sorted(self.by.items()):

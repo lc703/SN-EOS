@@ -68,6 +68,23 @@ class Headline(LegacyMixin):
         return self.text
 
 
+class CascadingMessage(models.Model):
+    """Conclude: what to tell the rest of the company. Shows in the recipients' next L10 headlines."""
+
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="cascades")
+    text = models.TextField()
+    to_teams = models.ManyToManyField("core.Team", blank=True, related_name="cascades_received")
+    to_everyone = models.BooleanField(default=False)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return self.text[:60]
+
+
 class MeetingRating(LegacyMixin):
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="ratings")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
