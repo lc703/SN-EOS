@@ -91,8 +91,17 @@ def test_outsiders_cannot_edit_session(as_user, teams, admin, other, quarter, ne
 
 
 def test_review_step_scores_previous_quarter(as_user, teams, admin, member, quarter, next_q):
+    q3 = Quarter.objects.create(name="Q3 2026", start_date=dt.date(2026, 7, 1), end_date=dt.date(2026, 9, 30))
+    Rock.objects.create(team=teams["company"], quarter=q3, is_company=True, title="Finish budget", owner=member, status=Rock.DONE)
+    Rock.objects.create(team=teams["company"], quarter=q3, is_company=True, title="Hire rep", owner=member)
+    s = Session.objects.create(team=teams["company"], quarter=quarter, facilitator=admin)
+    html = as_user(admin, teams["company"]).get(f"/sessions/{s.pk}/?s=review").content.decode()
+    assert "Finish budget" in html and "Hire rep" in html and "50%" in html and "Not done" in html
+
+
+def test_review_counts_running_quarter_rocks_as_in_progress(as_user, teams, admin, member, quarter, next_q):
     Rock.objects.create(team=teams["company"], quarter=quarter, is_company=True, title="Finish budget", owner=member, status=Rock.DONE)
     Rock.objects.create(team=teams["company"], quarter=quarter, is_company=True, title="Hire rep", owner=member)
     s = Session.objects.create(team=teams["company"], quarter=next_q, facilitator=admin)
     html = as_user(admin, teams["company"]).get(f"/sessions/{s.pk}/?s=review").content.decode()
-    assert "Finish budget" in html and "Hire rep" in html and "50%" in html
+    assert "In progress" in html and "1 still running" in html and "100%" in html
