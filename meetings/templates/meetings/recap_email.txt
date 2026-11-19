@@ -8,8 +8,14 @@ NEW TO-DOS
 ISSUES SOLVED
 {% for i in solved %}- {{ i.title }}{% if i.resolution %}: {{ i.resolution }}{% endif %}
 {% empty %}- None
-{% endfor %}{% if meeting.notes %}
+{% endfor %}{% if meeting.cascading_messages %}
 CASCADING MESSAGES
+{{ meeting.cascading_messages }}
+{% endif %}{% if headlines %}
+HEADLINES
+{% for h in headlines %}- {{ h.text }}{% if h.author %} ({{ h.author.first }}){% endif %}
+{% endfor %}{% endif %}{% if meeting.notes %}
+NOTES
 {{ meeting.notes }}
 {% endif %}
 Full recap: {{ site_url }}/meetings/{{ meeting.pk }}/recap/

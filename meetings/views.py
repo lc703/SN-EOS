@@ -13,10 +13,10 @@ from django.views.decorators.http import require_POST
 from core.forms import people_choices
 from core.models import monday_of
 from core.permissions import is_admin, is_team_member
-from core.utils import go_back, require, scope
+from core.utils import go_back, is_htmx, require, scope
 from issues.models import Issue
 from rocks.models import Rock
-from rocks.views import rock_summary
+from rocks.views import rock_summary, with_strips
 from scorecard.models import Measurable
 from scorecard.views import build_rows
 from todos.models import Todo, default_due, weekly_completion
@@ -70,12 +70,12 @@ def section_context(request, meeting, section):
         rows = build_rows(Measurable.objects.filter(team=team, active=True).select_related("owner", "team"), weeks, request.user)
         ctx.update(
             rows=rows, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
-            show_trailing=any(r.measurable.trailing for r in rows),
+            show_trailing=True, show_trend=True,
             off_count=sum(1 for r in rows if r.is_red),
         )
     elif section == "rocks":
-        qs = Rock.objects.filter(quarter=meeting.quarter).select_related("owner", "team").prefetch_related("milestones")
-        rocks = qs.filter(is_company=True) if team.is_leadership else qs.filter(team=team)
+        qs = Rock.objects.filter(quarter=meeting.quarter).select_related("owner", "team", "quarter").prefetch_related("milestones", "updates")
+        rocks = with_strips(qs.filter(is_company=True) if team.is_leadership else qs.filter(team=team), meeting.quarter)
         ctx.update(rocks=rocks, summary=rock_summary(rocks), statuses=Rock.STATUS_CHOICES)
     elif section == "headlines":
         since = meeting.started_at - dt.timedelta(days=7)
@@ -120,6 +120,7 @@ def conclude_context(meeting):
         "attendee_ratings": [(u, ratings.get(u.pk)) for u in attendees],
         "average": meeting.average_rating,
         "rating_range": range(1, 11),
+        "headlines": meeting.headlines.select_related("author"),
     }
 
 
@@ -168,7 +169,7 @@ def meeting_update(request, pk):
     meeting = get_object_or_404(Meeting, pk=pk)
     require(can_run(request.user, meeting))
     fields = []
-    for name in ("segue_notes", "notes"):
+    for name in ("segue_notes", "notes", "cascading_messages"):
         if name in request.POST:
             setattr(meeting, name, request.POST[name])
             fields.append(name)
@@ -179,6 +180,8 @@ def meeting_update(request, pk):
         fields.append("facilitator")
     if fields:
         meeting.save(update_fields=fields)
+    if is_htmx(request) and request.POST.get("autosave"):
+        return HttpResponse(status=204)
     return go_back(request, f"/meetings/{meeting.pk}/")
 
 

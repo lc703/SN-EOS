@@ -43,9 +43,23 @@
     </section>
     {% endif %}
 
-    {% if meeting.notes %}
+    {% if meeting.cascading_messages %}
     <section class="pt-6">
       <h2 class="section-title mb-2">Cascading messages</h2>
+      <p class="text-sm prose-pre">{{ meeting.cascading_messages }}</p>
+    </section>
+    {% endif %}
+
+    {% if headlines %}
+    <section class="pt-6">
+      <h2 class="section-title mb-2">Headlines</h2>
+      <ul class="list-disc pl-5 text-sm space-y-1">{% for h in headlines %}<li><span class="text-neutral-500">{{ h.get_kind_display }}:</span> {{ h.text }}{% if h.author %} <span class="text-neutral-400">· {{ h.author.first }}</span>{% endif %}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    {% if meeting.notes %}
+    <section class="pt-6">
+      <h2 class="section-title mb-2">Notes</h2>
       <p class="text-sm prose-pre">{{ meeting.notes }}</p>
     </section>
     {% endif %}
