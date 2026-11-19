@@ -1,0 +1,9 @@
+{% load sn %}<div id="chart-canvas" class="chart-canvas">
+  {% if tree %}
+    <div class="tree flex items-start gap-14">
+      {% for node in tree %}<ul class="root">{% include "vision/_seat_node.html" %}</ul>{% endfor %}
+    </div>
+  {% else %}
+    <div class="w-[34rem] max-w-[80vw]">{% if can_edit %}{% empty "No seats yet" "Start with the Visionary and Integrator seats, then add the major functions under them. Press N or use + Seat." "chart" %}{% else %}{% empty "No seats yet" "An admin can build this team's Accountability Chart." "chart" %}{% endif %}</div>
+  {% endif %}
+</div>

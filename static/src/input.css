@@ -195,7 +195,7 @@ thead .sc-sticky { z-index: 3; }
 
 /* ------------------------------------------------------------------ accountability chart */
 .chart-viewport { position: relative; overflow: hidden; cursor: grab; background-color: #fbfbfa;
-  background-image: radial-gradient(rgb(0 0 0 / .07) 1px, transparent 1px); background-size: 18px 18px; touch-action: none; }
+  background-image: radial-gradient(rgb(0 0 0 / .07) 1px, transparent 1px); background-size: 18px 18px; touch-action: none; height: calc(100vh - 15.5rem); min-height: 30rem; }
 .chart-viewport.panning { cursor: grabbing; }
 .chart-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; padding: 2.5rem; will-change: transform; }
 .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
@@ -229,6 +229,15 @@ thead .sc-sticky { z-index: 3; }
 .chart-titles .seat-roles, .chart-titles .seat-flags, .chart-titles .seat-person-meta { display: none; }
 .chart-titles .seat { width: 12rem; }
 .legend-swatch { width: .75rem; height: .75rem; border-radius: .25rem; display: inline-block; }
+.chart-toolbar { position: absolute; right: .75rem; bottom: .75rem; z-index: 10; display: flex; align-items: center; gap: .15rem; padding: .25rem; border-radius: .875rem; background: rgb(255 255 255 / .94); backdrop-filter: blur(8px); border: 1px solid var(--hair); box-shadow: 0 10px 30px -12px rgb(0 0 0 / .3); }
+.chart-toolbar [aria-pressed=true] { background: #000; color: var(--bolt); }
+.seat-ghost { position: fixed; z-index: 80; pointer-events: none; transform: rotate(-2deg) scale(.92); opacity: .92; box-shadow: 0 24px 50px -16px rgb(0 0 0 / .5); }
+.gwc-dot { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; border-radius: .3rem; font-size: 9.5px; font-weight: 800; line-height: 1; }
+.gwc-lg { width: 1.6rem; height: 1.6rem; font-size: 12px; border-radius: .45rem; }
+.gwc-yes { background: var(--green-bg); color: var(--green-ink); }
+.gwc-no { background: var(--red); color: #fff; }
+.gwc-unk { background: #efefed; color: #9a9a97; }
+.print-only { display: none; }
 
 /* ------------------------------------------------------------------ L10 + session rail */
 .rail a { display: flex; align-items: center; gap: .55rem; padding: .5rem .7rem; border-radius: .625rem; font-weight: 600; font-size: 13.5px; color: #404040; white-space: nowrap; }
@@ -255,4 +264,12 @@ thead .sc-sticky { z-index: 3; }
   .card, .list-group { box-shadow: none; border-color: #ccc; }
   a { text-decoration: none; color: inherit; }
   .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .page { padding: 0 !important; max-width: none !important; }
+  .chart-viewport { height: auto !important; overflow: visible !important; border: 0 !important; background: none !important; }
+  .chart-canvas { position: static !important; padding: 0 !important; }
+  .seat { break-inside: avoid; box-shadow: none !important; }
+  .seat-toggle { display: none !important; }
+  .tree li.collapsed > ul { display: none !important; }
 }
+@media print and (orientation: landscape) { @page { size: landscape; } }

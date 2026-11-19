@@ -1,0 +1,99 @@
+{% load sn %}
+<div class="panel-head">
+  <div class="min-w-0">
+    <div class="eyebrow">{% if seat %}Seat · {{ seat.team.name|default:team.name }}{% else %}New seat · {{ team.name }}{% endif %}</div>
+    <h2 class="text-lg leading-tight truncate">{% if seat %}{{ seat.title }}{% else %}Add a seat{% endif %}</h2>
+  </div>
+  <div class="flex items-center gap-1.5">
+    {% if seat %}{% include "vision/_seat_status.html" %}{% endif %}
+    <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="$store.ui.closePanel()" aria-label="Close">{% icon "x" %}</button>
+  </div>
+</div>
+
+<div class="panel-body space-y-6">
+  {% if can_edit %}
+    <form {% if seat %}hx-post="{% url 'seat_edit' seat.pk %}" hx-trigger="autosave" hx-swap="none" data-autosave{% else %}hx-post="{% url 'seat_new' %}" hx-target="#panel-content"{% endif %} class="space-y-4" id="seat-form">
+      {% csrf_token %}
+      {% if seat %}<input type="hidden" name="autosave" value="1">{% endif %}
+      <input type="hidden" name="sort" value="{{ form.sort.value|default:0 }}">
+      {% if form.non_field_errors %}<div class="rounded-lg bg-red-50 text-red-800 text-sm px-3 py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+      <label class="block"><span class="label">Seat title</span>
+        <input name="title" value="{{ form.title.value|default:'' }}" class="input font-semibold" required maxlength="120" placeholder="e.g. Plant Manager" {% if not seat %}autofocus{% endif %}>
+        {% for e in form.title.errors %}<span class="text-xs text-red-700">{{ e }}</span>{% endfor %}
+      </label>
+      <div>
+        <span class="label">Status</span>
+        <div class="rag-pick">
+          {% for radio in form.status %}<label data-rag="{% if radio.data.value == 'filled' %}green{% elif radio.data.value == 'future' %}yellow{% else %}red{% endif %}">{{ radio.tag }}<span class="h-2 w-2 rounded-full {% if radio.data.value == 'filled' %}bg-[var(--green)]{% elif radio.data.value == 'future' %}bg-[var(--yellow)]{% else %}bg-[var(--red)]{% endif %}"></span>{{ radio.choice_label }}</label>{% endfor %}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="label">Person</span>{{ form.person }}</label>
+        <label class="block"><span class="label">…or name (no account)</span>{{ form.person_name }}</label>
+      </div>
+      <label class="flex items-center gap-2 text-sm">{{ form.is_agency }}<span>Filled through a staffing agency</span></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="label">Reports to</span>{{ form.parent }}{% for e in form.parent.errors %}<span class="text-xs text-red-700">{{ e }}</span>{% endfor %}</label>
+        <label class="block"><span class="label">Team</span>{{ form.team }}</label>
+      </div>
+      <label class="block">
+        <span class="label flex items-center justify-between">Roles <span class="font-normal text-neutral-400" x-data="{n: {{ seat.role_list|length|default:0 }}}" x-init="$el.closest('label').querySelector('textarea').addEventListener('input', e => n = e.target.value.split('\n').filter(l => l.trim()).length)"><span x-text="n"></span> of 5</span></span>
+        {{ form.roles }}
+        <span class="text-xs text-neutral-500">One per line. EOS aims for five major roles per seat.</span>
+      </label>
+      {% if not seat %}
+        <div class="flex items-center gap-2 pt-1"><button class="btn btn-primary">{% icon "plus" %}Add seat</button><button type="button" class="btn btn-ghost" @click="$store.ui.closePanel()">Cancel</button></div>
+      {% else %}
+        <p class="text-xs text-neutral-500 flex items-center gap-1.5">{% icon "check" "h-3.5 w-3.5" %}Changes save automatically.</p>
+      {% endif %}
+    </form>
+  {% elif seat %}
+    <dl class="grid grid-cols-3 gap-y-2 text-sm">
+      <dt class="text-neutral-500">Person</dt><dd class="col-span-2 font-medium">{% if seat.person_id %}<a class="link" href="{% url 'person' seat.person_id %}">{{ seat.holder }}</a>{% else %}{{ seat.holder|default:"—" }}{% endif %}{% if seat.is_agency %} <span class="pill pill-outline !text-[10px]">Agency</span>{% endif %}</dd>
+      <dt class="text-neutral-500">Reports to</dt><dd class="col-span-2">{{ seat.parent.title|default:"—" }}{% if seat.parent.holder %} <span class="text-neutral-500">· {{ seat.parent.holder }}</span>{% endif %}</dd>
+    </dl>
+    <div>
+      <div class="section-title mb-1.5">Roles</div>
+      {% if seat.role_list %}<ol class="space-y-1.5 text-sm">{% for r in seat.role_list %}<li class="flex gap-2"><span class="h-5 w-5 shrink-0 rounded-full bg-neutral-100 text-[11px] font-bold inline-flex items-center justify-center">{{ forloop.counter }}</span>{{ r }}</li>{% endfor %}</ol>{% else %}<p class="text-sm text-neutral-500">No roles listed yet.</p>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if seat %}
+    {% if seat.flags %}{% with f=seat.flags %}
+    <section>
+      <div class="section-title mb-2">Right person, right seat</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl border border-black/[.08] p-3">
+          <div class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">GWC</div>
+          {% if f.gwc %}<div class="mt-1.5 flex gap-1">{% for letter, ok in f.gwc %}<span class="gwc-dot gwc-lg {% if ok %}gwc-yes{% elif ok is False %}gwc-no{% else %}gwc-unk{% endif %}">{{ letter }}</span>{% endfor %}</div><div class="mt-1 text-[11px] text-neutral-500">{{ f.review.date|date:"M j, Y" }}</div>{% else %}<div class="mt-1 text-sm text-neutral-500">Not reviewed</div>{% endif %}
+        </div>
+        <div class="rounded-xl border border-black/[.08] p-3">
+          <div class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Quarterly Conversation</div>
+          {% if f.convo %}<div class="mt-1.5 font-semibold text-sm {% if f.red %}text-red-700{% else %}text-green-700{% endif %}">{% if f.red %}{{ f.red }} red{% else %}All clear{% endif %}</div><div class="mt-0.5 text-[11px] text-neutral-500">{{ f.convo.date|date:"M j, Y" }}</div>{% else %}<div class="mt-1 text-sm text-neutral-500">None yet</div>{% endif %}
+        </div>
+      </div>
+      {% if f.pa %}<p class="mt-2 text-xs text-neutral-600">Core values: <b>{{ f.pa.plus }}</b> +, <b>{{ f.pa.mixed }}</b> +/−, <b>{{ f.pa.minus }}</b> −</p>{% endif %}
+      {% if seat.person_id %}<a href="{% url 'person' seat.person_id %}" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold link">Open {{ seat.person.first }}'s profile {% icon "arrow-right" "h-3.5 w-3.5" %}</a>{% endif %}
+    </section>
+    {% endwith %}{% endif %}
+
+    <section>
+      <div class="flex items-center justify-between mb-2">
+        <div class="section-title">Direct reports <span class="text-neutral-400 font-medium">{{ reports|length }}</span></div>
+        {% if can_edit %}<button type="button" class="btn btn-sm" hx-get="{% url 'seat_new' %}?parent={{ seat.pk }}" hx-target="#panel-content">{% icon "plus" "h-3.5 w-3.5" %}Add report</button>{% endif %}
+      </div>
+      {% if reports %}
+        <ul class="list-group">
+          {% for r in reports %}<li><button type="button" class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-50" hx-get="{% url 'seat_panel' r.pk %}" hx-target="#panel-content"><span class="h-2 w-2 rounded-full {% if r.effective_status == 'open' %}bg-[var(--red)]{% elif r.effective_status == 'future' %}bg-[var(--yellow)]{% else %}bg-[var(--green)]{% endif %}"></span><span class="font-medium text-sm">{{ r.title }}</span><span class="text-xs text-neutral-500 ml-auto">{{ r.holder|default:"Open" }}</span></button></li>{% endfor %}
+        </ul>
+      {% else %}<p class="text-sm text-neutral-500">No one reports to this seat.</p>{% endif %}
+    </section>
+  {% endif %}
+</div>
+
+{% if can_edit and seat %}
+<div class="panel-foot">
+  <form hx-post="{% url 'seat_edit' seat.pk %}" hx-swap="none" hx-confirm="Remove {{ seat.title }}? Its reports move up a level.">{% csrf_token %}<input type="hidden" name="delete" value="1"><button class="btn btn-ghost btn-danger btn-sm">{% icon "trash" "h-3.5 w-3.5" %}Remove seat</button></form>
+  <a href="{% url 'seat_edit' seat.pk %}" class="text-xs text-neutral-500 hover:text-black" hx-boost="false">Full-page editor</a>
+</div>
+{% endif %}

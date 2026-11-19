@@ -1,48 +1,81 @@
 {% extends "base.html" %}
-{% load sn %}
+{% load static sn %}
 {% block title %}Accountability Chart{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+<div class="page-head no-print">
   <div>
     <div class="eyebrow">{{ team.label }}</div>
-    <h1 class="text-2xl">Accountability Chart</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">Right people in the right seats. Each seat lists its five roles.</p>
+    <h1 class="page-title">Accountability Chart</h1>
+    <p class="page-sub">Right people in the right seats. Every seat has five roles, one person, and a clear line of reporting.</p>
   </div>
-  <div class="flex items-center gap-2">
-    <div class="inline-flex rounded-xl bg-white border border-black/10 p-1 text-sm font-semibold">
-      <a href="?view=tree" class="px-3 h-8 inline-flex items-center rounded-lg {% if view != 'list' %}bg-black text-white{% else %}text-neutral-600{% endif %}">Tree</a>
-      <a href="?view=list" class="px-3 h-8 inline-flex items-center rounded-lg {% if view == 'list' %}bg-black text-white{% else %}text-neutral-600{% endif %}">List</a>
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="seg">
+      <a href="?view=tree" class="{% if view != 'list' %}on{% endif %}">{% icon "chart" "h-3.5 w-3.5 mr-1.5" %}Chart</a>
+      <a href="?view=list" class="{% if view == 'list' %}on{% endif %}">{% icon "list" "h-3.5 w-3.5 mr-1.5" %}List</a>
     </div>
-    {% if can_edit %}<a href="{% url 'seat_new' %}" class="btn btn-primary">+ Seat</a>{% endif %}
+    <button type="button" class="btn" onclick="window.print()">{% icon "print" %}Print / PDF</button>
+    {% if can_edit %}<button type="button" class="btn btn-primary" data-shortcut-new hx-get="{% url 'seat_new' %}" hx-target="#panel-content" hx-push-url="false">{% icon "plus" %}Seat</button>{% endif %}
   </div>
+</div>
+
+<div class="print-only mb-4">
+  <div class="text-xs uppercase tracking-[.2em] font-bold text-neutral-500">{{ COMPANY_NAME }} · {{ team.label }}</div>
+  <h1 class="text-2xl">Accountability Chart</h1>
+  <div class="text-xs text-neutral-500">Printed {% now "M j, Y" %}</div>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
+  <div class="stat"><div class="stat-label">Seats</div><div class="stat-value">{{ total }}</div></div>
+  <div class="stat"><div class="stat-label flex items-center gap-1.5"><span class="legend-swatch bg-[var(--green)]"></span>Filled</div><div class="stat-value">{{ counts.filled }}</div></div>
+  <div class="stat"><div class="stat-label flex items-center gap-1.5"><span class="legend-swatch bg-[var(--yellow)]"></span>Future seats</div><div class="stat-value">{{ counts.future }}</div></div>
+  <div class="stat {% if counts.open %}!border-red-200 !bg-red-50/60{% endif %}"><div class="stat-label flex items-center gap-1.5"><span class="legend-swatch bg-[var(--red)]"></span>Open, hiring</div><div class="stat-value {% if counts.open %}text-red-700{% endif %}">{{ counts.open }}</div></div>
+  <div class="stat hidden lg:block"><div class="stat-label flex items-center gap-1.5">{% icon "flag" "h-3 w-3" %}People flags</div><div class="stat-value {% if concerns %}text-amber-700{% endif %}">{{ concerns }}</div></div>
 </div>
 
 {% if view == 'list' %}
   <div class="card overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead><tr class="text-left text-neutral-500 text-xs border-b border-black/5">
-        <th class="px-4 py-2 font-semibold">Seat</th><th class="px-3 py-2 font-semibold">Person</th><th class="px-3 py-2 font-semibold">Reports to</th><th class="px-3 py-2 font-semibold">Roles</th><th></th>
-      </tr></thead>
-      <tbody class="divide-y divide-black/5">
+    <table class="table">
+      <thead><tr><th>Seat</th><th>Status</th><th>Person</th><th>Reports to</th><th>Roles</th><th>Flags</th></tr></thead>
+      <tbody>
         {% for s in seats %}
-          <tr class="align-top list-row">
-            <td class="px-4 py-2 font-semibold whitespace-nowrap">{{ s.title }}</td>
-            <td class="px-3 py-2 whitespace-nowrap">{{ s.holder|default:"—" }}</td>
-            <td class="px-3 py-2 text-neutral-600 whitespace-nowrap">{{ s.parent.title|default:"—" }}</td>
-            <td class="px-3 py-2 text-neutral-600 text-[12.5px]">{{ s.role_list|join:" · " }}</td>
-            <td class="px-3 py-2 text-right">{% if can_edit %}<a href="{% url 'seat_edit' s.pk %}" class="btn btn-sm">Edit</a>{% endif %}</td>
+          <tr class="cursor-pointer align-top" hx-get="{% url 'seat_panel' s.pk %}" hx-target="#panel-content" hx-push-url="false">
+            <td class="font-semibold whitespace-nowrap">{{ s.title }}</td>
+            <td>{% include "vision/_seat_status.html" with seat=s %}</td>
+            <td class="whitespace-nowrap">{{ s.holder|default:"—" }}{% if s.is_agency %} <span class="pill pill-outline !text-[10px]">Agency</span>{% endif %}</td>
+            <td class="text-neutral-600 whitespace-nowrap">{{ s.parent.title|default:"—" }}</td>
+            <td class="text-neutral-600 text-[12.5px] max-w-md">{{ s.role_list|join:" · " }}</td>
+            <td>{% include "vision/_seat_flags.html" with seat=s %}</td>
           </tr>
-        {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-neutral-500">No seats for {{ team.name }} yet.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="6">{% empty "No seats yet" "Start with the Visionary and Integrator seats, then add the major functions under them." "chart" %}</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 {% else %}
-  <div class="card p-6 overflow-x-auto">
-    {% if tree %}
-      <div class="tree flex justify-center items-start gap-10 min-w-max">
-        {% for node in tree %}<ul class="root">{% include "vision/_seat_node.html" %}</ul>{% endfor %}
-      </div>
-    {% else %}<p class="text-center text-neutral-500 py-8">No seats for {{ team.name }} yet.</p>{% endif %}
+  <div id="chart-viewport" class="chart-viewport card" data-team="{{ team.pk }}" data-can-edit="{{ can_edit|yesno:'1,' }}" data-move-url="{% url 'seat_move' 0 %}" data-panel-url="{% url 'seat_panel' 0 %}" data-open="{{ open_seat }}"
+       hx-get="{% url 'chart' %}?partial=canvas" hx-trigger="chartChanged from:body" hx-target="#chart-canvas" hx-select="#chart-canvas" hx-swap="outerHTML" hx-push-url="false" data-no-save>
+    {% include "vision/_chart_canvas.html" %}
+
+    <div class="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-3 rounded-xl bg-white/90 backdrop-blur border border-black/[.08] px-3 py-1.5 text-[11.5px] font-semibold text-neutral-600 shadow-soft no-print" aria-label="Legend">
+      <span class="flex items-center gap-1.5"><span class="legend-swatch bg-[var(--green)]"></span>Filled</span>
+      <span class="flex items-center gap-1.5"><span class="legend-swatch bg-[var(--yellow)]"></span>Future</span>
+      <span class="flex items-center gap-1.5"><span class="legend-swatch bg-[var(--red)]"></span>Open / hiring</span>
+      <span class="hidden sm:flex items-center gap-1.5"><span class="gwc-dot gwc-no">C</span>GWC concern</span>
+      <span class="hidden sm:flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-red-500"></span>Struggling in 1:1</span>
+    </div>
+
+    <div class="chart-toolbar no-print" role="toolbar" aria-label="Chart controls">
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="titles" title="Titles only (T)" aria-pressed="false">{% icon "layers" %}</button>
+      <span class="w-px h-5 bg-black/10"></span>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="collapse" title="Collapse to top two levels">{% icon "collapse" %}</button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="expand" title="Expand all">{% icon "expand" %}</button>
+      <span class="w-px h-5 bg-black/10"></span>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="out" title="Zoom out (−)">{% icon "zoom-out" %}</button>
+      <button type="button" class="text-[12px] font-semibold tabular-nums w-11 text-center hover:bg-black/5 rounded-md h-7" data-chart="reset" title="Reset to 100%"><span data-chart-zoom>100%</span></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="in" title="Zoom in (+)">{% icon "zoom-in" %}</button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-chart="fit" title="Fit to screen (0)">{% icon "fit" %}</button>
+    </div>
+    {% if can_edit and tree %}<div class="absolute right-3 top-3 z-10 hidden md:flex items-center gap-1.5 rounded-xl bg-black text-white px-3 py-1.5 text-[11.5px] font-medium no-print">{% icon "move" "h-3.5 w-3.5 text-bolt" %}Drag a seat onto another to change who it reports to</div>{% endif %}
   </div>
 {% endif %}
+<script src="{% static 'js/chart.js' %}"></script>
 {% endblock %}

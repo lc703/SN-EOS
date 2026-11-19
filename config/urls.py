@@ -73,6 +73,8 @@ urlpatterns = [
     path("chart/", vision.chart, name="chart"),
     path("chart/seats/new/", vision.seat_edit, name="seat_new"),
     path("chart/seats/<int:pk>/", vision.seat_edit, name="seat_edit"),
+    path("chart/seats/<int:pk>/panel/", vision.seat_panel, name="seat_panel"),
+    path("chart/seats/<int:pk>/move/", vision.seat_move, name="seat_move"),
     # People
     path("people/", people.people_list, name="people"),
     path("people/<int:pk>/", people.person, name="person"),

@@ -1,0 +1,1 @@
+{% with st=seat.effective_status %}<span class="pill pill-dot {% if st == 'open' %}rag-red{% elif st == 'future' %}rag-yellow{% else %}rag-green{% endif %}">{% if st == 'open' %}Open, hiring{% elif st == 'future' %}Future seat{% else %}Filled{% endif %}</span>{% endwith %}

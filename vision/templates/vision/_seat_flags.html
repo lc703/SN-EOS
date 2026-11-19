@@ -1,0 +1,6 @@
+{% if seat.flags %}{% with f=seat.flags %}<div class="flex flex-wrap items-center gap-1.5 text-[10.5px] font-semibold">
+  {% if f.gwc %}<span class="inline-flex gap-0.5" title="GWC from the latest People Analyzer ({{ f.review.date|date:'M j, Y' }})">{% for letter, ok in f.gwc %}<span class="gwc-dot {% if ok %}gwc-yes{% elif ok is False %}gwc-no{% else %}gwc-unk{% endif %}">{{ letter }}</span>{% endfor %}</span>{% endif %}
+  {% if f.pa %}<span class="pill {% if f.pa.minus %}rag-red{% elif f.pa.mixed %}rag-yellow{% else %}rag-green{% endif %} !h-5 !text-[10px]" title="Core values: {{ f.pa.plus }} +, {{ f.pa.mixed }} +/−, {{ f.pa.minus }} −">CV {{ f.pa.plus }}/{{ f.pa.plus|add:f.pa.mixed|add:f.pa.minus }}</span>{% endif %}
+  {% if f.convo %}{% if f.red %}<span class="pill rag-red !h-5 !text-[10px]" title="Latest Quarterly Conversation {{ f.convo.date|date:'M j, Y' }}"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>{{ f.red }} red in 1:1</span>{% else %}<span class="pill rag-green !h-5 !text-[10px]" title="Latest Quarterly Conversation {{ f.convo.date|date:'M j, Y' }}">1:1 ✓</span>{% endif %}{% endif %}
+  {% if not f.gwc and not f.convo %}<span class="text-neutral-400 font-medium">No People Analyzer yet</span>{% endif %}
+</div>{% endwith %}{% endif %}

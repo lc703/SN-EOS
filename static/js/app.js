@@ -91,6 +91,7 @@
   });
   document.addEventListener("htmx:responseError", function (e) {
     var xhr = e.detail.xhr;
+    if (xhr && xhr.getResponseHeader("HX-Trigger")) return;
     var msg = xhr && xhr.status === 403 ? "You don't have permission to change that." : "Something went wrong. Try again.";
     toast(msg, "error");
   });

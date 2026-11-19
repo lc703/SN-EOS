@@ -1,24 +1,35 @@
-{% load sn %}
-<li>
-  <div class="seat-card card px-3 py-2.5 {% if node.depth == 0 %}ring-2 ring-black{% endif %}">
-    <div class="flex items-start gap-2">
-      <div class="min-w-0 flex-1">
-        <div class="font-display font-bold text-[13.5px] leading-tight">{{ node.seat.title }}</div>
-        <div class="text-[12.5px] {% if node.seat.holder %}text-neutral-700{% else %}text-amber-700 font-semibold{% endif %}">{{ node.seat.holder|default:"Open seat" }}</div>
+{% load sn %}{% with s=node.seat st=node.seat.effective_status %}
+<li data-seat-li="{{ s.pk }}">
+  <div class="seat st-{{ st }}{% if node.depth == 0 %} is-root{% endif %}" data-seat="{{ s.pk }}" data-depth="{{ node.depth }}" tabindex="0" role="button" aria-label="{{ s.title }}{% if s.holder %}, {{ s.holder }}{% endif %}">
+    <div class="px-3 pt-3 pb-2.5">
+      <div class="flex items-start gap-2.5">
+        {% if s.person_id %}<span class="avatar avatar-sm shrink-0 mt-0.5">{{ s.person.initials }}</span>{% elif s.holder %}<span class="avatar avatar-sm shrink-0 mt-0.5 !bg-neutral-200 !text-neutral-700">{{ s.holder|slice:":1" }}</span>{% else %}<span class="avatar avatar-sm shrink-0 mt-0.5 !bg-white !text-neutral-400 ring-1 ring-dashed ring-neutral-300">?</span>{% endif %}
+        <div class="min-w-0 flex-1">
+          <div class="font-display font-bold text-[13.5px] leading-tight">{{ s.title }}</div>
+          <div class="seat-person text-[12.5px] leading-snug truncate {% if st == 'open' %}text-red-700 font-semibold{% elif st == 'future' %}text-amber-700 font-semibold{% else %}text-neutral-700{% endif %}">
+            {% if s.holder %}{{ s.holder }}{% elif st == 'future' %}Future seat{% else %}Open, hiring{% endif %}
+          </div>
+        </div>
       </div>
-      {% if can_edit %}<a href="{% url 'seat_edit' node.seat.pk %}" class="text-neutral-300 hover:text-black" title="Edit seat"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg></a>{% endif %}
+      <div class="seat-person-meta mt-1.5 flex flex-wrap items-center gap-1">
+        {% if st == 'future' and s.holder %}<span class="pill rag-yellow !h-5 !text-[10px]">Future</span>{% endif %}
+        {% if st == 'open' and s.holder %}<span class="pill rag-red !h-5 !text-[10px]">Hiring</span>{% endif %}
+        {% if s.is_agency %}<span class="pill pill-outline !h-5 !text-[10px]">Agency</span>{% endif %}
+      </div>
+      {% with roles=s.role_list %}{% if roles %}
+        <ul class="seat-roles mt-2 space-y-0.5 text-[11.5px] text-neutral-600 leading-snug">
+          {% for r in roles|slice:":5" %}<li class="flex gap-1.5"><span class="mt-[6px] h-1 w-1 rounded-full bg-neutral-400 shrink-0"></span><span>{{ r }}</span></li>{% endfor %}
+          {% if roles|length > 5 %}<li class="text-neutral-400 pl-2.5">+{{ roles|length|add:"-5" }} more</li>{% endif %}
+        </ul>
+      {% endif %}{% endwith %}
+      {% if s.flags.gwc or s.flags.convo %}<div class="seat-flags mt-2 pt-2 border-t border-black/[.06]">{% include "vision/_seat_flags.html" with seat=s %}</div>{% endif %}
     </div>
-    {% with roles=node.seat.role_list %}{% if roles %}
-      <ul class="mt-1.5 space-y-0.5 text-[11.5px] text-neutral-600 leading-snug">
-        {% for r in roles|slice:":5" %}<li class="flex gap-1.5"><span class="mt-[5px] h-1 w-1 rounded-full bg-neutral-400 shrink-0"></span><span>{{ r }}</span></li>{% endfor %}
-        {% if roles|length > 5 %}<li class="text-neutral-400">+{{ roles|length|add:"-5" }} more</li>{% endif %}
-      </ul>
-    {% endif %}{% endwith %}
-    {% if node.children and node.depth >= 2 %}<div class="mt-1.5 text-[11px] text-neutral-400">{{ node.children|length }} report{{ node.children|length|pluralize }}</div>{% endif %}
+    {% if node.children %}<button type="button" class="seat-toggle" data-toggle="{{ s.pk }}" title="Show or hide {{ node.count }} seat{{ node.count|pluralize }} below" aria-label="Toggle reports"><span data-toggle-icon>−</span>{{ node.count }}</button>{% endif %}
   </div>
   {% if node.children %}
-    <ul class="{% if node.depth < 2 %}h{% else %}v{% endif %}">
+    <ul class="{{ node.layout }}">
       {% for child in node.children %}{% include "vision/_seat_node.html" with node=child %}{% endfor %}
     </ul>
   {% endif %}
 </li>
+{% endwith %}
