@@ -3,7 +3,7 @@
   <div class="min-w-0 flex items-center gap-3">
     {% avatar m.owner %}
     <div class="min-w-0">
-      <div class="eyebrow">Measurable · {{ m.team.name }}</div>
+      <div class="eyebrow">Measurable · {{ m.plant_name }}</div>
       <h2 class="text-lg leading-snug">{{ m.title }}</h2>
       <div class="text-xs text-neutral-500">{{ m.owner.display_name|default:"No owner" }} · Goal {{ m.goal_display }}{% if m.trailing %} · {{ m.get_trailing_display }} column{% endif %}</div>
       {% if m.source %}<div class="text-[11px] italic text-neutral-400">{{ m.source }}</div>{% endif %}
@@ -11,6 +11,18 @@
   </div>
 </div>
 <div class="panel-body space-y-5">
+  <div class="card card-pad flex items-center gap-3">
+    <label for="plant-{{ m.pk }}" class="stat-label !mb-0 shrink-0">Plant</label>
+    {% if editable %}
+      <select id="plant-{{ m.pk }}" name="plant" class="block w-full rounded-lg border bg-white px-3 py-1.5 text-[14px]"
+              hx-post="{% url 'measurable_plant' m.pk %}" hx-trigger="change" hx-swap="none" hx-select="unset">
+        <option value="" {% if not m.plant_id %}selected{% endif %}>Company</option>
+        {% for p in plants %}<option value="{{ p.pk }}" {% if p.pk == m.plant_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    {% else %}
+      <span class="font-semibold">{{ m.plant_name }}</span>
+    {% endif %}
+  </div>
   <div class="grid grid-cols-3 gap-3">
     <div class="card stat"><div class="stat-label">Latest</div><div class="stat-value {% if latest.state == 'red' %}text-[#b42318]{% elif latest.state == 'green' %}text-[#15803d]{% endif %}">{{ latest.display|default:"—" }}</div><div class="text-[11px] text-neutral-500">{% if latest %}Week of {{ latest.week|date:"M j" }}{% endif %}</div></div>
     <div class="card stat"><div class="stat-label">13-week avg</div><div class="stat-value">{{ average|default:"—" }}</div></div>

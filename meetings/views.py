@@ -17,7 +17,7 @@ from core.utils import go_back, is_htmx, require, scope
 from issues.models import Issue
 from rocks.models import Rock
 from rocks.views import rock_summary, with_strips
-from scorecard.models import Measurable
+from scorecard.plants import scorecard_for_team
 from scorecard.views import build_rows
 from todos.models import Todo, default_due, weekly_completion
 from todos.views import TodoForm
@@ -67,9 +67,10 @@ def section_context(request, meeting, section):
         ctx["attendee_ids"] = set(meeting.attendees.values_list("pk", flat=True))
     elif section == "scorecard":
         weeks = _scorecard_weeks(meeting)
-        rows = build_rows(Measurable.objects.filter(team=team, active=True).select_related("owner", "team"), weeks, request.user)
+        measurables, plant = scorecard_for_team(team)
+        rows = build_rows(measurables, weeks, request.user, grouped=True)
         ctx.update(
-            rows=rows, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
+            rows=rows, plant=plant, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
             show_trailing=True, show_trend=True,
             off_count=sum(1 for r in rows if r.is_red),
         )

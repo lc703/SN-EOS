@@ -20,7 +20,7 @@ from meetings.models import Headline, Meeting, MeetingRating
 from people.models import ConversationScore, OneOnOne, SuccessStatement
 from planning.models import ANNUAL, QUARTERLY, Session, SessionItem, SessionRating
 from rocks.models import Milestone, Rock, RockUpdate
-from scorecard.models import Measurable, ScoreEntry
+from scorecard.models import Measurable, Plant, ScoreEntry
 from todos.models import Todo
 from vision.models import VTO, CoreProcess, CoreValue, Seat
 
@@ -149,18 +149,31 @@ class Command(BaseCommand):
             (lead, "Customer complaints", "ivy", Measurable.UNIT_NUMBER, Measurable.LTE, 2, "total", (0, 5)),
             (lead, "Open seats filled", "noah", Measurable.UNIT_YESNO, Measurable.EQ, 1, "", (0, 1)),
             (lead, "Employee pulse score", "noah", Measurable.UNIT_NUMBER, Measurable.GTE, 8, "avg", (6.8, 9.2)),
-            (ops, "Tons produced", "eli", Measurable.UNIT_NUMBER, Measurable.GTE, 900, "total", (820, 980)),
-            (ops, "Changeover minutes (avg)", "sam", Measurable.UNIT_NUMBER, Measurable.LTE, 40, "avg", (32, 55)),
-            (ops, "QA pass rate", "ivy", Measurable.UNIT_PERCENT, Measurable.GTE, 99, "avg", (97, 100)),
-            (ops, "Safety incidents", "sam", Measurable.UNIT_NUMBER, Measurable.LTE, 0, "total", (0, 1)),
             (sales, "Farm visits", "ruby", Measurable.UNIT_NUMBER, Measurable.GTE, 12, "total", (8, 16)),
             (sales, "Quotes sent", "owen", Measurable.UNIT_NUMBER, Measurable.GTE, 20, "total", (14, 28)),
             (sales, "Quote win rate", "owen", Measurable.UNIT_PERCENT, Measurable.GTE, 35, "avg", (24, 46)),
             (lead, "Total pipeline", "mia", Measurable.UNIT_CURRENCY, Measurable.GTE, 11000000, "", (9200000, 11800000)),
         ]
-        for i, (team, title, owner, unit, cmp, goal, trail, (lo, hi)) in enumerate(sc):
+        plant_people = {"Kentucky": ("eli", "sam"), "Le Roy": ("sam", "ivy"), "Mabel": ("ivy", "eli")}
+        plant_sc = [
+            ("OEE", Measurable.UNIT_PERCENT, Measurable.GTE, 85, "avg", (74, 91)),
+            ("Tons produced", Measurable.UNIT_NUMBER, Measurable.GTE, 900, "total", (820, 980)),
+            ("Safety incidents", Measurable.UNIT_NUMBER, Measurable.LTE, 0, "total", (0, 1)),
+            ("Difference of Actual vs Expected Revenue", Measurable.UNIT_CURRENCY, Measurable.GTE, 0, "total", (-150000, 90000)),
+        ]
+        plants = {}
+        for i, name in enumerate(plant_people, start=1):
+            plants[name] = Plant.objects.filter(name=name).first() or Plant.objects.create(name=name, sort=i)
+        for title, unit, cmp, goal, trail, rng in plant_sc:
+            for name, (owner, _) in plant_people.items():
+                lo, hi = rng
+                shift = {"Kentucky": 0, "Le Roy": -0.04, "Mabel": 0.03}[name] * (hi - lo)
+                sc.append((ops, title, owner, unit, cmp, goal, trail, (lo + shift, hi + shift), plants[name]))
+        for i, row in enumerate(sc):
+            team, title, owner, unit, cmp, goal, trail, (lo, hi) = row[:8]
+            plant = row[8] if len(row) > 8 else None
             m = Measurable.objects.create(
-                team=team, title=title, owner=u[owner], unit=unit, goal_compare=cmp, goal=Decimal(goal), trailing=trail, sort=i,
+                team=team, plant=plant, title=title, owner=u[owner], unit=unit, goal_compare=cmp, goal=Decimal(goal), trailing=trail, sort=i,
                 source="Filled weekly by assistant from Attio" if title == "Total pipeline" else "",
             )
             base = random.uniform(lo, hi)

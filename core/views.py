@@ -19,7 +19,8 @@ from issues.models import Issue
 from meetings.models import Meeting
 from rocks.models import Rock
 from rocks.views import rock_summary, with_strips
-from scorecard.models import Measurable, ScoreEntry
+from scorecard.models import ScoreEntry
+from scorecard.plants import scorecard_for_team
 from scorecard.views import build_rows
 from todos.models import Todo, weekly_completion
 
@@ -78,7 +79,7 @@ def _render_dashboard(request, subject):
         else []
     )
     issues = Issue.objects.filter(owner=subject, status=Issue.OPEN).select_related("team", "owner")
-    measurables = subject.measurables.filter(active=True).select_related("team", "owner")
+    measurables = subject.measurables.filter(active=True).select_related("team", "owner", "plant")
     weeks = []
     if quarter:
         weeks = [w for w in quarter.weeks() if w <= monday_of(today)][-8:] or quarter.weeks()[:8]
@@ -166,7 +167,7 @@ def team_pulse(team, quarter, today):
     rocks = rocks.filter(is_company=True) if team.is_leadership else rocks.filter(team=team)
     rs = rock_summary(rocks)
     last_week = monday_of(today) - dt.timedelta(days=7)
-    measurables = list(Measurable.objects.filter(team=team, active=True))
+    measurables = list(scorecard_for_team(team)[0])
     entries = {e.measurable_id: e.value for e in ScoreEntry.objects.filter(measurable__in=measurables, week_start=last_week)}
     judged = [m.is_on_goal(entries.get(m.pk)) for m in measurables]
     judged = [j for j in judged if j is not None]

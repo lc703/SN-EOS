@@ -26,6 +26,7 @@ urlpatterns = [
     path("scorecard/<int:pk>/edit/", scorecard.measurable_edit, name="measurable_edit"),
     path("scorecard/<int:pk>/cell/<str:week>/", scorecard.cell, name="scorecard_cell"),
     path("scorecard/<int:pk>/panel/", scorecard.measurable_panel, name="measurable_panel"),
+    path("scorecard/<int:pk>/plant/", scorecard.measurable_plant, name="measurable_plant"),
     path("scorecard/sort/", scorecard.measurables_sort, name="measurables_sort"),
     # Rocks
     path("rocks/", rocks.rocks_list, name="rocks"),

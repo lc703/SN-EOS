@@ -86,4 +86,4 @@ def test_add_measurable(as_user, teams, member, quarter):
     )
     assert r.status_code == 302
     m = Measurable.objects.get(title="Downtime hrs")
-    assert m.team == teams["ky"] and m.goal == Decimal(4)
+    assert m.plant is None and m.team == teams["company"] and m.goal == Decimal(4)

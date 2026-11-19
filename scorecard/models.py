@@ -2,9 +2,44 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.db import models
+from django.utils.text import slugify
 
 from core.models import LegacyMixin
 from core.money import format_dollars
+
+
+COMPANY = "Company"
+
+
+class Plant(LegacyMixin):
+    """A site that runs its own numbers (Kentucky, Le Roy, Mabel). A measurable with no plant is a Company measurable."""
+
+    name = models.CharField(max_length=80, unique=True)
+    slug = models.SlugField(max_length=80, unique=True)
+    sort = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort", "name"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def find(cls, ref):
+        """A plant by name or slug, or None. "company" and blank are not plants."""
+        text = (ref or "").strip().lower()
+        if not text or text == "company":
+            return None
+        key = slugify(text)
+        for plant in cls.objects.all():
+            if plant.name.lower() == text or plant.slug == key:
+                return plant
+        return None
 
 
 class Measurable(LegacyMixin):
@@ -24,6 +59,10 @@ class Measurable(LegacyMixin):
     TRAIL_CHOICES = [(TRAIL_NONE, "None"), (TRAIL_AVG, "Average"), (TRAIL_TOTAL, "Total")]
 
     team = models.ForeignKey("core.Team", on_delete=models.CASCADE, related_name="measurables")
+    plant = models.ForeignKey(
+        Plant, null=True, blank=True, on_delete=models.SET_NULL, related_name="measurables",
+        help_text="Leave blank for a Company measurable (sales, marketing and other high-level numbers).",
+    )
     title = models.CharField(max_length=160)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="measurables"
@@ -48,6 +87,10 @@ class Measurable(LegacyMixin):
 
     def __str__(self):
         return self.title
+
+    @property
+    def plant_name(self):
+        return self.plant.name if self.plant_id else COMPANY
 
     @property
     def is_currency(self):

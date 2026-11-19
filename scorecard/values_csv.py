@@ -16,7 +16,7 @@ from django.db import transaction
 
 from core.models import Team, monday_of
 
-from .models import Measurable, ScoreEntry
+from .models import Measurable, Plant, ScoreEntry
 
 ALIASES = {
     "metric": {"metric", "metric_name", "measurable", "measurable_name", "name", "title"},
@@ -48,36 +48,33 @@ def _date(raw):
 
 
 class _Lookup:
-    """Finds a measurable by name and facility (a facility is a team). A blank facility is the company row."""
+    """Finds a measurable by name and plant. The facility column is the plant; blank or "Company" is Company."""
 
     def __init__(self):
-        self.teams = {}
-        for t in Team.objects.all():
-            for name in (t.name, t.short_code):
-                if name:
-                    self.teams[name.strip().lower()] = t
-        self.leadership = Team.objects.filter(is_leadership=True).first()
-        self.measurables = list(Measurable.objects.select_related("team").order_by("-active", "id"))
+        self.measurables = list(Measurable.objects.select_related("plant").order_by("-active", "id"))
 
     def find(self, metric, facility):
         """(measurable, problem). Exactly one of the two is None."""
         title = metric.strip().lower()
         named = [m for m in self.measurables if m.title.strip().lower() == title]
-        if facility:
-            team = self.teams.get(facility.strip().lower())
-            if team is None:
+        company = not facility or facility.strip().lower() == "company"
+        if company:
+            named = [m for m in named if m.plant_id is None] or named
+        else:
+            plant = Plant.find(facility)
+            if plant is None:
+                team = Team.objects.filter(short_code__iexact=facility.strip()).first()
+                plant = Plant.find(team.name) if team else None
+            if plant is None:
                 return None, f"unknown facility '{facility}'"
-            named = [m for m in named if m.team_id == team.pk]
-        elif len(named) > 1:
-            company = [m for m in named if self.leadership and m.team_id == self.leadership.pk]
-            named = company or named
+            named = [m for m in named if m.plant_id == plant.pk]
         if not named:
             where = f" for {facility}" if facility else ""
             return None, f"no measurable '{metric}'{where}"
         active = [m for m in named if m.active]
         named = active or named
         if len(named) > 1:
-            return None, f"'{metric}' is on several teams; add a facility"
+            return None, f"'{metric}' is on several measurables; add a facility"
         return named[0], None
 
 

@@ -1,7 +1,10 @@
+{% if row.group_first and mode != "home" %}{% with n=weeks|length|add:2 %}
+<tr class="sc-group"><td colspan="{% if show_trend and show_trailing %}{{ n|add:2 }}{% elif show_trend or show_trailing %}{{ n|add:1 }}{% else %}{{ n }}{% endif %}"><span class="sc-group-label">{{ row.group }}</span></td></tr>
+{% endwith %}{% endif %}
 <tr id="m-{{ row.measurable.pk }}" data-id="{{ row.measurable.pk }}" class="list-row"
     hx-vals='{"cols": "{{ cols }}", "mode": "{{ mode }}", "meeting": "{{ meeting_id|default:"" }}", "trailing": "{% if show_trailing %}1{% endif %}", "trend": "{% if show_trend %}1{% endif %}"}'>
   {% include "scorecard/_title_cell.html" %}
-  <td class="px-2 py-1 text-center whitespace-nowrap text-neutral-600 font-medium">{{ row.measurable.goal_display }}</td>
+  <td class="sc-goal px-2 py-1 text-center whitespace-nowrap text-neutral-600 font-medium">{% if row.measurable.goal is None %}<span class="sc-nogoal" title="No goal set, so these cells stay neutral. Set one with the edit pencil.">No goal</span>{% else %}{{ row.measurable.goal_display }}{% endif %}</td>
   {% if show_trend %}{% include "scorecard/_trend_cell.html" %}{% endif %}
   {% for c in row.cells %}{% include "scorecard/_cell.html" %}{% endfor %}
   {% if show_trailing %}{% include "scorecard/_trail_cell.html" %}{% endif %}

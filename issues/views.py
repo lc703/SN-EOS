@@ -181,10 +181,10 @@ def issue_move(request, pk):
 def _drop_details(kind, obj_id, user):
     """(team, title, description, source fields) for something dropped to the Issues list."""
     if kind == "measurable":
-        m = get_object_or_404(Measurable.objects.select_related("team"), pk=obj_id)
+        m = get_object_or_404(Measurable.objects.select_related("team", "plant"), pk=obj_id)
         last = ScoreEntry.objects.filter(measurable=m, value__isnull=False).order_by("-week_start").first()
         detail = f" ({m.format_value(last.value)} vs goal {m.goal_display}, week of {last.week_start:%b %-d})" if last else ""
-        return m.team, f"Scorecard: {m.title} off goal{detail}"[:240], "", {"source_measurable": m}, m.owner
+        return m.team, f"Scorecard: {m.title}{f' ({m.plant.name})' if m.plant_id else ''} off goal{detail}"[:240], "", {"source_measurable": m}, m.owner
     if kind == "rock":
         r = get_object_or_404(Rock.objects.select_related("team"), pk=obj_id)
         label = "off track" if r.status == Rock.OFF_TRACK else r.get_status_display().lower()

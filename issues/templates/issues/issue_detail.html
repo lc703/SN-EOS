@@ -14,7 +14,7 @@
     {% if issue.source %}
       <div class="card card-pad text-sm flex items-center gap-2">
         <span class="eyebrow">Came from</span>
-        {% if issue.source_measurable %}<a class="link" href="{% url 'scorecard' %}?team={{ issue.source_measurable.team.slug }}">Scorecard: {{ issue.source_measurable.title }}</a>
+        {% if issue.source_measurable %}<a class="link" href="{% url 'scorecard' %}">Scorecard: {{ issue.source_measurable.title }}</a>
         {% elif issue.source_rock %}<a class="link" href="{% url 'rock_detail' issue.source_rock.pk %}">Rock: {{ issue.source_rock.title }}</a>
         {% elif issue.source_headline %}<span>Headline: {{ issue.source_headline.text }}</span>{% endif %}
       </div>

@@ -23,8 +23,8 @@ from meetings.models import Headline, Meeting, MeetingRating
 from people.models import ConversationScore, OneOnOne, PeopleReview, SuccessStatement, ValueRating
 from planning.models import ANNUAL, Session, SessionItem
 from rocks.models import Milestone, Rock, RockUpdate
-from scorecard.models import Measurable, ScoreEntry
-from scorecard.units import SOURCE_NOTES, unit_from_text
+from scorecard.models import Measurable, Plant, ScoreEntry
+from scorecard.units import SOURCE_NOTES, unit_for
 from todos.models import Todo
 from vision.models import VTO, CoreValue, Seat
 
@@ -473,13 +473,32 @@ class BattlePlannerImporter:
             matches = local or matches
         return matches[0] if len(matches) == 1 else None
 
+    def _plant_for(self, facility_pk):
+        """The plant for a Battle Planner facility. Company (the leadership facility) and metrics with no
+        facility have no plant; every other facility is a plant, created on first use."""
+        team = self.teams.get(facility_pk)
+        if team is None or team.is_leadership:
+            return None
+        plant = Plant.find(team.name)
+        if plant is None:
+            plant = Plant.objects.create(name=team.name, sort=team.sort or Plant.objects.count() + 1)
+        return plant
+
     def import_measurables(self):
         lead = Team.objects.filter(is_leadership=True).first()
         self.measurables = {}
         unmatched, bad_goals, auto = set(), [], []
-        for pk, f in self.fields("core.scorecardmetric"):
+        metrics = self.fields("core.scorecardmetric")
+        facility_sort = {pk: f.get("sort", 0) for pk, f in self.fields("core.facility")}
+        order = {
+            pk: i for i, (pk, f) in enumerate(
+                sorted(metrics, key=lambda r: (facility_sort.get(r[1].get("facility"), 0), r[1].get("sort", 0), r[0]))
+            )
+        }
+        for pk, f in metrics:
             team = self.teams.get(f.get("facility")) or lead
-            unit = unit_from_text(f.get("unit"))
+            plant = self._plant_for(f.get("facility"))
+            unit = unit_for(f.get("unit"), f.get("name"), f.get("goal"))
             direction = (f.get("direction") or "").strip().lower()
             goal_compare = Measurable.EQ if unit == Measurable.UNIT_YESNO else DIRECTION_TO_COMPARE.get(direction, Measurable.GTE)
             goal = None
@@ -498,8 +517,8 @@ class BattlePlannerImporter:
             legacy = {k: f.get(k) for k in ("unit", "facility", "owner", "goal", "direction", "source") if k in f}
             obj, _ = self.upsert(
                 Measurable, pk,
-                {"team": team, "title": f["name"][:160], "unit": unit, "goal_compare": goal_compare, "goal": goal,
-                 "owner": owner, "sort": f.get("sort", 0), "active": f.get("active", True), "legacy": legacy},
+                {"team": team, "plant": plant, "title": f["name"][:160], "unit": unit, "goal_compare": goal_compare, "goal": goal,
+                 "owner": owner, "sort": order[pk], "active": f.get("active", True), "legacy": legacy},
                 label="Measurables",
             )
             note = SOURCE_NOTES.get(source)

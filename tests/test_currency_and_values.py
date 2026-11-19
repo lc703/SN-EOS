@@ -16,7 +16,7 @@ from core.importer import BattlePlannerImporter, parse_goal
 from core.models import Quarter, Team, monday_of
 from core.money import format_dollars
 from meetings.models import Meeting
-from scorecard.models import Measurable, ScoreEntry
+from scorecard.models import Measurable, Plant, ScoreEntry
 from scorecard.units import unit_from_text
 from scorecard.values_csv import load_values_csv
 from tests.test_api import bearer
@@ -139,6 +139,8 @@ def test_editing_a_dollar_cell_accepts_what_the_cell_shows(as_user, member, team
 def test_dashboard_and_l10_scorecard_segment_show_dollars(as_user, member, teams, cur_q, pipeline):
     ScoreEntry.objects.create(measurable=pipeline, week_start=[w for w in cur_q.weeks() if w <= timezone.localdate()][-1], value=Decimal("11000000.4"))
     assert "$11,000,000" in as_user(member, teams["ky"]).get("/").content.decode()
+    pipeline.plant = Plant.find("Kentucky")
+    pipeline.save()
     meeting = Meeting.objects.create(team=teams["ky"], quarter=cur_q, date=timezone.localdate())
     meeting.attendees.add(member)
     seg = as_user(member, teams["ky"]).get(f"/meetings/{meeting.pk}/?s=scorecard").content.decode()
@@ -308,9 +310,9 @@ def test_values_csv_needs_the_right_columns(csv_world):
 
 def test_values_csv_name_on_several_teams_needs_a_facility(csv_world):
     other = Team.objects.create(name="Le Roy", short_code="LR", sort=2)
-    Measurable.objects.create(team=other, title="OEE", unit="percent")
+    Measurable.objects.create(team=other, plant=Plant.find("Le Roy"), title="OEE", unit="percent")
     res = load_values_csv("metric,facility,week_start,value\nOEE,,2026-11-02,5\n")
-    assert res.counts["skipped"] == 1 and "several teams" in res.notes[0]
+    assert res.counts["skipped"] == 1 and "several measurables" in res.notes[0]
     assert load_values_csv("metric,facility,week_start,value\nOEE,Le Roy,2026-11-02,5\n").counts["created"] == 1
 
 
@@ -362,15 +364,18 @@ def test_set_value_by_name_upserts_a_week(admin, member, teams, cur_q, pipeline)
 
 
 def test_set_value_by_name_errors_are_clear(member, other, teams, cur_q, pipeline):
-    Measurable.objects.create(team=teams["lr"], title="Total Pipeline", owner=other, unit=Measurable.UNIT_CURRENCY)
+    pipeline.plant = Plant.find("Kentucky")
+    pipeline.save()
+    Measurable.objects.create(team=teams["lr"], plant=Plant.find("Le Roy"), title="Total Pipeline", owner=other, unit=Measurable.UNIT_CURRENCY)
     _, raw = ApiToken.issue(member, "assistant")
     r = _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "value": 1})
-    assert r.status_code == 400 and "kentucky" in r.json()["error"] and "le-roy" in r.json()["error"].replace("leroy", "le-roy")
-    r = _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "team": "kentucky", "value": 1})
-    assert r.status_code == 200
+    assert r.status_code == 400 and "kentucky" in r.json()["error"] and "le-roy" in r.json()["error"]
+    r = _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "plant": "kentucky", "value": 1})
+    assert r.status_code == 200 and r.json()["data"]["plant"] == "Kentucky"
+    assert _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "plant": "mars", "value": 1}).status_code == 400
     assert _post(raw, "/api/v1/measurables/values", {"measurable": "No such row", "value": 1}).status_code == 400
     assert _post(raw, "/api/v1/measurables/values", {"value": 1}).status_code == 400
-    assert _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "team": "kentucky", "value": "lots"}).status_code == 400
+    assert _post(raw, "/api/v1/measurables/values", {"measurable": "Total Pipeline", "plant": "kentucky", "value": "lots"}).status_code == 400
 
 
 def test_set_value_by_name_respects_ownership_and_read_only_tokens(member, ky_peer, admin, teams, cur_q, pipeline):

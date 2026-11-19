@@ -15,7 +15,8 @@ from core.models import monday_of
 from core.permissions import can_edit_owned, is_admin, is_team_member
 from core.utils import require, scope
 
-from .models import Measurable, ScoreEntry
+from .models import Measurable, Plant, ScoreEntry
+from .plants import assign_plant, layout, team_for_plant
 
 
 @dataclass
@@ -35,6 +36,13 @@ class Row:
     trailing_label: str = ""
     editable: bool = False
     latest_state: str = ""
+    group: str = ""
+    group_first: bool = False
+
+    @property
+    def plant_label(self):
+        """Shown on a plant sub-row in place of the measurable name: Kentucky, Le Roy, Mabel."""
+        return self.measurable.plant.name if self.measurable.plant_id else ""
 
     @property
     def is_red(self):
@@ -68,8 +76,12 @@ def trailing_for(m, values):
     return (average if m.is_currency else average.quantize(Decimal("0.01"))), "avg"
 
 
-def build_rows(measurables, weeks, user):
+def build_rows(measurables, weeks, user, grouped=False):
+    """One Row per measurable. `grouped` puts Company rows first, then plant rows under a header per name."""
     measurables = list(measurables)
+    groups = {}
+    if grouped:
+        measurables, groups = layout(measurables)
     entries = {
         (e.measurable_id, e.week_start): e.value
         for e in ScoreEntry.objects.filter(measurable__in=measurables, week_start__in=weeks)
@@ -78,6 +90,7 @@ def build_rows(measurables, weeks, user):
     rows = []
     for m in measurables:
         row = Row(measurable=m, editable=can_edit_owned(user, m))
+        row.group, row.group_first = groups.get(m.pk, ("", False))
         values = []
         for w in weeks:
             v = entries.get((m.pk, w))
@@ -103,12 +116,16 @@ def parse_cols(raw):
     return out
 
 
+def _can_add(user):
+    return is_admin(user) or (user.is_authenticated and user.teams.exists())
+
+
 def scorecard(request):
-    team, quarter = scope(request)
+    _, quarter = scope(request)
     weeks = quarter.weeks() if quarter else []
-    measurables = Measurable.objects.filter(team=team, active=True).select_related("owner", "team")
-    rows = build_rows(measurables, weeks, request.user)
-    can_add = is_admin(request.user) or is_team_member(request.user, team)
+    measurables = Measurable.objects.filter(active=True).select_related("owner", "team", "plant")
+    rows = build_rows(measurables, weeks, request.user, grouped=True)
+    can_add = _can_add(request.user)
     return render(
         request,
         "scorecard/scorecard.html",
@@ -120,15 +137,16 @@ def scorecard(request):
             "show_trend": True,
             "can_add": can_add,
             "sortable": can_add,
-            "form": MeasurableForm(team=team) if can_add else None,
+            "form": MeasurableForm() if can_add else None,
             "wide": True,
+            "hide_team_scope": True,
         },
     )
 
 
 @require_POST
 def cell(request, pk, week):
-    m = get_object_or_404(Measurable.objects.select_related("team", "owner"), pk=pk)
+    m = get_object_or_404(Measurable.objects.select_related("team", "owner", "plant"), pk=pk)
     require(can_edit_owned(request.user, m))
     week = monday_of(dt.date.fromisoformat(week))
     error = ""
@@ -158,7 +176,7 @@ def cell(request, pk, week):
             "meeting_id": request.POST.get("meeting", ""),
             "show_trailing": request.POST.get("trailing") == "1",
             "show_trend": request.POST.get("trend") == "1",
-            "sortable": is_admin(request.user) or is_team_member(request.user, m.team),
+            "sortable": _can_add(request.user),
             "error": error,
         },
     )
@@ -166,28 +184,37 @@ def cell(request, pk, week):
 
 class MeasurableForm(StyledForm, forms.ModelForm):
     owner = PersonField(queryset=None, required=False)
+    plant = forms.ModelChoiceField(
+        Plant.objects.all(), required=False, empty_label="Company",
+        help_text="Company for high-level numbers like sales or marketing. Pick a plant for its own numbers.",
+    )
 
     class Meta:
         model = Measurable
-        fields = ["title", "owner", "unit", "goal_compare", "goal", "trailing", "source", "sort"]
+        fields = ["title", "plant", "owner", "unit", "goal_compare", "goal", "trailing", "source", "sort"]
 
-    def __init__(self, *args, team=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        team = team or (self.instance.team if self.instance.team_id else None)
-        self.fields["owner"].queryset = people_choices(team, include=[self.instance.owner_id])
+        self.fields["owner"].queryset = people_choices(None, include=[self.instance.owner_id])
         self.fields["goal"].widget.attrs["step"] = "any"
         self.fields["source"].widget.attrs["placeholder"] = "Filled weekly by assistant from Attio"
 
+    def save(self, commit=True):
+        m = super().save(commit=False)
+        m.team = team_for_plant(m.plant, m.team if m.team_id else None)
+        if commit:
+            m.save()
+        return m
+
 
 def measurable_new(request):
-    team, _ = scope(request)
-    require(is_admin(request.user) or is_team_member(request.user, team))
-    form = MeasurableForm(request.POST or None, team=team)
+    require(_can_add(request.user))
+    form = MeasurableForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         m = form.save(commit=False)
-        m.team = team
+        require(m.team_id)
         if not m.sort:
-            m.sort = Measurable.objects.filter(team=team).count()
+            m.sort = Measurable.objects.filter(plant__isnull=True).count()
         m.save()
         messages.success(request, f"Added measurable “{m.title}”.")
         return redirect("scorecard")
@@ -211,9 +238,27 @@ def measurable_edit(request, pk):
     return render(request, "scorecard/measurable_form.html", {"form": form, "obj": m})
 
 
+@require_POST
+def measurable_plant(request, pk):
+    """Side-panel field: move a measurable to a plant, or back to Company (blank)."""
+    m = get_object_or_404(Measurable.objects.select_related("team", "plant"), pk=pk)
+    require(can_edit_owned(request.user, m))
+    ref = (request.POST.get("plant") or "").strip()
+    plant = None
+    if ref and ref.lower() != "company":
+        plant = Plant.objects.filter(pk=ref).first() if ref.isdigit() else Plant.find(ref)
+        if plant is None:
+            return HttpResponse("Unknown plant", status=400)
+    changed = assign_plant(m, plant)
+    response = HttpResponse(status=204)
+    if changed:
+        response["HX-Refresh"] = "true"
+    return response
+
+
 def measurable_panel(request, pk):
     """Side panel: trend line against the goal over the last 13 weeks."""
-    m = get_object_or_404(Measurable.objects.select_related("team", "owner"), pk=pk)
+    m = get_object_or_404(Measurable.objects.select_related("team", "owner", "plant"), pk=pk)
     this_monday = monday_of(timezone.localdate())
     weeks = [this_monday - dt.timedelta(weeks=i) for i in range(12, -1, -1)]
     row = build_rows([m], weeks, request.user)[0]
@@ -237,15 +282,19 @@ def measurable_panel(request, pk):
         "latest": next((c for c in reversed(row.cells) if c.value is not None), None),
         "average": m.format_value(avg if m.is_currency else avg.quantize(Decimal("1") if abs(avg) >= 1000 else Decimal("0.01"))) if values else "",
         "hit_pct": round(100 * hits[0] / hits[1]) if hits else None, "hits": hits,
-        "editable": can_edit_owned(request.user, m),
+        "editable": can_edit_owned(request.user, m), "plants": Plant.objects.all(),
     })
 
 
 @require_POST
 def measurables_sort(request):
-    team, _ = scope(request)
-    require(team is not None and (is_admin(request.user) or is_team_member(request.user, team)))
+    """Drag reorder of the Company rows. Plant rows follow their group's first position."""
+    require(_can_add(request.user))
     ids = [int(x) for x in request.POST.get("ids", "").split(",") if x.strip().isdigit()]
+    allowed = {m.pk for m in Measurable.objects.filter(pk__in=ids).select_related("team")
+               if is_admin(request.user) or is_team_member(request.user, m.team) or can_edit_owned(request.user, m)}
+    require(allowed or not ids)
     for i, pk in enumerate(ids):
-        Measurable.objects.filter(pk=pk, team=team).update(sort=i)
+        if pk in allowed:
+            Measurable.objects.filter(pk=pk).update(sort=i)
     return HttpResponse(status=204)

@@ -12,8 +12,8 @@ Everything is scoped by **team** (Company/Leadership, Kentucky, Le Roy, Mabel) a
 
 | Page | What it does |
 | --- | --- |
-| **My 90** (`/`) | Your rocks (donut + 13-week strips), to-do completion bars for the last 6 weeks against the EOS 90% target, your measurables with trend sparklines, your issues, and a pulse for the team in scope (scorecard on goal last week, rocks on track, team to-dos done, open issues). |
-| **Scorecard** | Weekly Measurables per team. Columns are the 13 weeks of the quarter. Type a value in any cell (Enter / arrow keys move like a spreadsheet); it saves on change and turns green (on goal) or red. Goal has an operator (`≥`, `≤`, `=`); units are number, %, currency or yes/no. Each row shows owner, goal, a trend sparkline with "x/y on goal", and an average or total column (yes/no shows "5/7"). Click a title for the 13-week trend chart with the goal line. Drag the handle to reorder. |
+| **My 90** (`/`) | Your rocks (donut + 13-week strips), to-do completion bars for the last 6 weeks against the EOS 90% target, your measurables with trend sparklines, your issues, and a pulse for the team in scope (company scorecard on goal last week, rocks on track, team to-dos done, open issues). |
+| **Scorecard** | One company Scorecard (no team or plant switcher). Every Measurable has a **plant**: Company (high-level numbers like sales or marketing, the default for new ones) or Kentucky, Le Roy or Mabel. Company rows come first, then plant rows grouped by measurable name with a sub-row per plant (OEE → Kentucky / Le Roy / Mabel), each with its own owner, goal, values and green/red, like Battle Planner. Change a plant from the side panel's Plant field. Columns are the 13 weeks of the quarter. Type a value in any cell (Enter / arrow keys move like a spreadsheet); it saves on change and turns green (on goal) or red. Goal has an operator (`≥`, `≤`, `=`); units are number, %, currency or yes/no. Each row shows owner, goal, a trend sparkline with "x/y on goal", and an average or total column (yes/no shows "5/7"). Click a title for the 13-week trend chart with the goal line. Drag the handle to reorder. |
 | **Rocks** | Company and departmental rocks with owner, due date, milestones and a **weekly G/Y/R update** (On track / At risk / Off track, with a note). Red requires a **recovery plan**; choosing "Off Track" opens the update panel. Each rock shows a 13-week status strip. Drag to reorder. Company rocks show on every team's page. |
 | **Issues** | Short-term and long-term lists per team. Click 1, 2 or 3 to rank the top three. **IDS** opens the solve panel: record the decision, add to-dos, then mark solved. |
 | **To-Dos** | Team and private to-dos. Due date defaults to 7 days out. Weekly completion % per person and per team. |
@@ -72,7 +72,7 @@ The command is idempotent: every imported row stores its old id in `legacy_id`, 
 
 Battle Planner filled five Company rows without storing entries: Prelim quotes sent and R&D formulas sent (iQuote), and Prelim Proposal, R&D Stage and Final Proposal Deal Value (Attio deal totals by stage). SN EOS does not rebuild those connectors. An assistant with the iQuote and Attio MCP servers posts the numbers each week through `set_measurable_value`, and the import marks those rows with a quiet source note, "Filled weekly by assistant from Attio" (or iQuote). Anyone who can edit a measurable can change the note.
 
-To load a backfill, give the importer a CSV with the columns `metric`, `facility`, `week_start`, `value` (leave `facility` blank for Company rows):
+To load a backfill, give the importer a CSV with the columns `metric`, `facility`, `week_start`, `value` (`facility` is the plant: Kentucky, Le Roy or Mabel; blank or `Company` for Company rows):
 
 ```
 python manage.py import_battle_planner --values-csv weekly-values.csv
@@ -81,19 +81,23 @@ python manage.py import_battle_planner battle-planner-export.json --values-csv w
 
 Each row is an upsert on (measurable, week): new weeks are created, a changed value replaces the old one, an identical one is left alone, so re-running is safe. A date in the middle of a week lands on that week's Monday, and a blank value never clears a week. Rows it can't match or read are skipped and listed.
 
+### Plants
+
+Plants (Kentucky, Le Roy, Mabel) are their own small list, separate from Teams, so rocks, to-dos, issues and L10s are untouched. A measurable with no plant is a Company measurable. The migration puts measurables that sit on the Kentucky, Le Roy or Mabel teams on the matching plant and everything else on Company, and numbers the sort order once. Moving a measurable to a plant also moves it to the team of the same name when there is one (so who can edit an unowned row, and where Drop to Issues sends it, stay sensible); moving it back to Company keeps its team unless that was a plant team. The L10 Scorecard segment shows the same single Scorecard, except a plant team's L10 (a team named like a plant) shows only that plant's rows. Add more plants in the Django admin. Dragging reorders Company rows; plant groups sit in the order of their first row.
+
 ### Dollar measurables
 
 A measurable with the Currency unit shows `$11,000,000` or `$48,213` everywhere: scorecard grid and cells, goals, the side panel, trend chart axis and tooltips, the dashboard, the L10 scorecard segment, and the API's `display` fields. Whole dollars, thousands separators, halves rounded up. Stored values and the API's raw `value` fields are never rounded. The importer reads `$`, `USD`, `$M`, `$k` and "dollars" as Currency.
 
 | Battle Planner | SN EOS |
 | --- | --- |
-| facility (+ its team members) | Team (Company becomes the leadership team) |
+| facility (+ its team members) | Team (Company becomes the leadership team). Non-Company facilities are also the **plants** that scorecard metrics are assigned to. |
 | user | User, matched by email; no passwords. Role `admin` stays admin. |
 | quarter | Quarter |
 | rock + milestone + rockstatus | Rock + milestones. Each weekly status becomes a **weekly rock update** (green / yellow / red with note and recovery plan, `complete` marks the rock Done). The rock's status follows the latest update. |
 | issue | Issue. resolved = solved, open = short-term, parked = long-term. The first three `high_priority` open issues per team get ranks 1-3. |
 | commitment | To-Do. hit = done, miss = not done with `Missed: <why not>` in the notes, open = open. Linked to its rock/issue. |
-| scorecardmetric (+ weekly values) | Measurable with owner, goal, goal direction and weekly values (`%` = percent, `count` = number, `yes/no` = yes/no). |
+| scorecardmetric (+ weekly values) | Measurable with owner, goal, goal direction and weekly values (`%` = percent, `count` = number, `yes/no` = yes/no). The metric's facility becomes its **plant** (Company and no facility = Company). A plain number is flagged as dollars when the goal has a `$` or the name is about money ("revenue", "cost", "pipeline"; ratios, rates and counts are not). |
 | value | Core value (the generic offsite evaluation statements are kept in `legacy`) |
 | strategyhouse purpose/vision + visiondoc | V/TO. Purpose → purpose, vision → 10-year target (when visiondoc has none), visiondoc → marketing strategy, 3-year picture and 1-year plan. Targets are added to the 1-year measurables. The major business challenge, each strategy box (strategy, tactics, due date, DRI as owner) and each parked idea become **long-term issues** on the leadership team. Lessons and the rudder note show in a "Strategy House notes" panel. |
 | seat | Accountability Chart seat (parents kept; people matched by user or by name). Status green → filled, yellow → future, red → open / hiring; agency flag kept. |
@@ -200,9 +204,9 @@ Same tools over JSON at `/api/v1/`, same bearer token. Responses are `{"data": .
 | Method | Path | Tool |
 | --- | --- | --- |
 | GET | `/api/v1/me`, `/teams`, `/my90` | whoami, list_teams, my_90. `my90` takes an optional `?person=` (email, name, or id) for someone else's 90. Private to-dos stay with the people who can already see them. 1:1s, Quarterly Conversations and People Analyzer are never returned. |
-| GET | `/api/v1/scorecard?team=company` | get_scorecard |
+| GET | `/api/v1/scorecard` (optional `?plant=company\|kentucky\|le-roy\|mabel`) | get_scorecard: the whole company Scorecard, Company first, then plants grouped by name; each measurable has `plant` |
 | POST | `/api/v1/measurables/<id>/values` `{"value": 12, "week": "2026-11-16"}` | set_measurable_value |
-| POST | `/api/v1/measurables/values` `{"measurable": "Prelim Proposal Deal Value", "value": 1250000, "week": "2026-11-16"}` | set_measurable_value by name (add `"team"` if the name is on several teams). Posting the same week again replaces it. |
+| POST | `/api/v1/measurables/values` `{"measurable": "Prelim Proposal Deal Value", "value": 1250000, "week": "2026-11-16"}` | set_measurable_value by name (add `"plant"` — `company`, `kentucky`, `le-roy` or `mabel` — if the name is on several plants, e.g. OEE). Posting the same week again replaces it. |
 | GET | `/api/v1/rocks`, `/rocks/<id>` | list_rocks, get_rock |
 | POST | `/api/v1/rocks/<id>/updates` `{"color": "red", "note": "...", "recovery_plan": "..."}` | update_rock_status |
 | POST | `/api/v1/rocks/<id>/done`, `/rocks/<id>/milestones` | set_rock_done, set_milestone |

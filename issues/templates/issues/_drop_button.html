@@ -3,8 +3,8 @@
   <input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ obj_id }}">
   {% if meeting_id %}<input type="hidden" name="meeting" value="{{ meeting_id }}">{% elif meeting %}<input type="hidden" name="meeting" value="{{ meeting.pk }}">{% endif %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  <button class="btn btn-sm whitespace-nowrap !h-7 !text-[11.5px] hover:!bg-bolt" title="Drop to Issues"
+  <button class="btn btn-sm whitespace-nowrap !h-7 !text-[11.5px] hover:!bg-bolt {% if compact %}!px-1.5{% endif %}" title="Drop to Issues"
           hx-post="{% url 'drop_to_issues' %}" hx-target="closest form" hx-swap="outerHTML" hx-select="unset">
-    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Drop to Issues
+    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12l7 7 7-7"/></svg>{% if compact %}<span class="sr-only">Drop to Issues</span>{% else %}Drop to Issues{% endif %}
   </button>
 </form>

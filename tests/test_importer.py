@@ -242,12 +242,12 @@ def test_scorecard_metrics_map_owner_goal_direction():
 
     importer, _ = _import_rows(SCORECARD_ROWS)
     oee = Measurable.objects.get(legacy_id=1)
-    assert oee.team.name == "Kentucky" and oee.unit == "percent" and oee.sort == 1
+    assert oee.team.name == "Kentucky" and oee.plant.name == "Kentucky" and oee.unit == "percent"
     assert oee.owner.name == "Jacob Miller" and oee.goal == Decimal("40") and oee.goal_compare == Measurable.GTE
     oos = Measurable.objects.get(legacy_id=9)
     assert oos.owner.name == "Joel Senecal-Moseley" and oos.goal == 10 and oos.goal_compare == Measurable.LTE
     pipe = Measurable.objects.get(legacy_id=17)
-    assert pipe.team.is_leadership and pipe.unit == "currency" and pipe.goal == Decimal("11000000")
+    assert pipe.team.is_leadership and pipe.plant is None and pipe.unit == "currency" and pipe.goal == Decimal("11000000")
     assert pipe.owner.name == "Ben Steuart"
     rev = Measurable.objects.get(legacy_id=21)
     assert rev.owner is None and rev.goal is None and rev.legacy["owner"] == "ZZ"
