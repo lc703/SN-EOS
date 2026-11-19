@@ -6,7 +6,7 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 DEV_LOGIN = True
-TAILWIND_CDN = True
+TAILWIND_CDN = False
 SECRET_KEY = "test"
 ALLOWED_HOSTS = ["*"]
 # Set TEST_DATABASE_URL to run the suite against Postgres; default is in-memory SQLite.

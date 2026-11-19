@@ -37,7 +37,7 @@ DEV_LOGIN = False
 # Temporary email+password sign-in for staging while Google sign-in is pending.
 # Off unless STAGING_PASSWORD_LOGIN=1. Never set it in production.
 STAGING_PASSWORD_LOGIN = env_bool("STAGING_PASSWORD_LOGIN", False)
-TAILWIND_CDN = True
+TAILWIND_CDN = env_bool("TAILWIND_CDN", False)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
