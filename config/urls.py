@@ -77,6 +77,8 @@ urlpatterns = [
     # Vision
     path("vto/", vision.vto, name="vto"),
     path("vto/edit/", vision.vto_edit, name="vto_edit"),
+    path("vto/goals/new/", vision.goal_edit, name="goal_new"),
+    path("vto/goals/<int:pk>/", vision.goal_edit, name="goal_edit"),
     path("chart/", vision.chart, name="chart"),
     path("chart/seats/new/", vision.seat_edit, name="seat_new"),
     path("chart/seats/<int:pk>/", vision.seat_edit, name="seat_edit"),

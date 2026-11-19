@@ -2,15 +2,16 @@
 {% load sn %}
 {% block title %}V/TO{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+<div id="vto" hx-get="{{ request.path }}" hx-select="#vto" hx-target="this" hx-swap="outerHTML" hx-trigger="vtoChanged from:body" hx-disinherit="*">
+<div class="page-head">
   <div>
     <div class="eyebrow">{{ COMPANY_NAME }}</div>
-    <h1 class="text-2xl">Vision / Traction Organizer</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">Updated {{ vto.updated_at|date:"M j, Y" }}{% if vto.updated_by %} by {{ vto.updated_by.display_name }}{% endif %}</p>
+    <h1 class="page-title">Vision / Traction Organizer</h1>
+    <p class="page-sub">Updated {{ vto.updated_at|date:"M j, Y" }}{% if vto.updated_by %} by {{ vto.updated_by.display_name }}{% endif %}. Where we're going, and how we get there this year and this quarter.</p>
   </div>
-  <div class="flex gap-2">
-    <button onclick="window.print()" class="btn">Print</button>
-    {% if is_admin %}<a href="{% url 'vto_edit' %}" class="btn btn-primary">Edit V/TO</a>{% endif %}
+  <div class="flex gap-2 print:hidden">
+    <button onclick="window.print()" class="btn">{% icon "print" %}Print</button>
+    {% if is_admin %}<a href="{% url 'vto_edit' %}" class="btn btn-primary">{% icon "edit" %}Edit V/TO</a>{% endif %}
   </div>
 </div>
 
@@ -73,14 +74,48 @@
       </div>
       <div class="text-[12px] font-semibold text-neutral-500">Measurables</div>
       <ul class="list-disc pl-5 text-sm mb-3">{% for x in vto.one_year_measurables|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ul>
-      <div class="text-[12px] font-semibold text-neutral-500">Goals for the year</div>
-      <ol class="list-decimal pl-5 text-sm space-y-0.5">{% for x in vto.one_year_goals|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ol>
+      {% if not goals %}
+        <div class="text-[12px] font-semibold text-neutral-500">Goals for the year</div>
+        <ol class="list-decimal pl-5 text-sm space-y-0.5">{% for x in vto.one_year_goals|lines %}<li>{{ x }}</li>{% empty %}<li class="list-none -ml-5">—</li>{% endfor %}</ol>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div><h3 class="section-title">Goals for the year</h3><p class="text-xs text-neutral-500">Each goal has a strategy, tactics and the rocks that move it.</p></div>
+        {% if is_admin %}<button type="button" class="btn btn-sm print:hidden" hx-get="{% url 'goal_new' %}" hx-target="#panel-content">{% icon "plus" "h-3.5 w-3.5" %}Goal</button>{% endif %}
+      </div>
+      <ol class="divide-y divide-black/5">
+        {% for g in goals %}
+          <li class="px-4 sm:px-5 py-3.5">
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold {% if g.done %}bg-black text-bolt{% else %}bg-neutral-100 text-neutral-600{% endif %}">{% if g.done %}{% icon "check" "h-3 w-3" "3" %}{% else %}{{ forloop.counter }}{% endif %}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {% if is_admin %}<button type="button" class="font-semibold text-left hover:underline decoration-bolt decoration-2" hx-get="{% url 'goal_edit' g.pk %}" hx-target="#panel-content">{{ g.title }}</button>{% else %}<span class="font-semibold">{{ g.title }}</span>{% endif %}
+                  {% if g.owner %}<span class="text-xs text-neutral-500">· {{ g.owner.display_name }}</span>{% endif %}
+                  {% if g.due_date %}<span class="text-xs text-neutral-500">· {{ g.due_date|date:"M j" }}</span>{% endif %}
+                </div>
+                {% if g.strategy %}<p class="mt-1 text-[13px] text-neutral-700">{{ g.strategy }}</p>{% endif %}
+                {% if g.tactic_list %}<ul class="mt-1.5 flex flex-wrap gap-1.5">{% for t in g.tactic_list %}<li class="pill pill-muted !h-auto !py-0.5 !whitespace-normal">{{ t }}</li>{% endfor %}</ul>{% endif %}
+                {% with rs=g.rocks.all %}{% if rs %}
+                  <div class="mt-2 space-y-1">
+                    {% for r in rs %}{% if r.quarter_id == quarter.pk %}<a href="{% url 'rock_detail' r.pk %}" class="flex items-center gap-2 text-[12.5px] hover:underline"><span class="h-2 w-2 rounded-full dot-{{ r.rag }} shrink-0"></span><span class="truncate">{{ r.title }}</span></a>{% endif %}{% endfor %}
+                  </div>
+                {% endif %}{% endwith %}
+              </div>
+            </div>
+          </li>
+        {% empty %}
+          <li>{% empty "No 1-year goals yet" "Set 3–7 goals for the year at the Annual Planning session." "target" compact=True %}</li>
+        {% endfor %}
+      </ol>
     </section>
 
     <section class="card card-pad">
       <div class="flex items-baseline justify-between mb-2"><div class="eyebrow">Rocks · {{ quarter.name }}</div><a href="{% url 'rocks' %}{% if leadership %}?team={{ leadership.slug }}{% endif %}" class="text-xs link">All rocks →</a></div>
       <ul class="divide-y divide-black/5">
-        {% for r in rocks %}<li class="py-1.5 flex items-center gap-2 text-sm">{% avatar r.owner %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 hover:underline">{{ r.title }}</a>{% status_pill r %}</li>
+        {% for r in rocks %}<li class="py-1.5 flex items-center gap-2 text-sm">{% avatar r.owner "sm" %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 hover:underline">{{ r.title }}</a><span class="pill pill-dot rag-{{ r.rag }}">{{ r.rag|rag_label }}</span></li>
         {% empty %}<li class="text-sm text-neutral-500 py-1">No company rocks this quarter.</li>{% endfor %}
       </ul>
     </section>
@@ -92,19 +127,16 @@
       </ol>
     </section>
 
-    {% if vto.legacy.strategy_house %}
-      <details class="card card-pad print:hidden">
-        <summary class="cursor-pointer font-semibold text-sm">From the Battle Planner Strategy House</summary>
-        <div class="mt-3 space-y-3 text-sm">
-          {% with sh=vto.legacy.strategy_house %}
-            {% if sh.major_business_challenge %}<div><div class="eyebrow">Major business challenge</div><p>{{ sh.major_business_challenge }}</p></div>{% endif %}
-            {% if sh.targets %}<div><div class="eyebrow">Targets</div><ul class="list-disc pl-5">{% for t in sh.targets %}<li><strong>{{ t.value }}</strong> {{ t.label }}{% if t.sub %} <span class="text-neutral-500">({{ t.sub }})</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
-            {% if sh.lessons %}<div><div class="eyebrow">Lessons</div><ul class="space-y-1.5">{% for l in sh.lessons %}<li><strong>{{ l.title }}</strong> <span class="text-neutral-600">{{ l.body }}</span></li>{% endfor %}</ul></div>{% endif %}
-            {% if sh.rudder_note %}<p class="text-neutral-600 italic">{{ sh.rudder_note }}</p>{% endif %}
-          {% endwith %}
-        </div>
-      </details>
-    {% endif %}
+    {% with sh=vto.legacy.strategy_house %}{% if sh %}
+      <section class="card card-pad">
+        <div class="eyebrow mb-2">Strategy (from the Battle Planner Strategy House)</div>
+        {% if sh.major_business_challenge %}<div class="rounded-xl bg-black text-white px-4 py-3 mb-3"><div class="text-[11px] font-semibold uppercase tracking-wide text-bolt">Major business challenge</div><p class="mt-0.5 font-semibold">{{ sh.major_business_challenge }}</p></div>{% endif %}
+        {% if sh.targets %}<div class="grid grid-cols-2 gap-2 mb-3">{% for t in sh.targets %}<div class="rounded-lg bg-neutral-50 px-3 py-2"><div class="font-display font-extrabold text-lg leading-tight">{{ t.value }}</div><div class="text-[12px] text-neutral-600">{{ t.label }}{% if t.sub %} <span class="text-neutral-400">· {{ t.sub }}</span>{% endif %}</div></div>{% endfor %}</div>{% endif %}
+        {% if sh.lessons %}<div class="text-[12px] font-semibold text-neutral-500 mb-1">Lessons</div><ul class="space-y-1.5 text-sm">{% for l in sh.lessons %}<li><strong>{{ l.title }}</strong> <span class="text-neutral-600">{{ l.body }}</span></li>{% endfor %}</ul>{% endif %}
+        {% if sh.rudder_note %}<p class="mt-2 text-sm text-neutral-600 italic">{{ sh.rudder_note }}</p>{% endif %}
+      </section>
+    {% endif %}{% endwith %}
   </div>
+</div>
 </div>
 {% endblock %}

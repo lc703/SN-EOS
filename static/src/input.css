@@ -154,6 +154,7 @@
   .panel-backdrop { @apply fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]; }
   .panel { @apply fixed inset-y-0 right-0 z-50 w-full sm:w-[30rem] bg-white shadow-panel flex flex-col; }
   .panel-head { @apply flex items-start gap-3 px-5 py-4 border-b border-black/[.07]; }
+  .panel-head > div:first-child { @apply flex-1 min-w-0; }
   .panel-body { @apply flex-1 overflow-y-auto px-5 py-4; }
   .panel-foot { @apply px-5 py-3 border-t border-black/[.07] flex items-center gap-2 bg-neutral-50/70; }
   .modal { @apply fixed left-1/2 top-[12vh] z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 card shadow-lift; }

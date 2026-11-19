@@ -10,11 +10,11 @@ from django.views.decorators.http import require_POST
 from core.forms import PersonField, StyledForm
 from core.models import Team, User
 from core.permissions import can_view_private_people_notes, is_admin
-from core.utils import is_htmx, require, scope
+from core.utils import hx_trigger, is_htmx, require, scope
 from issues.models import Issue
 from rocks.models import Rock
 
-from .models import VTO, CoreValue, Seat
+from .models import VTO, CoreValue, Goal, Seat
 
 
 class VTOForm(StyledForm, forms.ModelForm):
@@ -37,10 +37,45 @@ class CoreValueForm(StyledForm, forms.ModelForm):
 CoreValueFormSet = modelformset_factory(CoreValue, form=CoreValueForm, extra=1, can_delete=True)
 
 
+class GoalForm(StyledForm, forms.ModelForm):
+    owner = PersonField(queryset=User.objects.filter(is_active=True).order_by("name"), required=False)
+
+    class Meta:
+        model = Goal
+        fields = ["title", "owner", "due_date", "strategy", "tactics", "done"]
+        widgets = {
+            "strategy": forms.Textarea(attrs={"rows": 2}),
+            "tactics": forms.Textarea(attrs={"rows": 4}),
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+def goal_edit(request, pk=None):
+    require(is_admin(request.user))
+    goal = get_object_or_404(Goal, pk=pk) if pk else None
+    form = GoalForm(request.POST or None, instance=goal)
+    if request.method == "POST":
+        if "delete" in request.POST and goal:
+            goal.delete()
+            return hx_trigger(HttpResponse(status=204), toast="Goal removed.", closePanel=True, vtoChanged=True)
+        if form.is_valid():
+            created = goal is None
+            obj = form.save(commit=False)
+            if created:
+                obj.sort = Goal.objects.count()
+            obj.save()
+            if created or not request.POST.get("autosave"):
+                return hx_trigger(HttpResponse(status=204), toast="Goal saved.", closePanel=True, vtoChanged=True)
+            return hx_trigger(HttpResponse(status=204), vtoChanged=True)
+        if request.POST.get("autosave"):
+            return hx_trigger(HttpResponse(status=422), toast="A goal needs a title.", kind="error")
+    return render(request, "vision/_goal_panel.html", {"form": form, "goal": goal})
+
+
 def vto(request):
     _, quarter = scope(request)
     leadership = Team.objects.filter(is_leadership=True).first()
-    rocks = Rock.objects.filter(quarter=quarter, is_company=True).select_related("owner") if quarter else []
+    rocks = Rock.objects.filter(quarter=quarter, is_company=True).select_related("owner").prefetch_related("updates") if quarter else []
     issues = (
         Issue.objects.filter(team=leadership, status=Issue.OPEN, horizon=Issue.LONG).select_related("owner")
         if leadership
@@ -51,6 +86,7 @@ def vto(request):
         "vision/vto.html",
         {
             "vto": VTO.load(),
+            "goals": Goal.objects.select_related("owner").prefetch_related("rocks__updates"),
             "values": CoreValue.objects.filter(active=True),
             "rocks": rocks,
             "long_issues": issues,

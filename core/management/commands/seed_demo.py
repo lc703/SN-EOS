@@ -177,6 +177,11 @@ class Command(BaseCommand):
         v.one_year_revenue = "$26M"
         v.one_year_profit = "7% net"
         v.one_year_measurables = "24,000 tons\n70 active dealers\n97% on-time delivery"
+        v.legacy = {"strategy_house": {
+            "major_business_challenge": "Grow volume without adding a fourth mill before 2028.",
+            "targets": [{"value": "$26M", "label": "Revenue"}, {"value": "22%", "label": "Gross margin"},
+                        {"value": "95%", "label": "Mill uptime", "sub": "all three mills"}, {"value": "70", "label": "Active dealers"}],
+        }}
         v.save()
         for i, (title, owner, strategy, tactics) in enumerate(GOALS):
             Goal.objects.get_or_create(title=title, defaults={"owner": self.u[owner], "strategy": strategy, "tactics": tactics, "sort": i, "due_date": d(f"{self.today.year}-12-31")})
