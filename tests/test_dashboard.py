@@ -54,7 +54,8 @@ def test_person_dashboard_shows_their_90_and_hides_private_people_data(member, o
     assert ">Trend<" in body
     assert "Label printer jams" in body
     assert "Plant Lead" in body
-    assert f'/meetings/{world["meeting"].pk}/' in body
+    assert "Upcoming meetings" not in body
+    assert f'/meetings/{world["meeting"].pk}/' not in body
     assert SECRET not in body and GWC not in body
     # Someone who can't edit Kim's work gets a read-only to-do, rock and scorecard.
     assert f'/todos/{world["public"].pk}/toggle/' not in body
@@ -67,6 +68,9 @@ def test_owner_and_admin_keep_their_edit_rights(member, admin, teams, quarter, a
     world = _world(member, teams, quarter)
     own = as_user(member).get("/").content.decode()
     assert "Hi Kim, here’s your 90." in own
+    assert "Upcoming meetings" not in own
+    # The Rejoin button stays; only the card is gone.
+    assert f'/meetings/{world["meeting"].pk}/' in own
     assert "Kim secret task" in own
     assert f'/todos/{world["public"].pk}/toggle/' in own
     assert f'/rocks/{world["rock"].pk}/status/' in own

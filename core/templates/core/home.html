@@ -51,34 +51,19 @@
   {% endif %}
 </div>
 
-<div class="grid md:grid-cols-2 gap-4 mb-6">
-  <section class="card card-pad">
-    <div class="stat-label mb-2">{% if viewing_other %}{{ subject.first }}'s seats{% else %}My seats{% endif %}</div>
-    {% if seats %}
-      <ul class="space-y-2">
-        {% for s in seats %}
-          <li class="text-sm">
-            <span class="font-semibold">{{ s.title }}</span>
-            <span class="text-neutral-500">{% if s.team %} · {{ s.team.name }}{% endif %}{% if s.parent %} · reports to {{ s.parent.title }}{% endif %}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}<p class="text-sm text-neutral-500">No seat on the Accountability Chart.</p>{% endif %}
-  </section>
-  <section class="card card-pad">
-    <div class="stat-label mb-2">Upcoming meetings</div>
-    {% if open_meetings %}
-      <ul class="space-y-2">
-        {% for m in open_meetings %}
-          <li class="flex items-center justify-between gap-2 text-sm">
-            <a href="{% url 'meeting' m.pk %}" class="font-semibold hover:underline">{{ m.team.name }} L10</a>
-            <span class="text-neutral-500">{{ m.date|date:"D, M j" }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}<p class="text-sm text-neutral-500">Nothing on the calendar.</p>{% endif %}
-  </section>
-</div>
+<section class="card card-pad mb-6">
+  <div class="stat-label mb-2">{% if viewing_other %}{{ subject.first }}'s seats{% else %}My seats{% endif %}</div>
+  {% if seats %}
+    <ul class="space-y-2">
+      {% for s in seats %}
+        <li class="text-sm">
+          <span class="font-semibold">{{ s.title }}</span>
+          <span class="text-neutral-500">{% if s.team %} · {{ s.team.name }}{% endif %}{% if s.parent %} · reports to {{ s.parent.title }}{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="text-sm text-neutral-500">No seat on the Accountability Chart.</p>{% endif %}
+</section>
 
 <div class="grid lg:grid-cols-2 gap-6 items-start">
   <section>
