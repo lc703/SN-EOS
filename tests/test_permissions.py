@@ -110,9 +110,13 @@ def _password_user(email="pw@steuartnutrition.com"):
     return user
 
 
-def test_password_login_off_by_default():
+@override_settings(STAGING_PASSWORD_LOGIN=False)
+def test_password_login_off_by_default(monkeypatch):
     from django.conf import settings
 
+    # The staging box exports STAGING_PASSWORD_LOGIN=1. The test has to force it off
+    # instead of asserting whatever the process environment loaded.
+    monkeypatch.setenv("STAGING_PASSWORD_LOGIN", "0")
     assert settings.STAGING_PASSWORD_LOGIN is False
     _password_user()
     c = Client()

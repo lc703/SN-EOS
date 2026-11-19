@@ -2,9 +2,15 @@
 
 Idempotent: every imported row remembers its old pk in `legacy_id`, so re-running updates
 nothing (default) or refreshes fields from the file (`refresh=True`). Rows are never duplicated.
+
+`--sync` (which implies refresh) also removes imported rows whose legacy id is no longer in
+the file, so the database mirrors the export. Rows created in SN EOS (no legacy id) stay,
+unless they hang off a parent the sync deleted. Users missing from the export are deactivated,
+never deleted, and passwords and social accounts are left alone.
 """
 
 import datetime as dt
+import re
 from collections import Counter, OrderedDict, defaultdict
 
 from django.db import transaction
@@ -13,7 +19,7 @@ from django.utils.dateparse import parse_date, parse_datetime
 
 from core.models import LegacyRecord, Quarter, Team, User
 from issues.models import Issue
-from meetings.models import Meeting, MeetingRating
+from meetings.models import Headline, Meeting, MeetingRating
 from people.models import ConversationScore, OneOnOne, PeopleReview, SuccessStatement, ValueRating
 from planning.models import ANNUAL, Session, SessionItem
 from rocks.models import Milestone, Rock, RockUpdate
@@ -107,10 +113,14 @@ def _split_title(text, limit=240):
 
 
 class BattlePlannerImporter:
-    def __init__(self, rows, refresh=False, log=None):
+    def __init__(self, rows, refresh=False, sync=False, log=None):
         self.rows = rows
-        self.refresh = refresh
+        self.sync = sync
+        self.refresh = refresh or sync
         self.log = log or (lambda msg: None)
+        self.session_keys = set()
+        self.removed = Counter()
+        self.deactivated = 0
         self.by = defaultdict(list)
         for row in rows:
             self.by[row["model"]].append(row)
@@ -166,6 +176,8 @@ class BattlePlannerImporter:
         self.import_ratings()
         self.import_offsites()
         self.archive_rest()
+        if self.sync:
+            self.remove_missing()
         return self.stats
 
     def import_teams(self):
@@ -203,6 +215,8 @@ class BattlePlannerImporter:
             }
             legacy = {k: f.get(k) for k in ("asana_email", "date_joined", "last_login") if f.get(k)}
             if user is None:
+                # New accounts get an unusable password. Existing ones keep whatever
+                # password and social login they already have; this never touches those.
                 user = User(email=email, username=email, legacy_id=pk, legacy=legacy, **data)
                 user.set_unusable_password()
                 user.save()
@@ -607,9 +621,71 @@ class BattlePlannerImporter:
             )
             self.statements[pk] = obj
 
-    def _manager_of(self, person):
-        seat = Seat.objects.filter(person=person, parent__person__isnull=False).select_related("parent__person").first()
-        return seat.parent.person if seat else None
+    def _load_seats(self):
+        if hasattr(self, "_seat_by_id"):
+            return
+        seats = list(Seat.objects.select_related("person"))
+        self._seat_by_id = {s.pk: s for s in seats}
+        self._seats_for = defaultdict(list)
+        for seat in seats:
+            if seat.person_id:
+                self._seats_for[seat.person_id].append(seat)
+
+    def _chart_manager(self, person):
+        """Nearest ancestor seat held by someone else.
+
+        A person can sit in several seats (a Plant Manager seat under their own Director
+        seat). Walk every chain, skip seats they hold and vacant seats, and take the
+        closest remaining holder. Never returns the person themselves.
+        """
+        self._load_seats()
+        best = None
+        for start in self._seats_for.get(person.pk, []):
+            seen = {start.pk}
+            current = self._seat_by_id.get(start.parent_id)
+            dist = 1
+            while current is not None and current.pk not in seen:
+                seen.add(current.pk)
+                holder = current.person
+                if holder is not None and holder.pk != person.pk:
+                    if best is None or (dist, current.pk) < (best[0], best[1]):
+                        best = (dist, current.pk, holder)
+                    break
+                current = self._seat_by_id.get(current.parent_id)
+                dist += 1
+        return best[2] if best else None
+
+    def _executive_fallback(self, person):
+        """Holder of the Visionary/CEO seat, else the Integrator, when the chart has no one else."""
+        self._load_seats()
+        ranked = []
+        for seat in self._seat_by_id.values():
+            if not seat.person_id or seat.person_id == person.pk:
+                continue
+            title = seat.title.lower()
+            if "visionary" in title or re.search(r"\bceo\b", title):
+                rank = 0
+            elif "integrator" in title and "warehouse" not in title:
+                rank = 1
+            else:
+                continue
+            ranked.append((rank, 0 if seat.parent_id is None else 1, seat.pk, seat.person))
+        return min(ranked)[3] if ranked else None
+
+    def _recorded_manager(self, person, fields):
+        """A manager the old 1:1 actually names: creator, completer, or an explicit manager field.
+
+        The person themselves never counts.
+        """
+        for key in ("manager", "reviewer", "facilitator", "created_by", "completed_by"):
+            other = self.users.get(fields.get(key))
+            if other is not None and other.pk != person.pk:
+                return other
+        return None
+
+    def _manager_for(self, person, fields):
+        """Who ran this 1:1. Never the person themselves."""
+        return self._recorded_manager(person, fields) or self._chart_manager(person) or self._executive_fallback(person)
 
     def import_one_on_ones(self):
         for pk, f in self.fields("core.oneonone"):
@@ -617,7 +693,7 @@ class BattlePlannerImporter:
             if not person:
                 continue
             scores = f.get("scores") or {}
-            manager = self.users.get(f.get("created_by")) or self._manager_of(person)
+            manager = self._manager_for(person, f)
             date = _date(f.get("date")) or timezone.localdate()
             completed = _dt(f.get("completed_at"))
             obj, created = self.upsert(
@@ -629,6 +705,14 @@ class BattlePlannerImporter:
                  "legacy": {"scores": scores, "completed_at": f.get("completed_at")}},
                 label="1:1s",
             )
+            # A blank or self manager is an import bug, not an edit made in the app, so fix it
+            # even when leaving real edits alone. A manager someone chose stays until --refresh.
+            if (
+                not created and not self.refresh and manager is not None
+                and obj.manager_id in (None, person.pk) and obj.manager_id != manager.pk
+            ):
+                obj.manager = manager
+                obj.save(update_fields=["manager"])
             if created or self.refresh or not obj.scores.exists():
                 self._scores_from_one_on_one(obj, scores)
             self._review_from_one_on_one(obj, scores, created)
@@ -659,6 +743,10 @@ class BattlePlannerImporter:
             return
         review = PeopleReview.objects.filter(person=one.person, date=one.date, notes__startswith=f"From 1:1 #{one.legacy_id}").first()
         if review and not (created or self.refresh):
+            # Same rule as the 1:1: fill a missing reviewer, never replace one that was set.
+            if one.manager_id and review.reviewer_id in (None, review.person_id) and review.reviewer_id != one.manager_id:
+                review.reviewer = one.manager
+                review.save(update_fields=["reviewer"])
             self._count("People Analyzer reviews (from 1:1 core values)", "unchanged")
             return
         if review is None:
@@ -667,6 +755,9 @@ class BattlePlannerImporter:
             )
             self._count("People Analyzer reviews (from 1:1 core values)", "created")
         else:
+            if review.reviewer_id != one.manager_id:
+                review.reviewer = one.manager
+                review.save(update_fields=["reviewer"])
             self._count("People Analyzer reviews (from 1:1 core values)", "updated")
         for value_pk, rating in cv.items():
             ValueRating.objects.update_or_create(review=review, value=self.values[value_pk], defaults={"rating": rating})
@@ -746,6 +837,7 @@ class BattlePlannerImporter:
             if author:
                 people[session.pk].add(author)
             key = f"{model}:{pk}"
+            self.session_keys.add(key)
             fields = {"session": session, "section": section, "kind": kind, "text": text, "color": color if color in RAG_COLORS else "",
                       "author": author, "sort": sort, "created_at": _dt(f.get("created_at")) or session.started_at,
                       "legacy": {"model": model}}
@@ -806,3 +898,128 @@ class BattlePlannerImporter:
 
     def skipped_models(self):
         return [m for m in self.by if m not in HANDLED]
+
+    # -- sync: drop imported rows the export no longer has ----------------------------
+    # (model, battle planner model). Children before parents so the summary counts each
+    # row once; cascading children of a deleted parent are still reported by delete().
+    _SYNC_MODELS = (
+        (MeetingRating, "core.meetingevaluation"),
+        (RockUpdate, "core.rockstatus"),
+        (Milestone, "core.milestone"),
+        (Todo, "core.commitment"),
+        (OneOnOne, "core.oneonone"),
+        (SuccessStatement, "core.successstatement"),
+        (Measurable, "core.scorecardmetric"),
+        (Rock, "core.rock"),
+        (Headline, "core.headline"),
+        (Meeting, "core.meeting"),
+        (Session, "core.offsite"),
+        (Issue, "core.issue"),
+        (CoreValue, "core.value"),
+        (Quarter, "core.quarter"),
+        (Team, "core.facility"),
+    )
+
+    def _kept_ids(self, bp_model):
+        return {pk for pk, _ in self.fields(bp_model)}
+
+    def _drop(self, qs):
+        if not qs.exists():
+            return
+        _, details = qs.delete()
+        for label, n in details.items():
+            self.removed[label] += n
+
+    def _drop_missing(self, model, kept_ids):
+        qs = model.objects.exclude(legacy_id=None)
+        if kept_ids:
+            qs = qs.exclude(legacy_id__in=kept_ids)
+        self._drop(qs)
+
+    def _strategy_sources(self):
+        sources = set()
+        houses = self.fields("core.strategyhouse")
+        if not houses:
+            return sources
+        house_pk, house = houses[-1]
+        if (house.get("major_business_challenge") or "").strip():
+            sources.add(f"strategyhouse:{house_pk}:challenge")
+        for pk, _f in self.fields("core.box"):
+            sources.add(f"core.box:{pk}")
+        for i, item in enumerate(house.get("parked") or []):
+            text = item if isinstance(item, str) else (item or {}).get("text", "")
+            if str(text).strip():
+                sources.add(f"strategyhouse:{house_pk}:parked:{i}")
+        return sources
+
+    def _drop_seats(self):
+        """Imported seats missing from the export, plus native seats that hang off them.
+
+        Seat.parent is SET_NULL, so a native seat under a deleted seat would otherwise
+        be left with no parent. It only existed under that seat, so it goes too.
+        Imported seats the export still has were re-parented above and stay.
+        """
+        kept = self._kept_ids("core.seat")
+        stale_qs = Seat.objects.exclude(legacy_id=None)
+        if kept:
+            stale_qs = stale_qs.exclude(legacy_id__in=kept)
+        stale = set(stale_qs.values_list("pk", flat=True))
+        extra, frontier = set(), set(stale)
+        while frontier:
+            kids = set(Seat.objects.filter(parent_id__in=frontier, legacy_id=None).values_list("pk", flat=True))
+            kids -= stale | extra
+            extra |= kids
+            frontier = kids
+        if stale or extra:
+            self._drop(Seat.objects.filter(pk__in=stale | extra))
+
+    def _drop_orphan_reviews(self):
+        """People Analyzer rows generated from a 1:1 that the export no longer has."""
+        kept = self._kept_ids("core.oneonone")
+        pat = re.compile(r"^From 1:1 #(\d+)\b")
+        drop = []
+        for pk, notes in PeopleReview.objects.filter(notes__startswith="From 1:1 #").values_list("pk", "notes"):
+            match = pat.match(notes or "")
+            if match and int(match.group(1)) not in kept:
+                drop.append(pk)
+        if drop:
+            self._drop(PeopleReview.objects.filter(pk__in=drop))
+
+    def remove_missing(self):
+        """Delete imported rows the export no longer contains. Never deletes users or auth."""
+        for model, bp_model in self._SYNC_MODELS:
+            self._drop_missing(model, self._kept_ids(bp_model))
+        sources = self._strategy_sources()
+        sourced = Issue.objects.filter(legacy__has_key="source")
+        if sources:
+            sourced = sourced.exclude(legacy__source__in=sources)
+        self._drop(sourced)
+        items = SessionItem.objects.exclude(legacy_key=None)
+        if self.session_keys:
+            items = items.exclude(legacy_key__in=self.session_keys)
+        self._drop(items)
+        self._drop_seats()
+        self._drop_orphan_reviews()
+        for model, rows in self.by.items():
+            self._drop(LegacyRecord.objects.filter(model=model).exclude(legacy_id__in=[r["pk"] for r in rows]))
+        self._drop(LegacyRecord.objects.exclude(model__in=list(self.by)))
+        # Missing people are deactivated, not deleted, so passwords and social logins survive
+        # and nothing that points at them breaks. Accounts created in SN EOS have no legacy id.
+        self.deactivated = User.objects.exclude(legacy_id=None).exclude(
+            legacy_id__in=self._kept_ids("core.user")
+        ).filter(is_active=True).update(is_active=False)
+
+    def removed_lines(self):
+        from django.apps import apps
+
+        lines = []
+        for label, n in self.removed.items():
+            if not n:
+                continue
+            try:
+                app_label, model_name = label.split(".")
+                name = str(apps.get_model(app_label, model_name)._meta.verbose_name_plural)
+            except (ValueError, LookupError):
+                name = label
+            lines.append((name, n))
+        return lines

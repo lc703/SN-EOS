@@ -66,6 +66,8 @@ The file is the Battle Planner's `/export.json` (a Django `dumpdata`). **It cont
 
 The command is idempotent: every imported row stores its old id in `legacy_id`, so running it again creates nothing new. By default it leaves rows already in SN EOS alone, so edits made in the app survive a re-run. `--refresh` overwrites imported rows with the values from the file.
 
+`--sync` implies `--refresh` and then deletes imported rows (ones with a `legacy_id`) that are no longer in the file, so a database can be made to mirror the export exactly. Rows created in SN EOS, which have no `legacy_id`, are kept, unless they hang off a parent the sync deleted. Users who are missing from the export are deactivated rather than deleted, and passwords and Google logins are never touched. The command prints what it removed.
+
 | Battle Planner | SN EOS |
 | --- | --- |
 | facility (+ its team members) | Team (Company becomes the leadership team) |

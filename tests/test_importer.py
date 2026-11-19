@@ -3,6 +3,7 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
+from django.db import models
 from django.core.management import CommandError, call_command
 
 from core.models import LegacyRecord, Quarter, Team, User
@@ -273,6 +274,192 @@ def test_scorecard_values_land_in_quarter_grid_with_colors(admin):
     rev = Measurable.objects.get(legacy_id=21)
     assert list(rev.entries.values_list("value", flat=True)) == [Decimal("215316.78"), Decimal("-116000")]
     assert oee.entries.first().updated_by.email == "ben@steuartnutrition.com"
+
+
+def _seat(pk, title, person, parent, status="green"):
+    return {"model": "core.seat", "pk": pk, "fields": {
+        "facility": 1, "parent": parent, "title": title, "person_name": "", "person": person,
+        "status": status, "responsibilities": "", "agency": False, "sort": pk,
+    }}
+
+
+def _person(pk, email, name, role="member"):
+    return {"model": "core.user", "pk": pk, "fields": {
+        "email": email, "name": name, "role": role, "facility": 1, "is_active": True,
+    }}
+
+
+def _one(pk, user, created_by=None, completed_by=None):
+    return {"model": "core.oneonone", "pk": pk, "fields": {
+        "user": user, "date": "2026-10-01", "highlight": "", "created_by": created_by, "completed_by": completed_by,
+        "completed_at": "2026-10-01T16:00:00Z", "scores": {"cv1": {"rag": "green", "note": ""}},
+    }}
+
+
+# Matt and Jacob each hold a Plant Manager seat under their own Director seat. Joel reports to a
+# vacant Quality Director. Yanira reports to a vacant seat. Rachel has no seat. Luke has two chains.
+CHART_ROWS = [
+    {"model": "core.facility", "pk": 1, "fields": {"name": "Company", "short_code": "CO", "sort": 0}},
+    {"model": "core.value", "pk": 1, "fields": {"name": "Own It", "sort": 0, "active": True}},
+    _person(1, "ben@steuartnutrition.com", "Ben Steuart", "admin"),
+    _person(2, "matt@steuartnutrition.com", "Matt Anderson"),
+    _person(3, "jm@steuartnutrition.com", "Jacob Miller"),
+    _person(4, "rachel@steuartnutrition.com", "Rachel", "admin"),
+    _person(5, "joel@steuartnutrition.com", "Joel Senecal-Moseley"),
+    _person(6, "yanira@pending.invalid", "Yanira"),
+    _person(7, "leo@steuartnutrition.com", "Leo Hart"),
+    _person(8, "luke@steuartnutrition.com", "Luke Mulholland"),
+    _seat(1, "Visionary / CEO", 1, None),
+    _seat(2, "Integrator", 1, 1, "yellow"),
+    _seat(3, "Powder Operations Director", 3, 2),
+    _seat(4, "Plant Manager", 3, 3),
+    _seat(5, "Liquid Operations Director", 2, 2),
+    _seat(6, "Plant Manager", 2, 5),
+    _seat(7, "Quality Director", None, 2, "yellow"),
+    _seat(8, "QSM KY", 5, 7),
+    _seat(10, "Container Line Operator", None, 4, "red"),
+    _seat(11, "Senior Production Worker", 6, 10),
+    _seat(12, "Le Roy Quality Site Manager", 8, 6),
+    _seat(13, "Liquid Quality Site Manager", 8, 7),
+    _one(1, 2),                  # Matt, no creator: walk past his own director seat
+    _one(2, 2, created_by=2),    # creator is himself, so the chart still decides
+    _one(3, 2, created_by=3),    # the old record names Jacob; that wins over the chart
+    _one(4, 3),                  # Jacob, stacked the same way
+    _one(5, 4),                  # Rachel has no seat: Visionary / CEO
+    _one(6, 5, completed_by=7),  # Joel: completed_by before the vacant-parent walk
+    _one(7, 6),                  # Yanira: walk past the vacant seat to Jacob
+    _one(8, 8),                  # Luke: nearest holder is Matt, not Ben two seats up
+    _one(9, 1),                  # Ben: no one above him, and he is not his own manager
+]
+
+
+def _manager_name(legacy_id):
+    one = OneOnOne.objects.get(legacy_id=legacy_id)
+    assert one.manager_id != one.person_id
+    review = PeopleReview.objects.get(notes=f"From 1:1 #{legacy_id} (Battle Planner)")
+    assert review.person_id == one.person_id and review.reviewer_id == one.manager_id
+    return None if one.manager_id is None else one.manager.name
+
+
+def test_one_on_one_manager_walks_past_own_and_vacant_seats():
+    _import_rows(CHART_ROWS)
+    assert _manager_name(1) == "Ben Steuart"
+    assert _manager_name(2) == "Ben Steuart"
+    assert OneOnOne.objects.get(legacy_id=2).created_by.name == "Matt Anderson"
+    assert _manager_name(3) == "Jacob Miller"
+    assert _manager_name(4) == "Ben Steuart"
+    assert _manager_name(5) == "Ben Steuart"
+    assert _manager_name(6) == "Leo Hart"
+    assert _manager_name(7) == "Jacob Miller"
+    assert _manager_name(8) == "Matt Anderson"
+    assert _manager_name(9) is None
+    assert not OneOnOne.objects.filter(manager_id=models.F("person_id")).exists()
+    assert not PeopleReview.objects.filter(reviewer_id=models.F("person_id")).exists()
+
+
+def test_reimport_fixes_a_self_or_blank_manager_but_keeps_a_chosen_one():
+    _import_rows(CHART_ROWS)
+    matt = OneOnOne.objects.get(legacy_id=1)
+    matt.manager = matt.person
+    matt.save()
+    PeopleReview.objects.filter(notes="From 1:1 #1 (Battle Planner)").update(reviewer=None)
+    jacob = OneOnOne.objects.get(legacy_id=4)
+    leo = User.objects.get(email="leo@steuartnutrition.com")
+    jacob.manager = leo
+    jacob.save()
+    PeopleReview.objects.filter(notes="From 1:1 #4 (Battle Planner)").update(reviewer=leo)
+
+    _import_rows(CHART_ROWS)
+    assert _manager_name(1) == "Ben Steuart"
+    jacob.refresh_from_db()
+    assert jacob.manager == leo
+    assert PeopleReview.objects.get(notes="From 1:1 #4 (Battle Planner)").reviewer == leo
+
+    _import_rows(CHART_ROWS, refresh=True)
+    assert _manager_name(4) == "Ben Steuart"
+
+
+def test_sync_removes_nothing_when_the_export_already_matches():
+    run_import()
+    first = counts()
+    output = run_import("--sync")
+    assert counts() == first
+    assert "Nothing." in output
+
+
+def test_sync_drops_stale_imports_keeps_native_rows_and_deactivates_users():
+    from allauth.socialaccount.models import SocialAccount
+
+    run_import()
+    ky = Team.objects.get(name="Kentucky")
+    plant = Seat.objects.get(title="Plant Manager")
+    rock = Rock.objects.get(title="Close new revenue")
+    rock.title = "Edited in the app"
+    rock.save()
+    alex = User.objects.get(email="alex@steuartnutrition.com")
+    alex.set_password("alex-secret")
+    alex.save()
+    alex_password = alex.password
+    SocialAccount.objects.create(user=alex, provider="google", uid="alex-google")
+    fran = User.objects.get(email="fran@pending.invalid")
+
+    stale_seat = Seat.objects.create(team=ky, title="Removed seat", legacy_id=999, parent=plant)
+    Seat.objects.create(team=ky, title="Native under removed", parent=stale_seat)
+    Seat.objects.create(team=ky, title="Native seat")
+    Seat.objects.create(team=ky, title="Native under kept", parent=plant)
+    gone_rock = Rock.objects.create(quarter=rock.quarter, team=ky, title="Removed in BP", legacy_id=4242)
+    Milestone.objects.create(rock=gone_rock, title="Hangs off removed rock")
+    Milestone.objects.create(rock=rock, title="Typed in SN EOS")
+    Issue.objects.create(team=ky, title="Typed issue")
+    Issue.objects.create(team=ky, title="Old box", horizon=Issue.LONG, legacy={"source": "core.box:999"})
+    Todo.objects.create(team=ky, owner=alex, title="Typed to-do")
+    Todo.objects.create(team=ky, owner=alex, title="Old commitment", legacy_id=8888)
+    Team.objects.create(name="Pilot team")
+    OneOnOne.objects.create(person=fran, legacy_id=777, date="2026-10-02")
+    PeopleReview.objects.create(person=fran, notes="From 1:1 #777 (Battle Planner)")
+    PeopleReview.objects.create(person=fran, reviewer=alex, notes="Written in SN EOS")
+    left = User.objects.create_user(email="left@steuartnutrition.com", name="Left Person")
+    left.legacy_id = 4242
+    left.set_password("stay-secret")
+    left.save()
+    left_password = left.password
+    SocialAccount.objects.create(user=left, provider="google", uid="left-google", extra_data={"kept": True})
+
+    output = run_import("--sync")
+
+    rock.refresh_from_db()
+    assert rock.title == "Close new revenue"  # --sync implies --refresh
+    assert not Seat.objects.filter(title__in=["Removed seat", "Native under removed"]).exists()
+    assert Seat.objects.filter(title="Native seat").exists()
+    assert Seat.objects.get(title="Native under kept").parent == plant
+    assert Seat.objects.filter(title="Plant Manager").exists()
+    assert not Rock.objects.filter(legacy_id=4242).exists()
+    assert not Milestone.objects.filter(title="Hangs off removed rock").exists()
+    assert Milestone.objects.filter(title="Typed in SN EOS").exists()
+    assert Issue.objects.filter(title="Typed issue").exists()
+    assert not Issue.objects.filter(title="Old box").exists()
+    assert Issue.objects.filter(title="Win deals").exists()
+    assert Todo.objects.filter(title="Typed to-do").exists()
+    assert not Todo.objects.filter(legacy_id=8888).exists()
+    assert Team.objects.filter(name="Pilot team").exists()
+    assert not OneOnOne.objects.filter(legacy_id=777).exists()
+    assert not PeopleReview.objects.filter(notes__startswith="From 1:1 #777").exists()
+    assert PeopleReview.objects.filter(notes="Written in SN EOS").exists()
+    assert OneOnOne.objects.get(legacy_id=1).manager.name == "Drew Plant"
+    left.refresh_from_db()
+    assert not left.is_active and left.password == left_password
+    assert SocialAccount.objects.filter(user=left, uid="left-google").exists()
+    alex.refresh_from_db()
+    assert alex.is_active and alex.password == alex_password and alex.has_usable_password()
+    assert SocialAccount.objects.filter(user=alex, uid="alex-google").exists()
+    assert "Removed (no longer in the export):" in output
+    assert "Users deactivated" in output
+    assert "Nothing." not in output
+
+    again = run_import("--sync")
+    assert "Nothing." in again
+    left.refresh_from_db()
+    assert not left.is_active and left.password == left_password
 
 
 def test_scorecard_reimport_is_idempotent_and_refresh_updates():
