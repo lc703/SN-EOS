@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">Integrations</div>
+    <h1 class="text-2xl">Audit log</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Every change made through the REST API or MCP, plus token changes. {% if show_all %}Showing everyone.{% else %}Showing your activity.{% endif %}</p>
+  </div>
+  <div class="seg">
+    <a href="?{% if not show_all %}mine=1{% endif %}" class="{% if not source %}on{% endif %}">All sources</a>
+    {% for k, label in sources %}<a href="?source={{ k }}{% if not show_all %}&mine=1{% endif %}" class="{% if source == k %}on{% endif %}">{{ label }}</a>{% endfor %}
+  </div>
+</div>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>When</th><th>Who</th><th>Via</th><th>Action</th><th>What</th></tr></thead>
+    <tbody>
+      {% for e in page %}
+        <tr>
+          <td class="whitespace-nowrap text-neutral-600" title="{{ e.created_at }}">{{ e.created_at|date:"M j, g:i a" }}</td>
+          <td class="whitespace-nowrap">{{ e.user.display_name|default:"—" }}</td>
+          <td class="whitespace-nowrap"><span class="badge {% if e.source == 'mcp' %}badge-ink{% elif e.source == 'api' %}badge-outline{% endif %}">{{ e.get_source_display }}</span>{% if e.token %} <span class="text-xs text-neutral-500">{{ e.token.name }}</span>{% endif %}</td>
+          <td class="font-mono text-[12px] whitespace-nowrap">{{ e.action }}</td>
+          <td>{{ e.summary }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include "_empty.html" with title="No activity yet" text="Changes made by AI assistants and scripts show up here, attributed to the person whose token they used." icon="M4 6h16M4 12h16M4 18h10" %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.has_other_pages %}
+  <div class="flex items-center justify-between mt-3 text-sm">
+    {% if page.has_previous %}<a class="btn btn-sm" href="?page={{ page.previous_page_number }}{% if source %}&source={{ source }}{% endif %}">← Newer</a>{% else %}<span></span>{% endif %}
+    <span class="text-neutral-500">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-sm" href="?page={{ page.next_page_number }}{% if source %}&source={{ source }}{% endif %}">Older →</a>{% else %}<span></span>{% endif %}
+  </div>
+{% endif %}
+{% endblock %}

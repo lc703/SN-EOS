@@ -1,0 +1,18 @@
+{% extends "account/_auth_base.html" %}
+{% load sn %}
+{% block title %}Dev login{% endblock %}
+{% block auth %}
+<h1 class="text-xl text-center">Dev quick login</h1>
+<p class="mt-1 text-center text-xs text-neutral-500">Pick a user. Disabled in production.</p>
+<div class="mt-4 space-y-1.5 max-h-[55vh] overflow-y-auto">
+  {% for u in users %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ next }}">
+      <button class="w-full flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 text-left hover:border-black hover:bg-bolt/20">
+        {% avatar u %}<span class="flex-1 text-sm font-semibold">{{ u.display_name }}</span>
+        {% if u.is_admin %}<span class="pill pill-bolt">Admin</span>{% endif %}
+      </button>
+    </form>
+  {% empty %}<p class="text-sm text-neutral-500 text-center">No users. Run the importer first.</p>{% endfor %}
+</div>
+{% endblock %}

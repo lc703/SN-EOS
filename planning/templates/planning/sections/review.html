@@ -1,0 +1,17 @@
+{% load sn %}
+{% if session.quarter %}
+<div class="grid sm:grid-cols-4 gap-3 mb-4">
+  <div class="card stat"><div class="stat-label">Rocks done</div><div class="stat-value">{{ summary.done }}<span class="text-neutral-400 text-lg">/{{ summary.total }}</span></div>{% if done_pct is not None %}<div class="text-xs font-semibold {{ done_pct|pct_class }}">{{ done_pct }}% · EOS aims for 80%+</div>{% endif %}</div>
+  <div class="card stat"><div class="stat-label">Scorecard on goal</div><div class="stat-value">{% if on_goal_pct is not None %}{{ on_goal_pct }}%{% else %}—{% endif %}</div><div class="text-xs text-neutral-500">{{ measurables }} measurable{{ measurables|pluralize }} over the quarter</div></div>
+  <div class="card stat"><div class="stat-label">Issues solved</div><div class="stat-value">{{ solved }}</div><div class="text-xs text-neutral-500">since {{ session.quarter.start_date|date:"M j" }}</div></div>
+  <div class="card stat"><div class="stat-label">Off track</div><div class="stat-value {% if summary.off_track %}text-[#b42318]{% endif %}">{{ summary.off_track }}</div></div>
+</div>
+<section class="card mb-4 overflow-hidden">
+  <div class="px-4 py-2.5 border-b border-black/[.06]"><h3 class="section-title">{{ session.quarter.name }} rocks</h3></div>
+  <ul class="divide-y divide-black/[.05]">
+    {% for r in rocks %}
+      <li class="px-4 py-2 flex items-center gap-3 text-sm">{% avatar r.owner "sm" %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 min-w-0 truncate hover:underline">{{ r.title }}</a><span class="text-xs text-neutral-500">{{ r.kind_label }}</span>{% status_pill r %}</li>
+    {% empty %}<li class="px-4 py-3 text-sm text-neutral-400">No rocks last quarter.</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}

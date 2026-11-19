@@ -1,0 +1,11 @@
+<section class="card card-pad mb-4">
+  <div class="flex items-center justify-between mb-3"><h3 class="section-title">Read it aloud</h3><a href="{% url 'vto' %}" class="btn btn-sm">Open the V/TO</a></div>
+  <dl class="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+    <div><dt class="eyebrow">Core values</dt><dd>{% for v in values %}{{ v.name }}{% if not forloop.last %} · {% endif %}{% empty %}—{% endfor %}</dd></div>
+    <div><dt class="eyebrow">Core focus</dt><dd>{{ vto.purpose|default:"—" }}{% if vto.niche %} · <span class="text-neutral-600">{{ vto.niche }}</span>{% endif %}</dd></div>
+    <div><dt class="eyebrow">10-year target</dt><dd>{{ vto.ten_year_target|default:"—" }}</dd></div>
+    <div><dt class="eyebrow">Target market</dt><dd>{{ vto.target_market|default:"—"|linebreaksbr }}</dd></div>
+    <div><dt class="eyebrow">3-year picture{% if vto.three_year_date %} · {{ vto.three_year_date }}{% endif %}</dt><dd>{% if vto.three_year_revenue %}Revenue {{ vto.three_year_revenue }}. {% endif %}{% if vto.three_year_profit %}Profit {{ vto.three_year_profit }}.{% endif %}<div class="text-neutral-600">{{ vto.three_year_picture|linebreaksbr }}</div></dd></div>
+    <div><dt class="eyebrow">1-year plan{% if vto.one_year_date %} · {{ vto.one_year_date }}{% endif %}</dt><dd>{% if vto.one_year_revenue %}Revenue {{ vto.one_year_revenue }}. {% endif %}{% if vto.one_year_profit %}Profit {{ vto.one_year_profit }}.{% endif %}<div class="text-neutral-600">{{ vto.one_year_goals|linebreaksbr }}</div></dd></div>
+  </dl>
+</section>

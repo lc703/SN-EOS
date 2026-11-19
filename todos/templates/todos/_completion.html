@@ -1,0 +1,25 @@
+{% load sn %}
+<div class="card overflow-x-auto">
+  <table class="w-full text-[13px]">
+    <thead><tr class="text-neutral-500 text-[11.5px]">
+      <th class="text-left font-semibold px-4 py-2">Done by due week</th>
+      {% for w, pct, done, total in weekly %}<th class="px-2 py-2 font-medium text-center whitespace-nowrap">{{ w|date:"M j" }}</th>{% endfor %}
+      <th class="px-3 py-2 font-medium text-center">Open</th>
+    </tr></thead>
+    <tbody class="divide-y divide-black/5">
+      <tr class="bg-neutral-50/70 font-semibold">
+        <td class="px-4 py-2">{{ team.name }} team</td>
+        {% for w, pct, done, total in weekly %}<td class="px-2 py-2 text-center {{ pct|pct_class }}" title="{{ done }} of {{ total }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</td>{% endfor %}
+        <td></td>
+      </tr>
+      {% for p in people %}
+        <tr>
+          <td class="px-4 py-2"><div class="flex items-center gap-2">{% avatar p.user %}<span class="truncate">{{ p.user.display_name }}</span></div></td>
+          {% for w, pct, done, total in p.weeks %}<td class="px-2 py-2 text-center {{ pct|pct_class }}" title="{{ done }} of {{ total }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</td>{% endfor %}
+          <td class="px-3 py-2 text-center text-neutral-600">{{ p.open }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-2 text-xs text-neutral-500">Percent of to-dos due that week that are done. EOS goal: 90%+.</p>

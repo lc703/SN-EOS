@@ -1,0 +1,7 @@
+<span class="seat-flags">
+  {% if flags.gwc %}
+    <span class="gwc" title="GWC: Gets it {{ flags.gwc.g|yesno:'yes,no,—' }} · Wants it {{ flags.gwc.w|yesno:'yes,no,—' }} · Capacity {{ flags.gwc.c|yesno:'yes,no,—' }}"><i class="{{ flags.gwc.g|yesno:'y,n,u' }}">G</i><i class="{{ flags.gwc.w|yesno:'y,n,u' }}">W</i><i class="{{ flags.gwc.c|yesno:'y,n,u' }}">C</i></span>
+  {% endif %}
+  {% if flags.pa %}<span class="pa pa-{{ flags.pa }}" title="People Analyzer: {% if flags.pa == 'ok' %}all core values +{% elif flags.pa == 'watch' %}some core values +/-{% else %}a core value below the bar (-){% endif %}"></span>{% endif %}
+  {% if flags.struggling %}<span class="flag-struggling" title="Latest conversation{% if flags.qc_date %} ({{ flags.qc_date|date:'M j' }}){% endif %}: {{ flags.reds }} red{{ flags.reds|pluralize }}{% if flags.gwc and False in flags.gwc.values %}, GWC no{% endif %}">!</span>{% endif %}
+</span>

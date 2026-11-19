@@ -1,0 +1,1 @@
+{% with st=seat.display_status %}<span class="badge {% if st == 'filled' %}badge-green{% elif st == 'future' %}badge-outline{% else %}badge-hiring{% endif %}">{% if st == 'filled' %}Filled{% elif st == 'future' %}Future{% else %}Open · hiring{% endif %}</span>{% if seat.agency %} <span class="badge badge-outline">Agency</span>{% endif %}{% endwith %}

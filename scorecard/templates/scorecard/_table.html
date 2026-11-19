@@ -1,0 +1,30 @@
+{% load sn %}
+<div class="card overflow-x-auto">
+  <table class="sc-table {% if mode == 'scorecard' %}sc-table-lg{% endif %} w-full text-[13.5px]">
+    <thead>
+      <tr class="text-left text-neutral-500">
+        <th class="sc-sticky sc-title px-3 py-2 font-semibold text-[12px]">Measurable</th>
+        <th class="sc-goal px-2 py-2 font-semibold text-[12px] text-center whitespace-nowrap">Goal</th>
+        {% if show_trend %}<th class="sc-trend px-2 py-2 font-semibold text-[12px] text-center">Trend</th>{% endif %}
+        {% for w in weeks %}
+          <th class="px-1 py-2 text-center font-medium text-[11.5px] whitespace-nowrap">{{ w|date:"M j" }}</th>
+        {% endfor %}
+        {% if show_trailing %}<th class="px-2 py-2 text-center font-semibold text-[12px] whitespace-nowrap">Avg / Total</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody {% if sortable and mode == "scorecard" %}data-sortable="{% url 'measurables_sort' %}"{% endif %}>
+      {% for row in rows %}{% if not row.plant_label or mode == "home" %}
+        {% include "scorecard/_row.html" %}
+      {% endif %}{% empty %}
+        <tr><td colspan="20">{% include "_empty.html" with title="No measurables yet" text="Pick five to fifteen weekly numbers that tell you, at a glance, whether the business is on track. One owner and one goal each." icon="M4 19V5m4 14V9m4 10v-6m4 6V7m4 12v-9" %}</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if mode != "home" %}
+    <tbody class="sc-plants">
+      {% for row in rows %}{% if row.plant_label %}
+        {% include "scorecard/_row.html" %}
+      {% endif %}{% endfor %}
+    </tbody>
+    {% endif %}
+  </table>
+</div>

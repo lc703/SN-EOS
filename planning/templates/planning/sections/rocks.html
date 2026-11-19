@@ -1,0 +1,22 @@
+{% load sn %}
+{% if next_quarter %}
+<div class="grid md:grid-cols-2 gap-4 mb-2">
+  <section class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">Company rocks · {{ next_quarter.name }}</h3><span class="text-xs text-neutral-400">{{ company_rocks|length }} of 3–7</span></div>
+    <ul class="divide-y divide-black/[.05]">{% for r in company_rocks %}<li class="px-4 py-2 flex items-center gap-3 text-sm">{% avatar r.owner "sm" %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 hover:underline">{{ r.title }}</a></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">None yet. Set company rocks first.</li>{% endfor %}</ul>
+  </section>
+  <section class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">{{ session.team.name }} rocks · {{ next_quarter.name }}</h3><span class="text-xs text-neutral-400">{{ team_rocks|length }}</span></div>
+    <ul class="divide-y divide-black/[.05]">{% for r in team_rocks %}<li class="px-4 py-2 flex items-center gap-3 text-sm">{% avatar r.owner "sm" %}<a href="{% url 'rock_detail' r.pk %}" class="flex-1 hover:underline">{{ r.title }}</a></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">None yet.</li>{% endfor %}</ul>
+  </section>
+</div>
+{% if can_run %}
+  <form method="post" action="{% url 'session_rock' session.pk %}" class="card card-pad flex flex-wrap gap-2 items-center">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input name="title" required placeholder="New rock: specific, measurable, done by {{ next_quarter.end_date|date:'M j' }}" class="flex-1 min-w-[16rem] rounded-lg border bg-white px-3 h-9 text-sm">
+    <select name="owner" class="rounded-lg border bg-white px-2 h-9 text-sm" aria-label="Owner">{% for p in people %}<option value="{{ p.pk }}" {% if p.pk == request.user.pk %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}</select>
+    {% if session.team.is_leadership %}<label class="text-sm flex items-center gap-1.5"><input type="checkbox" name="company" value="1" checked> Company rock</label>{% endif %}
+    <button class="btn btn-primary btn-sm h-9">Add rock</button>
+  </form>
+{% endif %}
+{% else %}<p class="text-sm text-neutral-500">No next quarter set up yet.</p>{% endif %}

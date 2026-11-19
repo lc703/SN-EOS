@@ -1,0 +1,4 @@
+<p class="text-sm text-neutral-600 mb-3">Report the numbers: on or off. Anything red goes to the Issues list; don't solve it here.
+  {% if off_count %}<span class="pill st-off_track ml-1">{{ off_count }} off goal</span>{% endif %}</p>
+{% include "scorecard/_table.html" %}
+<p class="mt-2 text-xs text-neutral-500">Last {{ weeks|length }} weeks{% if plant %}, {{ plant.name }} only{% endif %}. <a class="link" href="{% url 'scorecard' %}" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">Full scorecard</a></p>

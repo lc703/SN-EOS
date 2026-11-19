@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}{{ session.get_kind_display }} · {{ session.team.name }}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-4">
+  <div class="flex-1 min-w-0">
+    <a href="{% url 'planning' %}?team={{ session.team.slug }}" class="eyebrow hover:text-black">← {{ session.team.label }} · Planning</a>
+    <h1 class="text-2xl leading-tight">{{ session.get_kind_display }} <span class="text-neutral-400 font-medium">{{ session.date|date:"M j, Y" }}</span></h1>
+    <div class="text-sm text-neutral-500 flex flex-wrap items-center gap-x-2">
+      <span>Facilitator: <strong class="text-neutral-800">{{ session.facilitator.display_name|default:"—" }}</strong></span>
+      {% if can_run and session.facilitator_id != request.user.pk and not session.is_concluded %}
+        <form method="post" action="{% url 'session_update' session.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="facilitate" value="1"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="link text-xs">Take over</button></form>
+      {% endif %}
+      <span>· {{ session.quarter.name|default:"" }}{% if session.next_quarter %} → planning {{ session.next_quarter.name }}{% endif %}</span>
+      {% if session.is_concluded %}<span class="badge badge-green">Concluded</span>{% endif %}
+    </div>
+  </div>
+  <a href="{% url 'session_recap' session.pk %}" class="btn">Recap</a>
+</div>
+
+<div class="grid lg:grid-cols-[17rem_1fr] gap-5 items-start">
+  <nav class="rail card p-1.5 lg:sticky lg:top-[4.5rem] flex lg:flex-col gap-0.5 overflow-x-auto" aria-label="Agenda">
+    {% for key, title, prompt in agenda %}
+      <a href="?s={{ key }}" class="{% if key == section %}on{% endif %}">
+        <span class="rail-n">{{ forloop.counter }}</span><span class="truncate">{{ title }}</span>
+        {% with n=counts|get_item:key %}{% if n %}<span class="ml-auto text-[11px] opacity-60 tabular-nums">{{ n }}</span>{% endif %}{% endwith %}
+        {% if key == session.current_section and not session.is_concluded %}<span class="fac {% if counts|get_item:key %}ml-1{% endif %}" title="Facilitator is here"></span>{% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="min-w-0">
+    <div class="flex items-start gap-2 mb-1">
+      <h2 class="text-xl flex-1">{{ section_title }}</h2>
+      {% if prev %}<a href="?s={{ prev }}" class="btn btn-sm">← Back</a>{% endif %}
+      {% if next_s %}<a href="?s={{ next_s }}" class="btn btn-sm btn-primary">Next →</a>{% endif %}
+    </div>
+    <p class="text-sm text-neutral-500 mb-4 max-w-3xl">{{ section_prompt }}</p>
+
+    {% include "planning/sections/"|add:section|add:".html" %}
+
+    {% if section not in "rocks,next_steps,conclude,one_year" %}
+      <div class="grid {% if groups|length > 1 %}md:grid-cols-2{% endif %} gap-4">
+        {% for kind, label, items in groups %}{% include "planning/_group.html" %}{% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="card card-pad mt-4">
+      <label class="section-title block mb-1.5" for="notes-{{ section }}">Facilitator notes</label>
+      <textarea id="notes-{{ section }}" name="notes" rows="3" class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" placeholder="Anything else worth keeping from this part of the session"
+        {% if can_run %}hx-post="{% url 'session_update' session.pk %}" hx-trigger="input delay:800ms, change" hx-vals='{"section": "{{ section }}"}' hx-swap="none"{% else %}disabled{% endif %}>{{ notes }}</textarea>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% load sn %}
+<div class="grid md:grid-cols-2 gap-5 items-start">
+  <div class="space-y-5">
+    <section>
+      <h3 class="section-title mb-2">New to-dos <span class="text-xs font-normal text-neutral-500">({{ new_todos|length }})</span></h3>
+      <div class="list-group">
+        {% for t in new_todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No new to-dos this meeting.</p>{% endfor %}
+      </div>
+    </section>
+    <section>
+      <h3 class="section-title mb-2">Issues solved <span class="text-xs font-normal text-neutral-500">({{ solved|length }})</span></h3>
+      <div class="list-group">
+        {% for i in solved %}<div class="px-4 py-2.5 text-sm"><div class="flex items-center gap-2"><span class="pill st-done">Solved</span><span class="flex-1">{{ i.title }}</span></div>{% if i.resolution %}<p class="mt-1 text-neutral-500 prose-pre">{{ i.resolution }}</p>{% endif %}</div>
+        {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">None solved yet.</p>{% endfor %}
+      </div>
+    </section>
+    <form class="card card-pad space-y-3" {% if can_run %}hx-post="{% url 'meeting_update' meeting.pk %}" hx-trigger="input delay:800ms, change" hx-vals='{"autosave": "1"}' hx-swap="none" hx-target="this" hx-select="unset"{% endif %}>{% csrf_token %}
+      <div>
+        <label class="section-title block mb-0.5" for="cascade">Cascading messages</label>
+        <p class="text-xs text-neutral-500 mb-1.5">What does the rest of the company need to hear from this meeting, and who tells them?</p>
+        <textarea id="cascade" name="cascading_messages" rows="3" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]" placeholder="e.g. Warehouse closes early Friday. Sam tells the floor." {% if not can_run %}disabled{% endif %}>{{ meeting.cascading_messages }}</textarea>
+      </div>
+      <div>
+        <label class="eyebrow block mb-1" for="notes">Meeting notes</label>
+        <textarea id="notes" name="notes" rows="2" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]" {% if not can_run %}disabled{% endif %}>{{ meeting.notes }}</textarea>
+      </div>
+      {% if can_run %}<p class="text-xs text-neutral-500 flex items-center gap-1.5"><span class="dot dot-green"></span>Saves as you type. Included in the recap and email.</p>{% endif %}
+    </form>
+  </div>
+
+  <div class="space-y-4">
+    <section class="card card-pad">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="section-title">Rate the meeting (1–10)</h3>
+        <div class="text-right"><div class="font-display font-extrabold text-3xl leading-none">{{ average|default:"—" }}</div><div class="eyebrow !text-[10px]">average</div></div>
+      </div>
+      <div class="divide-y divide-black/5">
+        {% for u, r in attendee_ratings %}
+          <form method="post" action="{% url 'meeting_rate' meeting.pk %}" class="flex items-center gap-3 py-2">{% csrf_token %}
+            <input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% avatar u %}<span class="flex-1 text-sm">{{ u.display_name }}</span>
+            {% if u.pk == user.pk or is_facilitator or user.is_admin %}
+              <select name="rating" onchange="this.form.requestSubmit()" class="rounded-lg border bg-white px-2 py-1 text-sm font-semibold w-20" aria-label="Rating for {{ u.display_name }}">
+                <option value="">–</option>{% for n in rating_range %}<option value="{{ n }}" {% if r == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+              </select>
+            {% else %}<span class="w-20 text-center font-semibold">{{ r|default:"–" }}</span>{% endif %}
+          </form>
+        {% empty %}<p class="text-sm text-neutral-500 py-2">Add attendees in Segue.</p>{% endfor %}
+      </div>
+    </section>
+    <div class="flex flex-wrap gap-2">
+      {% if can_run %}
+        <form method="post" action="{% url 'meeting_conclude' meeting.pk %}" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">{% csrf_token %}
+          {% if meeting.is_concluded %}<input type="hidden" name="reopen" value="1"><button class="btn">Reopen meeting</button>
+          {% else %}<button class="btn btn-bolt">✓ Conclude meeting</button>{% endif %}
+        </form>
+      {% endif %}
+      <a href="{% url 'meeting_recap' meeting.pk %}" class="btn" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">Printable recap</a>
+    </div>
+  </div>
+</div>

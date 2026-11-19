@@ -1,0 +1,37 @@
+{% load sn %}
+<div id="rock-{{ r.pk }}" data-id="{{ r.pk }}" class="px-4 py-3 flex flex-wrap md:flex-nowrap items-center gap-3"
+     hx-vals='{"partial": "1", "mode": "{{ mode|default:"" }}", "meeting": "{{ meeting_id|default:"" }}"}'
+     hx-get="{% url 'rock_row' r.pk %}" hx-trigger="rock:changed[detail.id=={{ r.pk }}] from:body" hx-target="this" hx-swap="outerHTML" hx-select="unset">
+  {% if sortable %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
+  {% avatar r.owner %}
+  <div class="min-w-[12rem] md:min-w-0 flex-1">
+    <a href="{% url 'rock_detail' r.pk %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-vals="unset">{{ r.title }}</a>
+    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-neutral-500">
+      <span>{{ r.owner.display_name|default:"No owner" }}</span>
+      {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
+      {% if mode != 'company' %}<span class="badge {% if r.is_company %}badge-ink{% endif %}">{{ r.kind_label }}</span>{% endif %}
+      {% if not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
+    </div>
+    {% if r.strip and mode == 'home' %}<div class="mt-1.5">{% rock_strip r.strip %}</div>{% endif %}
+    {% if r.this_week.color == 'red' and r.this_week.recovery_plan %}<p class="mt-1 text-[12px] text-[#b42318] line-clamp-1"><strong>Recovery:</strong> {{ r.this_week.recovery_plan }}</p>{% endif %}
+  </div>
+  {% if r.status == 'off_track' and mode != 'home' %}<div class="shrink-0">{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}</div>{% endif %}
+  {% if r.strip and mode != 'home' %}<div class="hidden md:block shrink-0">{% rock_strip r.strip %}</div>{% endif %}
+  <div class="ml-auto flex items-center justify-end gap-2 shrink-0 {% if mode != 'home' %}md:w-[13rem]{% endif %}">
+    {% if user.is_admin or r.owner_id == user.pk or not r.owner_id %}
+      {% if r.status != 'done' %}
+        <button type="button" class="btn btn-sm !h-8 gap-1.5" data-panel="{% url 'rock_update' r.pk %}" title="Weekly G/Y/R update">
+          <span class="dot {{ r.this_week.color|color_dot }}"></span>{% if r.this_week %}Updated{% else %}Update{% endif %}
+        </button>
+      {% endif %}
+      <select name="status" aria-label="Status for {{ r.title }}"
+              class="pill st-{{ r.status }} !h-8 border-0 pr-7 cursor-pointer text-[12px]"
+              hx-post="{% url 'rock_status' r.pk %}" hx-trigger="change" hx-target="#rock-{{ r.pk }}" hx-swap="outerHTML" hx-select="unset">
+        {% for v, label in statuses %}<option value="{{ v }}" {% if v == r.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    {% else %}
+      {% status_pill r %}
+    {% endif %}
+  </div>
+</div>

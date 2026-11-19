@@ -1,0 +1,33 @@
+{% load sn %}
+<div class="px-4 py-3" x-data="{solve: false}" id="issue-{{ i.pk }}">
+  <div class="flex items-start gap-3">
+    {% if can_edit %}
+      <div class="flex gap-1 shrink-0 pt-0.5" aria-label="Priority">
+        {% for n in "123" %}
+          <form method="post" action="{% url 'issue_priority' i.pk %}">{% csrf_token %}
+            <input type="hidden" name="rank" value="{{ n }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="prio {% if i.priority|stringformat:'s' == n %}prio-on{% else %}prio-off{% endif %}" title="Make #{{ n }}">{{ n }}</button>
+          </form>
+        {% endfor %}
+      </div>
+    {% elif i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
+    <div class="min-w-0 flex-1">
+      <a href="{% url 'issue_detail' i.pk %}{% if meeting %}?meeting={{ meeting.pk }}{% endif %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset">{{ i.title }}</a>
+      <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
+        <span class="inline-flex items-center gap-1">{% avatar i.owner %}{{ i.owner.first|default:"Unassigned" }}</span>
+        <span>· {{ i.created_at|ago }}</span>
+        {% if i.source_measurable %}<span class="pill pill-muted">From scorecard</span>{% elif i.source_rock %}<span class="pill pill-muted">From rock</span>{% elif i.source_headline %}<span class="pill pill-muted">From headline</span>{% endif %}
+        {% with n=i.todos.all|length %}{% if n %}<span class="pill pill-muted">{{ n }} to-do{{ n|pluralize }}</span>{% endif %}{% endwith %}
+      </div>
+    </div>
+    {% if can_edit %}
+      <button type="button" class="btn btn-sm shrink-0" :class="solve && 'btn-primary'" @click="solve=!solve">IDS</button>
+    {% endif %}
+  </div>
+  {% if can_edit %}
+    <div x-cloak x-show="solve" class="mt-3 ml-0 sm:ml-[6.25rem] card card-pad bg-neutral-50/70">
+      {% if i.description %}<p class="text-sm text-neutral-600 prose-pre mb-3">{{ i.description }}</p>{% endif %}
+      {% include "issues/_solve_panel.html" with issue=i %}
+    </div>
+  {% endif %}
+</div>

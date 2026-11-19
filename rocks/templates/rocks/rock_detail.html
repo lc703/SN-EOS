@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}{{ rock.title }}{% endblock %}
+{% block content %}
+<a href="{% url 'rocks' %}" class="text-sm text-neutral-500 hover:text-black">← Rocks</a>
+<div class="mt-1 mb-5 flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl flex-1 min-w-0">{{ rock.title }}</h1>
+  {% if rock.status == 'off_track' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=rock.pk %}{% endif %}
+  {% status_pill rock %}
+</div>
+<p class="-mt-3 mb-5 text-sm text-neutral-500 flex flex-wrap items-center gap-x-2">
+  <span class="badge {% if rock.is_company %}badge-ink{% endif %}">{{ rock.kind_label }}</span>
+  {{ rock.owner.display_name|default:"No owner" }} · {{ rock.team.name }} · {{ rock.quarter.name }}{% if rock.due_date %} · due {{ rock.due_date|date:"M j, Y" }}{% endif %}
+</p>
+
+<section class="card card-pad mb-6">
+  <div class="flex flex-wrap items-center gap-3 mb-3">
+    <h2 class="section-title flex-1">13-week status</h2>
+    <span class="flex items-center gap-3 text-[11px] text-neutral-500"><span class="flex items-center gap-1"><span class="dot dot-green"></span>On track</span><span class="flex items-center gap-1"><span class="dot dot-yellow"></span>At risk</span><span class="flex items-center gap-1"><span class="dot dot-red"></span>Off track</span></span>
+    {% if editable and rock.status != 'done' %}<button type="button" class="btn btn-primary btn-sm" data-panel="{% url 'rock_update' rock.pk %}?reload=1" data-shortcut="new">Weekly update</button>{% endif %}
+  </div>
+  {% if strip %}
+    <div class="overflow-x-auto">{% rock_strip strip today True %}</div>
+    <div class="mt-1 flex justify-between text-[11px] text-neutral-400 tabular-nums"><span>{{ strip.0.0|date:"M j" }}</span><span>{{ strip|last|first|date:"M j" }}</span></div>
+  {% endif %}
+  {% if updates %}
+    <ul class="mt-4 divide-y divide-black/[.05] border-t border-black/[.06]">
+      {% for u in updates %}
+        <li class="py-2.5 flex gap-3 text-sm">
+          <span class="w-24 shrink-0 text-neutral-500 tabular-nums">{{ u.week_start|date:"M j" }}</span>
+          <span class="badge {{ u.color|color_badge }} shrink-0 self-start">{{ u.get_color_display }}</span>
+          <div class="min-w-0 flex-1">
+            {% if u.note %}<div class="text-neutral-800">{{ u.note|linebreaksbr }}</div>{% endif %}
+            {% if u.recovery_plan %}<div class="text-[#b42318] mt-0.5"><strong>Recovery plan:</strong> {{ u.recovery_plan|linebreaksbr }}</div>{% endif %}
+            {% if not u.note and not u.recovery_plan %}<span class="text-neutral-400">No note</span>{% endif %}
+          </div>
+          <span class="text-xs text-neutral-400 shrink-0">{{ u.author.first|default:"" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="mt-3 text-sm text-neutral-500">No weekly updates yet. Each week, mark the rock green, yellow or red with a short note.</p>{% endif %}
+</section>
+
+<div class="grid lg:grid-cols-[1fr_22rem] gap-6 items-start">
+  <div class="space-y-6">
+    {% if rock.description %}<section class="card card-pad"><p class="prose-pre text-sm">{{ rock.description }}</p></section>{% endif %}
+
+    <section>
+      <h2 class="section-title mb-2">Milestones</h2>
+      <div class="list-group">
+        {% for m in milestones %}
+          <form method="post" action="{% url 'milestone_toggle' m.pk %}" class="flex items-center gap-3 px-4 py-2.5">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <label class="tap-box"><input type="checkbox" name="done" value="1" class="h-[18px] w-[18px]" {% if m.done %}checked{% endif %} {% if editable %}onchange="this.form.requestSubmit()"{% else %}disabled{% endif %} aria-label="Done: {{ m.title }}"></label>
+            <span class="flex-1 text-sm {% if m.done %}line-through text-neutral-400{% endif %}">{{ m.title }}</span>
+            <span class="text-xs {% if not m.done and m.due_date and m.due_date < today %}text-red-700 font-semibold{% else %}text-neutral-500{% endif %}">{{ m.due_date|date:"M j"|default:"" }}</span>
+            {% if editable %}<button name="delete" value="1" class="hit px-1 text-neutral-300 hover:text-red-600 text-lg leading-none" title="Remove milestone" aria-label="Remove milestone" onclick="return confirm('Remove milestone?')">×</button>{% endif %}
+          </form>
+        {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No milestones yet.</p>{% endfor %}
+        {% if editable %}
+          <form method="post" action="{% url 'milestone_add' rock.pk %}" class="flex flex-wrap gap-2 px-4 py-3 bg-neutral-50/70">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input name="title" required placeholder="Add a milestone…" class="flex-1 min-w-[12rem] rounded-lg border bg-white px-3 py-2 text-[15px]" aria-label="Milestone">
+            <input type="date" name="due_date" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Due">
+            <button class="btn btn-primary h-10">Add</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title mb-2">To-dos for this rock</h2>
+      <div class="list-group">
+        {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-4 text-sm text-neutral-500">None yet.</p>{% endfor %}
+        {% include "todos/_add.html" with form=todo_form action=rock_todo_url hide_private=1 uid="rock" %}
+      </div>
+    </section>
+
+    {% if issues %}
+      <section>
+        <h2 class="section-title mb-2">Issues raised from this rock</h2>
+        <div class="list-group">
+          {% for i in issues %}<a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill {% if i.is_open %}pill-muted{% else %}st-done{% endif %}">{{ i.get_status_display }}</span><span class="flex-1 truncate">{{ i.title }}</span></a>{% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+  </div>
+
+  <aside>
+    <form method="post" class="card card-pad">{% csrf_token %}
+      <h2 class="section-title mb-3">Edit rock</h2>
+      {% if editable %}
+        {% include "_form.html" with cols="grid-cols-1" %}
+        <div class="mt-4 flex items-center gap-2"><button class="btn btn-primary">Save</button>
+          <button name="delete" value="1" class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Delete this rock and its milestones?')">Delete</button></div>
+      {% else %}<p class="text-sm text-neutral-500">Only the owner or an admin can edit this rock.</p>{% endif %}
+    </form>
+  </aside>
+</div>
+{% endblock %}

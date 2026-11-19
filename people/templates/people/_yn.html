@@ -1,0 +1,7 @@
+<div>
+  <div class="font-semibold text-neutral-600 mb-1">{{ label }}</div>
+  <div class="inline-flex rounded-lg border border-black/10 overflow-hidden">
+    <label class="px-2 py-1 cursor-pointer has-[:checked]:bg-black has-[:checked]:text-white"><input type="radio" name="{{ name }}" value="yes" class="sr-only" {% if current is True %}checked{% endif %}>Yes</label>
+    <label class="px-2 py-1 cursor-pointer has-[:checked]:bg-black has-[:checked]:text-white"><input type="radio" name="{{ name }}" value="no" class="sr-only" {% if current is False %}checked{% endif %}>No</label>
+  </div>
+</div>

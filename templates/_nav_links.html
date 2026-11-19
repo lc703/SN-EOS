@@ -1,0 +1,25 @@
+{% if mobile %}
+  <a href="{% url 'home' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if p == '/' %}text-bolt{% else %}text-neutral-400{% endif %}">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>Home</a>
+  <a href="{% url 'meetings' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if '/meetings' in p %}text-bolt{% else %}text-neutral-400{% endif %}">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>L10</a>
+  <a href="{% url 'rocks' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if '/rocks' in p %}text-bolt{% else %}text-neutral-400{% endif %}">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l4-9 4 5 3-4 5 8z"/></svg>Rocks</a>
+  <a href="{% url 'issues' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if '/issues' in p %}text-bolt{% else %}text-neutral-400{% endif %}">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>Issues</a>
+  <a href="{% url 'todos' %}" class="flex flex-col items-center justify-center gap-0.5 h-14 {% if '/todos' in p %}text-bolt{% else %}text-neutral-400{% endif %}">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg>To-Dos</a>
+{% else %}
+  {% with c="px-2 xl:px-3 h-9 inline-flex items-center rounded-md" on="bg-white/10 text-bolt" off="text-neutral-300 hover:text-white hover:bg-white/5" %}
+  <a href="{% url 'home' %}" class="{{ c }} {% if p == '/' %}{{ on }}{% else %}{{ off }}{% endif %}">My 90</a>
+  <a href="{% url 'scorecard' %}" class="{{ c }} {% if '/scorecard' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Scorecard</a>
+  <a href="{% url 'rocks' %}" class="{{ c }} {% if '/rocks' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Rocks</a>
+  <a href="{% url 'issues' %}" class="{{ c }} {% if '/issues' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Issues</a>
+  <a href="{% url 'todos' %}" class="{{ c }} {% if '/todos' in p %}{{ on }}{% else %}{{ off }}{% endif %}">To-Dos</a>
+  <a href="{% url 'meetings' %}" class="{{ c }} {% if '/meetings' in p %}{{ on }}{% else %}{{ off }}{% endif %}">L10</a>
+  <a href="{% url 'planning' %}" class="{{ c }} {% if '/planning' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Planning</a>
+  <a href="{% url 'vto' %}" class="{{ c }} {% if '/vto' in p %}{{ on }}{% else %}{{ off }}{% endif %}">V/TO</a>
+  <a href="{% url 'chart' %}" class="{{ c }} {% if '/chart' in p %}{{ on }}{% else %}{{ off }}{% endif %}">Chart</a>
+  <a href="{% url 'people' %}" class="{{ c }} {% if '/people' in p or '/conversations' in p %}{{ on }}{% else %}{{ off }}{% endif %}">People</a>
+  {% endwith %}
+{% endif %}

@@ -1,0 +1,9 @@
+<div class="flex items-center gap-1" id="cell-{{ key|slugify }}">
+  {% for val, label in colors %}
+    {% if editable %}
+      <button type="button" class="ryg ryg-{{ val }} {% if score.color == val %}on{% endif %}" title="{{ label }}" aria-label="{{ label }}" aria-pressed="{% if score.color == val %}true{% else %}false{% endif %}"
+              hx-post="{% url 'conversation_score' c.pk %}" hx-vals='{"subject": "{{ key }}", "color": "{% if score.color == val %}{% else %}{{ val }}{% endif %}"}'
+              hx-target="#cell-{{ key|slugify }}" hx-swap="outerHTML" hx-select="unset"></button>
+    {% else %}<span class="ryg ryg-{{ val }} {% if score.color == val %}on{% endif %}"></span>{% endif %}
+  {% endfor %}
+</div>

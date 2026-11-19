@@ -1,0 +1,24 @@
+{% load sn %}
+<div id="todo-{{ t.pk }}" class="flex items-start gap-3 px-4 py-2.5 {% if t.done %}bg-neutral-50/60{% endif %}">
+  {% if t|editable_by:user %}
+    <label class="tap-box mt-1"><input type="checkbox" name="done" value="1" class="h-[18px] w-[18px] shrink-0 cursor-pointer" {% if t.done %}checked{% endif %}
+           aria-label="Done: {{ t.title }}"
+           hx-post="{% url 'todo_toggle' t.pk %}" hx-vals='{"partial": "1", "compact": "{{ compact|default:"" }}"}'
+           hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset"></label>
+  {% else %}
+    <input type="checkbox" disabled class="mt-1 h-[18px] w-[18px] shrink-0" {% if t.done %}checked{% endif %}
+           aria-label="Done: {{ t.title }}" title="Only {{ t.owner.first }} can check this off">
+  {% endif %}
+  <div class="min-w-0 flex-1">
+    <a href="{% url 'todo_edit' t.pk %}?next={{ request.get_full_path|urlencode }}" class="block leading-snug {% if t.done %}line-through text-neutral-400{% else %}font-medium hover:underline{% endif %}" hx-select="unset" hx-target="unset" hx-swap="unset">{{ t.title }}</a>
+    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
+      <span class="{% if t.overdue %}text-red-700 font-semibold{% endif %}">{% if t.overdue %}Overdue · {% endif %}{{ t.due_date|relday }}</span>
+      {% if t.is_private %}<span class="pill pill-muted">Private</span>{% endif %}
+      {% if compact and t.team %}<span>{{ t.team.name }}</span>{% endif %}
+      {% if t.rock %}<a href="{% url 'rock_detail' t.rock.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Rock: {{ t.rock.title|truncatechars:32 }}</a>{% endif %}
+      {% if t.issue %}<a href="{% url 'issue_detail' t.issue.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Issue: {{ t.issue.title|truncatechars:32 }}</a>{% endif %}
+      {% if t.notes %}<span title="{{ t.notes }}">· notes</span>{% endif %}
+    </div>
+  </div>
+  {% if not compact %}<div class="flex items-center gap-1.5 shrink-0 text-[12px] text-neutral-600">{% avatar t.owner %}<span class="hidden sm:inline">{{ t.owner.first }}</span></div>{% endif %}
+</div>

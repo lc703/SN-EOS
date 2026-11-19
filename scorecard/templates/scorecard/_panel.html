@@ -1,0 +1,51 @@
+{% load sn %}
+<div class="panel-head">
+  <div class="min-w-0 flex items-center gap-3">
+    {% avatar m.owner %}
+    <div class="min-w-0">
+      <div class="eyebrow">Measurable · {{ m.plant_name }}</div>
+      <h2 class="text-lg leading-snug">{{ m.title }}</h2>
+      <div class="text-xs text-neutral-500">{{ m.owner.display_name|default:"No owner" }} · Goal {{ m.goal_display }}{% if m.trailing %} · {{ m.get_trailing_display }} column{% endif %}</div>
+      {% if m.source %}<div class="text-[11px] italic text-neutral-400">{{ m.source }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+<div class="panel-body space-y-5">
+  <div class="card card-pad flex items-center gap-3">
+    <label for="plant-{{ m.pk }}" class="stat-label !mb-0 shrink-0">Plant</label>
+    {% if editable %}
+      <select id="plant-{{ m.pk }}" name="plant" class="block w-full rounded-lg border bg-white px-3 py-1.5 text-[14px]"
+              hx-post="{% url 'measurable_plant' m.pk %}" hx-trigger="change" hx-swap="none" hx-select="unset">
+        <option value="" {% if not m.plant_id %}selected{% endif %}>Company</option>
+        {% for p in plants %}<option value="{{ p.pk }}" {% if p.pk == m.plant_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    {% else %}
+      <span class="font-semibold">{{ m.plant_name }}</span>
+    {% endif %}
+  </div>
+  <div class="grid grid-cols-1 min-[480px]:grid-cols-3 gap-3">
+    <div class="card stat"><div class="stat-label">Latest</div><div class="stat-value {% if latest.state == 'red' %}text-[#b42318]{% elif latest.state == 'green' %}text-[#15803d]{% endif %}">{{ latest.display|default:"—" }}</div><div class="text-[11px] text-neutral-500">{% if latest %}Week of {{ latest.week|date:"M j" }}{% endif %}</div></div>
+    <div class="card stat"><div class="stat-label">13-week avg</div><div class="stat-value">{{ average|default:"—" }}</div></div>
+    <div class="card stat"><div class="stat-label">On goal</div><div class="stat-value">{% if hit_pct is not None %}{{ hit_pct }}%{% else %}—{% endif %}</div><div class="text-[11px] text-neutral-500">{% if hits %}{{ hits.0 }} of {{ hits.1 }} weeks{% endif %}</div></div>
+  </div>
+  <section>
+    <div class="flex items-center justify-between mb-1"><h3 class="section-title">Last 13 weeks</h3><span class="flex items-center gap-3 text-[11px] text-neutral-500"><span class="flex items-center gap-1"><span class="dot dot-green"></span>On goal</span><span class="flex items-center gap-1"><span class="dot dot-red"></span>Off goal</span><span>– – Goal</span></span></div>
+    <div class="card p-2">{{ chart }}</div>
+  </section>
+  <section>
+    <h3 class="section-title mb-1.5">Weekly values</h3>
+    <div class="card overflow-hidden">
+      <table class="table text-sm">
+        <tbody>
+          {% for c in row.cells reversed %}
+            <tr><td class="text-neutral-500 w-32">Week of {{ c.week|date:"M j" }}</td><td class="tabular-nums font-semibold {% if c.state == 'red' %}text-[#b42318]{% elif c.state == 'green' %}text-[#15803d]{% endif %}">{{ c.display|default:"—" }}</td><td class="text-right">{% if c.state %}<span class="dot dot-{{ c.state }}"></span>{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <div class="flex items-center gap-2">
+    {% if row.is_red %}{% include "issues/_drop_button.html" with kind="measurable" obj_id=m.pk %}{% endif %}
+    {% if editable %}<a href="{% url 'measurable_edit' m.pk %}" class="btn ml-auto">Edit measurable</a>{% endif %}
+  </div>
+</div>

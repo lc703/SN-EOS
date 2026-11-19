@@ -1,0 +1,10 @@
+{% for e in form.non_field_errors %}<p class="mb-3 text-sm text-red-700">{{ e }}</p>{% endfor %}
+<div class="grid gap-4 {{ cols|default:'sm:grid-cols-2' }}">
+  {% for field in form %}
+    {% if not cols and field.name in form.full_width or not cols and field.widget_type == 'textarea' %}
+      {% include "_field.html" with wrap="sm:col-span-2" %}
+    {% else %}
+      {% include "_field.html" with wrap="" %}
+    {% endif %}
+  {% endfor %}
+</div>

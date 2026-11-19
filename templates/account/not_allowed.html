@@ -1,0 +1,8 @@
+{% extends "account/_auth_base.html" %}
+{% block title %}Not available{% endblock %}
+{% block auth %}
+<h1 class="text-xl text-center">This app is for the {{ COMPANY_NAME }} team</h1>
+<p class="mt-2 text-center text-sm text-neutral-600">{% if email %}<strong>{{ email }}</strong> isn’t a {{ ALLOWED_EMAIL_DOMAIN }} account.{% else %}We couldn’t read an email from that Google account.{% endif %}
+  Sign in with your work Google account.</p>
+<a href="{% url 'account_login' %}" class="mt-5 btn btn-primary w-full h-11">Try another account</a>
+{% endblock %}
