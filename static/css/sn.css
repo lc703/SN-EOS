@@ -2,6 +2,10 @@
 :root { --bolt: #D5FF03; --ink: #000; --paper: #f6f6f4; --hair: rgb(0 0 0 / .08); }
 [x-cloak] { display: none !important; }
 
+/* Grid and flex children default to min-width:auto, so one wide table (scorecard, completion grid) would stretch
+   its column, the page, and on a phone the whole layout gets zoomed out. Let them shrink; wide content scrolls
+   inside its own .overflow-x-auto container instead. */
+.grid > *, main > * { min-width: 0; }
 body { font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 h1, h2, h3, .font-display { font-family: Montserrat, Inter, ui-sans-serif, sans-serif; letter-spacing: -0.02em; }
 h1 { font-weight: 800; }
@@ -89,7 +93,7 @@ input[type=checkbox] { accent-color: #000; }
 /* Drawer, modal, keyboard hints */
 .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(30rem, 100vw); background: #fff; box-shadow: -12px 0 40px rgb(0 0 0 / .14); overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--hair); }
 .drawer-wide { width: min(46rem, 100vw); }
-.drawer-close { position: absolute; top: .85rem; right: .85rem; z-index: 2; width: 2rem; height: 2rem; border-radius: .6rem; display: inline-flex; align-items: center; justify-content: center; color: #525252; background: #fff; }
+.drawer-close { position: absolute; top: .85rem; right: .85rem; z-index: 2; width: 2.75rem; height: 2.75rem; border-radius: .6rem; display: inline-flex; align-items: center; justify-content: center; color: #525252; background: #fff; }
 .drawer-close:hover { background: rgb(0 0 0 / .05); color: #000; }
 .panel-head { position: sticky; top: 0; z-index: 1; background: rgb(255 255 255 / .96); backdrop-filter: blur(6px); padding: 1.1rem 3.25rem 0.9rem 1.25rem; border-bottom: 1px solid var(--hair); }
 .panel-body { padding: 1.1rem 1.25rem 2rem; }
@@ -266,3 +270,56 @@ button.ryg:hover { border-color: var(--c); }
 button.ryg:hover::after { opacity: .8; }
 .ryg.on { background: var(--c); border-color: rgb(0 0 0 / .25); }
 .ryg.on::after { background: #fff; opacity: .95; inset: .55rem; }
+
+/* Person picker: a dropdown under its button on wider screens, a full-width bottom sheet on phones so it can
+   never run off the left edge. */
+.picker-menu { position: absolute; right: 0; top: 100%; margin-top: .375rem; z-index: 40; width: 22rem; max-width: calc(100vw - 2rem); }
+.picker-list { max-height: 20rem; }
+@media (max-width: 639px) {
+  .picker-menu { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; margin: 0;
+                 z-index: 50; border-radius: 1rem 1rem 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .picker-list { max-height: 60vh; }
+}
+
+.scope-select { height: 1.75rem; border-radius: 999px; border: 1px solid rgb(0 0 0 / .1); background: #fff; padding: 0 1.75rem 0 .75rem; font-size: 13px; }
+.sc-inline-goal { display: none; }
+.tap-box { display: inline-flex; flex-shrink: 0; cursor: pointer; }
+
+/* Phones: the Scorecard keeps one sticky column. Name (up to two lines), owner and goal live in it, so the goal
+   is always in view while the weeks scroll; trend and actions are in the side panel. */
+@media (max-width: 639px) {
+  .scope-select { height: 2.75rem; font-size: 15px; }
+  .sc-title { width: 10.5rem; min-width: 10.5rem; max-width: 10.5rem; padding-left: .625rem !important; padding-right: .5rem !important; }
+  .sc-sub { padding-left: 1rem !important; }
+  .sc-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sc-inline-goal { display: block; font-size: 11.5px; font-weight: 600; color: #404040; }
+  .sc-table .sc-goal, .sc-table .sc-trend, .sc-actions, .sc-title .drag-handle { display: none; }
+  .sc-table .avatar { display: none; }
+  .sc-table .sc-cell:not(.sc-cell-money) { min-width: 5.5rem; }
+}
+
+/* Touch screens: every control gets a 44px target. Small visual controls keep their look and grow an invisible
+   hit area instead, so dense rows do not reflow. */
+@media (pointer: coarse) {
+  .btn { min-height: 2.75rem; }
+  .btn-icon { min-width: 2.75rem; }
+  .btn-sm, .seg > a, .seg > button, .prio, .ryg, .seat-toggle, .hit { position: relative; }
+  .btn-sm::before, .seg > a::before, .seg > button::before, .prio::before, .ryg::before, .seat-toggle::before, .hit::before {
+    content: ""; position: absolute; inset: min(0px, calc((100% - 2.75rem) / 2));
+  }
+  .btn-sm { min-height: 2.25rem; }
+  .prio, .ryg { width: 2.25rem; height: 2.25rem; }
+  .text-xs.link { display: inline-block; padding: .875rem .5rem; margin: -.875rem -.5rem; }
+  .sc-cell input, .sc-cell select { height: 2.75rem; font-size: 16px; }
+  .sc-cell-money { min-width: 8.25rem; }
+  main input[type=checkbox], main input[type=radio] { width: 1.375rem; height: 1.375rem; }
+  .drag-handle { display: none; }
+  .tap-box { padding: .6875rem; margin: -.6875rem; }
+  main label:has(> input[type=checkbox]), main label:has(> input[type=radio]) { min-height: 2.75rem; }
+  main label:has(> input[type=radio].sr-only) { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; }
+  input:not([type=checkbox]):not([type=radio]):not([type=hidden]), select, textarea { min-height: 2.75rem; font-size: 16px; }
+  .rail a, .list-group > a { min-height: 2.75rem; }
+  main a.hover\:underline:not(.btn), main summary, .tap-link { padding-block: .875rem; margin-block: -.875rem; }
+  .sc-name { width: 100%; padding-block: .875rem; margin-block: -.875rem; }
+  .hit-x { padding-inline: .75rem; margin-inline: -.75rem; }
+}

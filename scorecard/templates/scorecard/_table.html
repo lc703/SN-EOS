@@ -5,7 +5,7 @@
       <tr class="text-left text-neutral-500">
         <th class="sc-sticky sc-title px-3 py-2 font-semibold text-[12px]">Measurable</th>
         <th class="sc-goal px-2 py-2 font-semibold text-[12px] text-center whitespace-nowrap">Goal</th>
-        {% if show_trend %}<th class="px-2 py-2 font-semibold text-[12px] text-center">Trend</th>{% endif %}
+        {% if show_trend %}<th class="sc-trend px-2 py-2 font-semibold text-[12px] text-center">Trend</th>{% endif %}
         {% for w in weeks %}
           <th class="px-1 py-2 text-center font-medium text-[11.5px] whitespace-nowrap">{{ w|date:"M j" }}</th>
         {% endfor %}

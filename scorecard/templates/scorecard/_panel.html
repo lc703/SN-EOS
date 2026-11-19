@@ -23,7 +23,7 @@
       <span class="font-semibold">{{ m.plant_name }}</span>
     {% endif %}
   </div>
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid grid-cols-1 min-[480px]:grid-cols-3 gap-3">
     <div class="card stat"><div class="stat-label">Latest</div><div class="stat-value {% if latest.state == 'red' %}text-[#b42318]{% elif latest.state == 'green' %}text-[#15803d]{% endif %}">{{ latest.display|default:"—" }}</div><div class="text-[11px] text-neutral-500">{% if latest %}Week of {{ latest.week|date:"M j" }}{% endif %}</div></div>
     <div class="card stat"><div class="stat-label">13-week avg</div><div class="stat-value">{{ average|default:"—" }}</div></div>
     <div class="card stat"><div class="stat-label">On goal</div><div class="stat-value">{% if hit_pct is not None %}{{ hit_pct }}%{% else %}—{% endif %}</div><div class="text-[11px] text-neutral-500">{% if hits %}{{ hits.0 }} of {{ hits.1 }} weeks{% endif %}</div></div>

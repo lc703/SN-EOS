@@ -1,3 +1,3 @@
-{% load sn %}<td id="mtd-{{ row.measurable.pk }}" class="px-2 py-1 text-center" {% if oob %}hx-swap-oob="true"{% endif %}>
+{% load sn %}<td id="mtd-{{ row.measurable.pk }}" class="sc-trend px-2 py-1 text-center" {% if oob %}hx-swap-oob="true"{% endif %}>
   <span class="inline-flex flex-col items-center leading-none gap-0.5">{% sparkline row.spark_values row.measurable.goal row.spark_ok %}{% if row.hits %}<span class="text-[10px] text-neutral-500 tabular-nums">{{ row.hits.0 }}/{{ row.hits.1 }} on goal</span>{% endif %}</span>
 </td>

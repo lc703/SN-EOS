@@ -3,18 +3,25 @@
   <button type="button" class="btn" @click="toggle()" :aria-expanded="open.toString()" aria-haspopup="listbox">
     View someone’s 90
   </button>
+  <div x-show="open" x-cloak class="fixed inset-0 z-40 bg-black/30 sm:hidden" @click="open = false" aria-hidden="true"></div>
   <div x-show="open" x-cloak @click.outside="open = false" @keydown.escape.window="open = false"
-       class="absolute right-0 z-40 mt-1.5 w-[22rem] max-w-[calc(100vw-2rem)] card overflow-hidden">
+       class="picker-menu card overflow-hidden">
+    <div class="flex items-center justify-between px-3 pt-3 sm:hidden">
+      <span class="font-display font-bold">View someone’s 90</span>
+      <button type="button" class="btn btn-ghost btn-sm !h-11 !w-11 !p-0" @click="open = false" aria-label="Close">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
     <div class="p-2 border-b border-black/[.06]">
       <input x-ref="q" x-model="q" type="search" placeholder="Search people" autocomplete="off"
              class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" aria-label="Search people">
     </div>
-    <div class="max-h-80 overflow-y-auto py-1" role="listbox">
+    <div class="picker-list overflow-y-auto overscroll-contain py-1" role="listbox">
       <template x-for="group in filtered" :key="group.team">
         <div>
           <div class="px-3 pt-2 pb-1 eyebrow" x-text="group.team"></div>
           <template x-for="p in group.people" :key="group.team + '-' + p.id">
-            <a :href="p.url" class="flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-bolt/30" role="option">
+            <a :href="p.url" class="flex items-center gap-2.5 px-3 min-h-[44px] py-1.5 text-sm hover:bg-bolt/30" role="option">
               <span class="avatar avatar-sm" x-text="p.initials"></span>
               <span class="min-w-0 flex-1">
                 <span class="font-medium block truncate" x-text="p.name"></span>

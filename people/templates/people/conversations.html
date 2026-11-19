@@ -32,7 +32,7 @@
     <tbody>
       {% for r in rows %}
         <tr>
-          <td><a href="{% url 'person' r.person.pk %}" class="flex items-center gap-2 font-semibold">{% avatar r.person %}{{ r.person.display_name }}</a></td>
+          <td><a href="{% url 'person' r.person.pk %}" class="flex items-center gap-2 font-semibold min-h-11">{% avatar r.person %}{{ r.person.display_name }}</a></td>
           <td class="text-neutral-600 whitespace-nowrap">{% for m in r.managers %}{{ m.first }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-neutral-400">—</span>{% endfor %}</td>
           <td>{% if r.state == "done" %}<span class="badge badge-green">Done {{ r.convo.completed_at|date:"M j" }}</span>{% elif r.state == "progress" %}<span class="badge badge-yellow">In progress</span>{% else %}<span class="badge">Not started</span>{% endif %}
               {% if r.convo.is_struggling %}<span class="flag-struggling ml-1" title="Struggling">!</span>{% endif %}</td>

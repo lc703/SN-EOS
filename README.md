@@ -254,7 +254,7 @@ python manage.py import_battle_planner battle-planner-export.json --refresh
 pytest
 ```
 
-Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`.
+Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`. `tests/test_mobile_overflow.py` opens every page at 375px in headless Chromium and fails if the page is wider than the phone; it skips when Playwright is not installed.
 
 ## Code map
 
@@ -265,3 +265,4 @@ Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`
 - `templates/` base layout, nav, login pages; each app has its own `templates/<app>/`
 - `static/` logo, `sn.css`, compiled `app.css`, `js/app.js` (panel, palette, shortcuts, autosave indicator, drag reorder, scorecard keys), `js/chart.js` (Accountability Chart), vendored htmx and Alpine
 - `scripts/screenshots.py` captures page screenshots from a running dev server (needs `pip install playwright && playwright install chromium`)
+- `scripts/mobile_audit.py` screenshots every page at 375, 390 and 768px with touch emulation and reports page overflow and tap targets under 44px

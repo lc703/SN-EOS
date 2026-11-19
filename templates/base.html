@@ -36,7 +36,7 @@
   {% with p=request.path %}
   <header class="sticky top-0 z-30 bg-black text-white print:hidden">
     <div class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 h-14 flex items-center justify-between gap-3">
-      <a href="/" class="flex items-center gap-3 min-w-0 shrink-0">
+      <a href="/" class="hit flex items-center gap-3 min-w-0 shrink-0">
         <img src="{% static 'img/logo-light.svg' %}" alt="{{ COMPANY_NAME }}" class="h-6 w-auto">
         <span class="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-bolt border-l border-white/20 pl-3 leading-tight whitespace-nowrap">{{ APP_NAME }}</span>
       </a>
@@ -49,7 +49,7 @@
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <span>Jump to…</span><span class="kbd kbd-dark">Ctrl K</span>
         </button>
-        <button type="button" @click="open=!open" class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-white/10" aria-label="Account">
+        <button type="button" @click="open=!open" class="hit flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-white/10" aria-label="Account">
           <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-bolt text-black text-[11px] font-bold">{{ user.initials }}</span>
           <span class="hidden sm:inline text-xs text-neutral-300">{{ user.first }}</span>
         </button>

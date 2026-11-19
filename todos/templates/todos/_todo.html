@@ -1,10 +1,10 @@
 {% load sn %}
 <div id="todo-{{ t.pk }}" class="flex items-start gap-3 px-4 py-2.5 {% if t.done %}bg-neutral-50/60{% endif %}">
   {% if t|editable_by:user %}
-    <input type="checkbox" name="done" value="1" class="mt-1 h-[18px] w-[18px] shrink-0 cursor-pointer" {% if t.done %}checked{% endif %}
+    <label class="tap-box mt-1"><input type="checkbox" name="done" value="1" class="h-[18px] w-[18px] shrink-0 cursor-pointer" {% if t.done %}checked{% endif %}
            aria-label="Done: {{ t.title }}"
            hx-post="{% url 'todo_toggle' t.pk %}" hx-vals='{"partial": "1", "compact": "{{ compact|default:"" }}"}'
-           hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset">
+           hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset"></label>
   {% else %}
     <input type="checkbox" disabled class="mt-1 h-[18px] w-[18px] shrink-0" {% if t.done %}checked{% endif %}
            aria-label="Done: {{ t.title }}" title="Only {{ t.owner.first }} can check this off">

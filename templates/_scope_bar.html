@@ -1,17 +1,25 @@
 <div class="bg-white border-b border-black/[.06] print:hidden">
-  <div class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 h-11 flex items-center gap-3 overflow-x-auto text-[13px]">
+  <div class="{% if wide %}max-w-screen-2xl{% else %}max-w-6xl{% endif %} mx-auto px-4 min-h-[3.25rem] sm:min-h-0 sm:h-11 flex items-center gap-3 sm:overflow-x-auto text-[13px]">
     {% if not hide_team_scope %}
     <span class="eyebrow shrink-0 hidden sm:inline">Team</span>
-    <div class="flex items-center gap-1 shrink-0">
+    <div class="hidden sm:flex items-center gap-1 shrink-0">
       {% for t in all_teams %}
-        <a href="?team={{ t.slug }}" class="h-7 px-3 inline-flex items-center rounded-full font-medium whitespace-nowrap {% if team and t.pk == team.pk %}bg-black text-white{% else %}text-neutral-600 hover:bg-neutral-100{% endif %}">{{ t.name }}</a>
+        <a href="?team={{ t.slug }}" class="hit h-7 px-3 inline-flex items-center rounded-full font-medium whitespace-nowrap {% if team and t.pk == team.pk %}bg-black text-white{% else %}text-neutral-600 hover:bg-neutral-100{% endif %}">{{ t.name }}</a>
       {% endfor %}
     </div>
+    {# Phones: every team fits in a picker instead of a strip of tabs that runs off the screen. #}
+    <form method="get" hx-boost="false" class="sm:hidden flex-1 min-w-0">
+      <label class="sr-only" for="scope-team">Team</label>
+      <select id="scope-team" name="team" onchange="this.form.submit()" class="scope-select w-full font-semibold">
+        {% for t in all_teams %}<option value="{{ t.slug }}" {% if team and t.pk == team.pk %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+      </select>
+    </form>
     {% endif %}
     <div class="ml-auto flex items-center gap-2 shrink-0">
       <span class="eyebrow hidden sm:inline">Quarter</span>
       <form method="get" hx-boost="false">
-        <select name="quarter" onchange="this.form.submit()" class="h-7 rounded-full border border-black/10 bg-white pl-3 pr-7 text-[13px] font-medium">
+        <label class="sr-only" for="scope-quarter">Quarter</label>
+        <select id="scope-quarter" name="quarter" onchange="this.form.submit()" class="scope-select font-medium">
           {% for q in all_quarters %}<option value="{{ q.pk }}" {% if quarter and q.pk == quarter.pk %}selected{% endif %}>{{ q.name }}</option>{% endfor %}
         </select>
       </form>

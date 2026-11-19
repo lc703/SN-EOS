@@ -281,6 +281,17 @@
       });
     });
   }
-  document.addEventListener("DOMContentLoaded", () => initSortable(document));
-  document.addEventListener("htmx:afterSettle", (e) => initSortable(e.target));
+  /* ---- On narrow screens a Scorecard opens scrolled to the current week instead of the oldest one. ---- */
+  function showCurrentWeek(root) {
+    root.querySelectorAll(".overflow-x-auto").forEach(function (box) {
+      if (box._snWeek || box.scrollWidth <= box.clientWidth) return;
+      const now = box.querySelector("th.sc-now, td.sc-now");
+      if (!now) return;
+      box._snWeek = true;
+      const right = now.offsetLeft + now.offsetWidth;
+      if (right > box.clientWidth) box.scrollLeft = right - box.clientWidth + 8;
+    });
+  }
+  document.addEventListener("DOMContentLoaded", () => { initSortable(document); showCurrentWeek(document); });
+  document.addEventListener("htmx:afterSettle", (e) => { initSortable(e.target); showCurrentWeek(e.target); });
 })();

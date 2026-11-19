@@ -8,12 +8,12 @@
     <h1 class="text-2xl">To-Dos</h1>
     <p class="text-sm text-neutral-500 mt-0.5">Seven-day action items. Check them off as you go.</p>
   </div>
-  <form method="get" class="flex items-center gap-2 text-sm">
-    <select name="owner" onchange="this.form.requestSubmit()" class="rounded-lg border border-black/10 bg-white px-2 py-1.5">
+  <form method="get" class="flex items-center gap-2 text-sm w-full sm:w-auto">
+    <select name="owner" onchange="this.form.requestSubmit()" class="min-w-0 flex-1 sm:flex-none rounded-lg border border-black/10 bg-white px-2 py-1.5">
       <option value="">Everyone</option>
       {% for m in members %}<option value="{{ m.pk }}" {% if who == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.display_name }}</option>{% endfor %}
     </select>
-    <select name="show" onchange="this.form.requestSubmit()" class="rounded-lg border border-black/10 bg-white px-2 py-1.5">
+    <select name="show" onchange="this.form.requestSubmit()" class="min-w-0 flex-1 sm:flex-none rounded-lg border border-black/10 bg-white px-2 py-1.5">
       <option value="open" {% if show == 'open' %}selected{% endif %}>Open</option>
       <option value="recent" {% if show == 'recent' %}selected{% endif %}>Open + done (14 days)</option>
     </select>
