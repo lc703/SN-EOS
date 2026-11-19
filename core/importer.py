@@ -16,7 +16,7 @@ from issues.models import Issue
 from meetings.models import Meeting, MeetingRating
 from people.models import OneOnOne, PeopleReview, SuccessStatement, ValueRating
 from rocks.models import Milestone, Rock
-from scorecard.models import Measurable
+from scorecard.models import Measurable, ScoreEntry
 from todos.models import Todo
 from vision.models import VTO, CoreValue, Seat
 
@@ -35,12 +35,16 @@ UNIT_MAP = {
     "yes/no": Measurable.UNIT_YESNO,
     "yesno": Measurable.UNIT_YESNO,
 }
+DIRECTION_TO_COMPARE = {"up": Measurable.GTE, "down": Measurable.LTE}
+GOAL_SUFFIX = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
+# Old metrics fed by an integration. SN EOS has no integrations yet, so these are typed in weekly.
+AUTO_SOURCES = {"iquote_quotes", "iquote_rd", "attio_prelim", "attio_rd", "attio_final"}
 STEP_TO_SECTION = {"open": "segue", "rocks": "rocks", "todos": "todos", "issues": "ids", "evaluate": "conclude"}
 
 HANDLED = {
     "core.facility", "core.user", "core.quarter", "core.value", "core.valuestatement", "core.strategyhouse",
     "core.box", "core.visiondoc", "core.rock", "core.rockstatus", "core.milestone", "core.issue",
-    "core.commitment", "core.scorecardmetric", "core.seat", "core.successstatement", "core.oneonone",
+    "core.commitment", "core.scorecardmetric", "core.scorecardentry", "core.seat", "core.successstatement", "core.oneonone",
     "core.meeting", "core.meetingevaluation", "core.roundrobinanswer",
 }
 # Kept raw in LegacyRecord: no EOS equivalent in V1.
@@ -75,6 +79,28 @@ def _dt(val):
 
 def _day_start(day):
     return timezone.make_aware(dt.datetime.combine(day, dt.time(9, 0)))
+
+
+def _initials(name):
+    """'Joel Senecal-Moseley' -> {'JSM', 'JS'}; 'Ben Steuart' -> {'BS'}."""
+    words = [w for w in (name or "").replace("-", " ").split() if w[:1].isalpha()]
+    out = {"".join(w[0] for w in words).upper()}
+    spaced = [w for w in (name or "").split() if w[:1].isalpha()]
+    if len(spaced) >= 2:
+        out.add((spaced[0][0] + spaced[-1][0]).upper())
+    return out if words else set()
+
+
+def parse_goal(raw, unit):
+    """'40%' -> 40, '$11M' -> 11000000, '' -> None. Raises ValueError if unreadable."""
+    from decimal import Decimal
+
+    text = (raw or "").strip().replace(" ", "")
+    mult = 1
+    if text[-1:].lower() in GOAL_SUFFIX and unit != Measurable.UNIT_YESNO:
+        mult, text = GOAL_SUFFIX[text[-1].lower()], text[:-1]
+    value = Measurable.parse(text, unit)
+    return None if value is None else value * Decimal(mult)
 
 
 def _split_title(text, limit=240):
@@ -368,20 +394,86 @@ class BattlePlannerImporter:
             )
             self.issues[pk] = obj
 
+    def _owner_from_initials(self, initials, team):
+        """Old metrics name owners by initials. Match one imported user, preferring the metric's team."""
+        code = (initials or "").strip().upper()
+        if not code:
+            return None
+        matches = [u for u in self.users.values() if code in _initials(u.name)]
+        if len(matches) > 1 and team is not None:
+            local = [u for u in matches if u.home_team_id == team.pk]
+            matches = local or matches
+        return matches[0] if len(matches) == 1 else None
+
     def import_measurables(self):
         lead = Team.objects.filter(is_leadership=True).first()
+        self.measurables = {}
+        unmatched, bad_goals, auto = set(), [], []
         for pk, f in self.fields("core.scorecardmetric"):
             team = self.teams.get(f.get("facility")) or lead
             unit = UNIT_MAP.get((f.get("unit") or "").strip().lower(), Measurable.UNIT_NUMBER)
-            goal_compare = Measurable.EQ if unit == Measurable.UNIT_YESNO else Measurable.GTE
-            self.upsert(
+            direction = (f.get("direction") or "").strip().lower()
+            goal_compare = Measurable.EQ if unit == Measurable.UNIT_YESNO else DIRECTION_TO_COMPARE.get(direction, Measurable.GTE)
+            goal = None
+            # No direction in the old app meant "no color", so leave the goal empty to match.
+            if f.get("goal") and (direction or unit == Measurable.UNIT_YESNO):
+                try:
+                    goal = parse_goal(f["goal"], unit)
+                except ValueError:
+                    bad_goals.append(f"{f['name']} ({f['goal']})")
+            owner = self._owner_from_initials(f.get("owner"), team)
+            if f.get("owner") and owner is None:
+                unmatched.add(f["owner"].strip())
+            source = f.get("source") or "manual"
+            if source in AUTO_SOURCES and f.get("active", True):
+                auto.append(f["name"])
+            legacy = {k: f.get(k) for k in ("unit", "facility", "owner", "goal", "direction", "source") if k in f}
+            obj, _ = self.upsert(
                 Measurable, pk,
-                {"team": team, "title": f["name"][:160], "unit": unit, "goal_compare": goal_compare, "sort": f.get("sort", 0),
-                 "active": f.get("active", True), "legacy": {"unit": f.get("unit"), "facility": f.get("facility")}},
+                {"team": team, "title": f["name"][:160], "unit": unit, "goal_compare": goal_compare, "goal": goal,
+                 "owner": owner, "sort": f.get("sort", 0), "active": f.get("active", True), "legacy": legacy},
                 label="Measurables",
             )
-        if self.by.get("core.scorecardmetric"):
-            self.notes.append("measurables: the old app stored no goals, owners or weekly values; set them on the Scorecard page")
+            self.measurables[pk] = obj
+        if unmatched:
+            self.notes.append(f"measurables: no unique user for owner initials {', '.join(sorted(unmatched))}; owner left blank")
+        if bad_goals:
+            self.notes.append(f"measurables: could not read goal for {'; '.join(bad_goals)}; goal left blank")
+        if auto:
+            self.notes.append(f"measurables: {', '.join(auto)} were auto-filled by iQuote/Attio in the old app; type them in weekly for now")
+        self.import_score_entries()
+
+    def import_score_entries(self):
+        """Weekly values. Keyed by (measurable, Monday), so re-runs never duplicate a week."""
+        from core.models import monday_of
+
+        bad = []
+        for pk, f in self.fields("core.scorecardentry"):
+            m = self.measurables.get(f.get("metric"))
+            week = _date(f.get("week_start"))
+            if m is None or week is None:
+                self._count("Scorecard values", "skipped")
+                continue
+            week = monday_of(week)
+            try:
+                value = Measurable.parse(f.get("value"), m.unit)
+            except ValueError:
+                bad.append(f"{m.title} {week.isoformat()} ({f.get('value')})")
+                self._count("Scorecard values", "skipped")
+                continue
+            entry = ScoreEntry.objects.filter(measurable=m, week_start=week).first()
+            by = self.users.get(f.get("entered_by"))
+            if entry is None:
+                ScoreEntry.objects.create(measurable=m, week_start=week, value=value, updated_by=by)
+                self._count("Scorecard values", "created")
+            elif self.refresh and entry.value != value:
+                entry.value, entry.updated_by = value, by
+                entry.save()
+                self._count("Scorecard values", "updated")
+            else:
+                self._count("Scorecard values", "unchanged")
+        if bad:
+            self.notes.append(f"scorecard: skipped unreadable values: {'; '.join(bad)}")
 
     def _todo_team(self, f, owner):
         rock = self.rocks.get(f.get("rock"))
