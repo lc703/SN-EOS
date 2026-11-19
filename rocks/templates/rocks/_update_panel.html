@@ -4,7 +4,6 @@
     <div class="eyebrow">Weekly rock update · {{ rock.kind_label }}</div>
     <h2 class="text-lg leading-snug">{{ rock.title }}</h2>
   </div>
-  <button type="button" class="btn btn-ghost btn-sm" @click="$store.ui.closePanel()" aria-label="Close">✕</button>
 </div>
 <form class="panel-body space-y-4" hx-post="{% url 'rock_update' rock.pk %}" hx-target="#panel-body" hx-swap="innerHTML" hx-select="unset"
       x-data="{ color: '{{ data.color }}' }">

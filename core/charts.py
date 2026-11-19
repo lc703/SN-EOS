@@ -73,8 +73,23 @@ def sparkline(values, goal=None, ok=None, width=96, height=26):
     return "".join(parts)
 
 
-def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=str):
+def compact(v):
+    """Short axis label: 1.2M, 420k, 96, 2.5."""
+    a = abs(v)
+    if a >= 1_000_000:
+        return f"{v / 1_000_000:.1f}".rstrip("0").rstrip(".") + "M"
+    if a >= 10_000:
+        return f"{v / 1_000:.0f}k"
+    if a >= 1_000:
+        return f"{v / 1_000:.1f}".rstrip("0").rstrip(".") + "k"
+    if a >= 100:
+        return f"{v:.0f}"
+    return f"{v:.1f}".rstrip("0").rstrip(".")
+
+
+def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=str, axis_fmt=None):
     """Line chart with goal line, colored points and x labels."""
+    axis_fmt = axis_fmt or fmt
     vals = [_num(v) for v in values]
     g = _num(goal)
     left, right, top, bottom = 44, 12, 14, 26
@@ -86,7 +101,7 @@ def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=s
         v = lo + (hi - lo) * i / 3
         y = round(top + h - (v - lo) / (hi - lo) * h, 1)
         out.append(f'<line x1="{left}" y1="{y}" x2="{width-right}" y2="{y}" stroke="#000" stroke-opacity=".06"/>')
-        out.append(f'<text x="{left-8}" y="{y+3.5}" text-anchor="end" font-size="10" fill="#8a8a8a">{escape(fmt(v))}</text>')
+        out.append(f'<text x="{left-8}" y="{y+3.5}" text-anchor="end" font-size="10" fill="#8a8a8a">{escape(axis_fmt(v))}</text>')
     if g is not None:
         gy = round(top + h - (g - lo) / (hi - lo) * h, 1)
         out.append(f'<line x1="{left}" y1="{gy}" x2="{width-right}" y2="{gy}" stroke="{INK}" stroke-width="1.2" stroke-dasharray="4 3"/>')
@@ -106,7 +121,8 @@ def trend_chart(labels, values, goal=None, ok=None, width=560, height=200, fmt=s
         if n > 8 and i % 2:
             continue
         x = round(left + i * step, 1)
-        out.append(f'<text x="{x}" y="{height-8}" text-anchor="middle" font-size="10" fill="#8a8a8a">{escape(lab)}</text>')
+        anchor = "end" if i == n - 1 and n > 1 else "middle"
+        out.append(f'<text x="{x}" y="{height-8}" text-anchor="{anchor}" font-size="10" fill="#8a8a8a">{escape(lab)}</text>')
     out.append("</svg>")
     return "".join(out)
 

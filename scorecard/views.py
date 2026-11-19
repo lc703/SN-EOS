@@ -214,17 +214,24 @@ def measurable_panel(request, pk):
     this_monday = monday_of(timezone.localdate())
     weeks = [this_monday - dt.timedelta(weeks=i) for i in range(12, -1, -1)]
     row = build_rows([m], weeks, request.user)[0]
-    from core.charts import trend_chart
+    from core.charts import compact, trend_chart
     from django.utils.safestring import mark_safe
 
+    def axis(v):
+        if m.unit == Measurable.UNIT_YESNO:
+            return "Yes" if v >= 0.99 else "No" if v <= 0.01 else ""
+        prefix = "$" if m.unit == Measurable.UNIT_CURRENCY else ""
+        return prefix + compact(v) + ("%" if m.unit == Measurable.UNIT_PERCENT else "")
+
     chart = trend_chart([w.strftime("%b %-d") for w in weeks], row.spark_values, goal=m.goal, ok=row.spark_ok,
-                        fmt=lambda v: m.format_value(Decimal(str(round(v, 2)))))
+                        fmt=lambda v: m.format_value(Decimal(str(round(v, 2)))), axis_fmt=axis)
     values = [c.value for c in row.cells if c.value is not None]
+    avg = sum(Decimal(v) for v in values) / len(values) if values else None
     hits = row.hits
     return render(request, "scorecard/_panel.html", {
         "m": m, "row": row, "chart": mark_safe(chart),
         "latest": next((c for c in reversed(row.cells) if c.value is not None), None),
-        "average": m.format_value((sum(Decimal(v) for v in values) / len(values)).quantize(Decimal("0.01"))) if values else "",
+        "average": m.format_value(avg.quantize(Decimal("1") if abs(avg) >= 1000 else Decimal("0.01"))) if values else "",
         "hit_pct": round(100 * hits[0] / hits[1]) if hits else None, "hits": hits,
         "editable": can_edit_owned(request.user, m),
     })

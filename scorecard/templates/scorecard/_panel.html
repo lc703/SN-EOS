@@ -8,7 +8,6 @@
       <div class="text-xs text-neutral-500">{{ m.owner.display_name|default:"No owner" }} · Goal {{ m.goal_display }}{% if m.trailing %} · {{ m.get_trailing_display }} column{% endif %}</div>
     </div>
   </div>
-  <button type="button" class="btn btn-ghost btn-sm" @click="$store.ui.closePanel()" aria-label="Close">✕</button>
 </div>
 <div class="panel-body space-y-5">
   <div class="grid grid-cols-3 gap-3">
