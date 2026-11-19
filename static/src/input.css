@@ -273,6 +273,11 @@ thead .sc-sticky { z-index: 3; }
 .l10-step .fac { width: .5rem; height: .5rem; border-radius: 999px; background: var(--bolt); box-shadow: 0 0 0 2px #000; flex-shrink: 0; }
 .attn { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; border-radius: 1rem; background: #fff; border: 1px solid rgb(0 0 0 / .08); box-shadow: inset 3px 0 0 var(--bolt); }
 .attn-icon { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .6rem; background: var(--bolt); color: #000; flex-shrink: 0; }
+.rag-btn { width: 2.1rem; height: 2.1rem; border-radius: .6rem; font-size: 12px; font-weight: 800; color: #8a8a87; background: #f1f1ef; border: 1px solid transparent; transition: all .12s; }
+.rag-btn:hover { color: #000; border-color: rgb(0 0 0 / .15); }
+.rag-btn-green.on { background: var(--green); color: #fff; }
+.rag-btn-yellow.on { background: var(--yellow); color: #fff; }
+.rag-btn-red.on { background: var(--red); color: #fff; }
 .rate-btn { height: 2rem; border-radius: .55rem; font-size: 13px; font-weight: 700; color: #555; background: #f1f1ef; transition: background .12s, color .12s, transform .12s; }
 .rate-btn:hover { background: #e4e4e1; color: #000; }
 .rate-btn.on { background: #000; color: var(--bolt); transform: scale(1.06); }

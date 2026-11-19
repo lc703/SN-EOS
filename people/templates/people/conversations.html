@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Quarterly Conversations{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">{{ quarter.name }} · {% if show_all %}Everyone{% else %}{{ team.label }}{% endif %}</div>
+    <h1 class="page-title">Quarterly Conversations</h1>
+    <p class="page-sub">Every manager meets each direct report once a quarter: success statements and core values, scored green, yellow or red. Pairs come from the Accountability Chart.</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="{% url 'people' %}" class="btn">{% icon "people" %}People</a>
+    {% if not team.is_leadership %}<a href="?{% if not show_all %}all=1{% endif %}" class="btn">{% if show_all %}Only {{ team.name }}{% else %}Everyone{% endif %}</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid sm:grid-cols-[1.4fr_1fr_1fr] gap-4 mb-6">
+  <section class="card card-pad">
+    <div class="flex items-baseline justify-between"><span class="eyebrow">Completed this quarter</span><span class="text-xs text-neutral-500">{{ tracker.draft }} in progress</span></div>
+    <div class="mt-1 flex items-baseline gap-1.5"><span class="font-display text-4xl font-extrabold">{{ tracker.done }}</span><span class="text-neutral-400 font-semibold">/ {{ tracker.total }}</span><span class="ml-auto font-display text-2xl font-extrabold {% if tracker.pct == 100 %}text-[var(--green-ink)]{% endif %}">{{ tracker.pct }}%</span></div>
+    <div class="bar mt-3"><span style="width: {{ tracker.pct }}%"></span></div>
+  </section>
+  <section class="card card-pad">
+    <div class="eyebrow">Not started</div>
+    <div class="mt-1 font-display text-4xl font-extrabold">{{ tracker.todo }}</div>
+    <p class="text-xs text-neutral-500">Start one from the list below</p>
+  </section>
+  <section class="card card-pad">
+    <div class="eyebrow">With a red</div>
+    <div class="mt-1 font-display text-4xl font-extrabold {% if tracker.struggling %}text-[var(--red-ink)]{% endif %}">{{ tracker.struggling }}</div>
+    <p class="text-xs text-neutral-500">Flagged on the chart</p>
+  </section>
+</div>
+
+{% for manager, rows in by_manager %}
+  <section class="card mb-4">
+    <div class="card-head">
+      <div class="flex items-center gap-2">{% avatar manager "sm" %}<h2 class="section-title">{{ manager.display_name }}</h2></div>
+      <span class="text-xs text-neutral-500">{{ rows|length }} direct report{{ rows|length|pluralize }}</span>
+    </div>
+    <div class="divide-y divide-black/5">
+      {% for r in rows %}
+        <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+          {% avatar r.person %}
+          <div class="flex-1 min-w-[10rem]">
+            <a href="{% url 'person' r.person.pk %}" class="font-semibold hover:underline decoration-bolt decoration-2">{{ r.person.display_name }}</a>
+            <div class="text-xs text-neutral-500">{% if r.qc %}{{ r.qc.date|date:"M j" }}{% else %}Not scheduled{% endif %}</div>
+          </div>
+          {% if r.qc %}
+            <div class="flex gap-1" title="Scores">{% for s in r.qc.scores.all %}{% if s.rag %}<span class="h-2.5 w-2.5 rounded-full dot-{{ s.rag }}"></span>{% endif %}{% endfor %}</div>
+          {% endif %}
+          {% if r.red %}<span class="pill pill-dot rag-red">{{ r.red }} red</span>{% endif %}
+          {% if r.status == 'done' %}<span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Done</span>
+          {% elif r.status == 'draft' %}<span class="pill pill-bolt">In progress</span>
+          {% else %}<span class="pill pill-muted">Not started</span>{% endif %}
+          {% if r.qc %}
+            <a href="{% url 'qc_detail' r.qc.pk %}" class="btn btn-sm">{% if r.status == 'done' %}Open{% else %}Continue{% endif %}</a>
+          {% else %}
+            <form method="post" action="{% url 'qc_start' r.person.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">{% icon "play" "h-3.5 w-3.5" %}Start</button></form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% empty %}
+  {% empty "No manager / report pairs yet" "Put people in seats on the Accountability Chart and the pairs show up here." "chart" action_url="/chart/" action_label="Open the chart" %}
+{% endfor %}
+{% endblock %}

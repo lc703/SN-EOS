@@ -84,6 +84,12 @@ urlpatterns = [
     path("chart/seats/<int:pk>/move/", vision.seat_move, name="seat_move"),
     # People
     path("people/", people.people_list, name="people"),
+    path("people/conversations/", people.conversations, name="conversations"),
+    path("people/<int:pk>/conversations/start/", people.qc_start, name="qc_start"),
+    path("people/<int:pk>/statements/", people.statement_add, name="statement_add"),
+    path("conversations/<int:pk>/", people.qc_detail, name="qc_detail"),
+    path("conversations/<int:pk>/score/", people.qc_score, name="qc_score"),
+    path("statements/<int:pk>/delete/", people.statement_delete, name="statement_delete"),
     path("people/<int:pk>/", people.person, name="person"),
     path("people/<int:pk>/one-on-ones/", people.one_on_one_add, name="one_on_one_add"),
     path("people/<int:pk>/reviews/", people.review_add, name="review_add"),

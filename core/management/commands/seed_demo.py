@@ -363,6 +363,13 @@ class Command(BaseCommand):
                     OneOnOneScore.objects.create(one_on_one=o, statement=s, rag=rag, note="Behind plan; see rock." if rag == "red" else "")
                 for v, rag in zip(self.values, cv_rags):
                     OneOnOneScore.objects.create(one_on_one=o, value=v, rag=rag)
+            if key in ("greg", "luke", "olivia"):
+                last = OneOnOne.objects.create(person=person, manager=manager, kind=OneOnOne.QUARTERLY, date=self.prev_q.start_date + dt.timedelta(days=30),
+                                               created_by=manager, completed_at=timezone.now(), highlight="Good quarter overall.")
+                for s in ss:
+                    OneOnOneScore.objects.create(one_on_one=last, statement=s, rag="yellow" if key == "greg" else "green")
+                for v in self.values:
+                    OneOnOneScore.objects.create(one_on_one=last, value=v, rag="green")
             r = PeopleReview.objects.create(person=person, reviewer=manager, date=qc_day, gets_it=gwc[0], wants_it=gwc[1], capacity=gwc[2])
             for v, rating in zip(self.values, pa):
                 ValueRating.objects.create(review=r, value=v, rating=rating)

@@ -2,14 +2,15 @@
 {% load sn %}
 {% block title %}{{ person.display_name }}{% endblock %}
 {% block content %}
-<a href="{% url 'people' %}" class="text-sm text-neutral-500 hover:text-black">← People</a>
+<a href="{% url 'people' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-black">{% icon "chev-left" "h-3.5 w-3.5" %}People</a>
 <div class="mt-2 mb-6 flex flex-wrap items-center gap-4">
   {% avatar person "lg" %}
   <div class="flex-1 min-w-0">
-    <h1 class="text-2xl leading-tight">{{ person.display_name }}</h1>
+    <h1 class="page-title">{{ person.display_name }}</h1>
     <p class="text-sm text-neutral-500">{% if person.can_sign_in %}{{ person.email }}{% else %}No login{% endif %}{% if person.is_admin %} · Admin{% endif %}
       {% for t in person.teams.all %}{% if forloop.first %} · {% endif %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
   </div>
+  {% if private %}<form method="post" action="{% url 'qc_start' person.pk %}">{% csrf_token %}<button class="btn btn-primary">{% icon "people" %}Quarterly Conversation</button></form>{% endif %}
 </div>
 
 <div class="grid lg:grid-cols-[1fr_24rem] gap-6 items-start">
@@ -30,28 +31,50 @@
       {% endif %}
     </section>
 
-    {% if statements %}
-      <section class="card card-pad">
-        <h2 class="section-title mb-2">What success looks like</h2>
-        <ol class="list-decimal pl-5 text-sm space-y-1">{% for s in statements %}<li>{{ s.text }}{% if s.standard %} <span class="text-neutral-500">· {{ s.standard }}</span>{% endif %}</li>{% endfor %}</ol>
+    {% if statements or reviewer %}
+      <section class="card">
+        <div class="card-head"><h2 class="section-title">What success looks like</h2><span class="text-xs text-neutral-500">The agenda for every Quarterly Conversation</span></div>
+        <ol class="divide-y divide-black/5">
+          {% for s in statements %}
+            <li class="group flex items-start gap-3 px-4 py-2.5 text-sm"><span class="text-neutral-400 font-semibold w-4">{{ forloop.counter }}</span><span class="flex-1">{{ s.text }}{% if s.standard %} <span class="text-neutral-500">· {{ s.standard }}</span>{% endif %}</span>
+              {% if reviewer %}<form method="post" action="{% url 'statement_delete' s.pk %}" class="opacity-0 group-hover:opacity-100" onsubmit="return confirm('Remove this success statement?')">{% csrf_token %}<button class="text-neutral-400 hover:text-black" aria-label="Remove">{% icon "x" "h-3.5 w-3.5" %}</button></form>{% endif %}
+            </li>
+          {% empty %}<li class="px-4 py-3 text-sm text-neutral-500">None yet. Add 3–7 statements of what a great quarter in this seat looks like.</li>{% endfor %}
+        </ol>
+        {% if reviewer %}
+          <form method="post" action="{% url 'statement_add' person.pk %}" class="flex gap-2 px-4 py-3 border-t border-black/5 bg-neutral-50/70">{% csrf_token %}
+            <input name="text" required class="input flex-1" placeholder="Add a success statement" autocomplete="off"><button class="btn btn-primary">{% icon "plus" %}Add</button>
+          </form>
+        {% endif %}
       </section>
     {% endif %}
 
     {% if private %}
-      <section>
-        <div class="flex items-center justify-between mb-2"><h2 class="section-title">1:1s</h2><span class="text-xs text-neutral-500">Visible to {{ person.first }}, their manager and admins</span></div>
-        <form method="post" action="{% url 'one_on_one_add' person.pk %}" class="card card-pad mb-3">{% csrf_token %}
-          <div class="flex gap-2 mb-2"><input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="rounded-lg border bg-white px-2 py-1.5 text-sm" aria-label="Date"></div>
-          <textarea name="notes" rows="3" required placeholder="Notes from this 1:1…" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]"></textarea>
-          <div class="mt-2 flex justify-end"><button class="btn btn-primary btn-sm">Save 1:1</button></div>
-        </form>
-        <div class="list-group">
+      <section class="card">
+        <div class="card-head"><h2 class="section-title">Quarterly Conversations and 1:1s</h2><span class="text-xs text-neutral-500">Visible to {{ person.first }}, their manager and admins</span></div>
+        <div class="divide-y divide-black/5">
           {% for o in one_on_ones %}
-            <details class="px-4 py-3" {% if forloop.first %}open{% endif %}>
-              <summary class="cursor-pointer flex items-center gap-2 text-sm"><span class="font-semibold">{{ o.date|date:"M j, Y" }}</span><span class="text-neutral-500">{% if o.manager %}with {{ o.manager.display_name }}{% endif %}</span></summary>
-              <p class="mt-2 text-sm text-neutral-700 prose-pre">{{ o.notes }}</p>
-            </details>
-          {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No 1:1s recorded.</p>{% endfor %}
+            {% if o.kind == 'quarterly' %}
+              <a href="{% url 'qc_detail' o.pk %}" class="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-neutral-50">
+                <div class="w-24 shrink-0"><div class="text-sm font-semibold">{{ o.date|date:"M j, Y" }}</div><div class="text-[11px] text-neutral-500">Quarterly</div></div>
+                <div class="flex gap-1 flex-1">{% for sc in o.scores.all %}{% if sc.rag %}<span class="h-2.5 w-2.5 rounded-full dot-{{ sc.rag }}"></span>{% endif %}{% empty %}<span class="text-xs text-neutral-400">Not scored yet</span>{% endfor %}</div>
+                {% if o.red_count %}<span class="pill pill-dot rag-red">{{ o.red_count }} red</span>{% endif %}
+                {% if o.is_complete %}<span class="pill rag-done">Done</span>{% else %}<span class="pill pill-bolt">In progress</span>{% endif %}
+                <span class="text-xs text-neutral-500">{% if o.manager %}with {{ o.manager.first }}{% endif %}</span>
+                {% if o.highlight or o.notes %}<p class="basis-full pl-[6.75rem] text-[13px] text-neutral-600 truncate">{{ o.highlight|default:o.notes|truncatechars:160 }}</p>{% endif %}
+              </a>
+            {% else %}
+              <details class="px-4 py-3">
+                <summary class="cursor-pointer flex items-center gap-3 text-sm"><span class="w-24 font-semibold">{{ o.date|date:"M j, Y" }}</span><span class="flex-1 text-neutral-500">1:1 notes{% if o.manager %} with {{ o.manager.first }}{% endif %}</span></summary>
+                <p class="mt-2 text-sm text-neutral-700 prose-pre">{{ o.notes }}</p>
+              </details>
+            {% endif %}
+          {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No conversations recorded yet.</p>{% endfor %}
+          <form method="post" action="{% url 'one_on_one_add' person.pk %}" class="px-4 py-3 bg-neutral-50/70 space-y-2">{% csrf_token %}
+            <div class="flex items-center gap-2"><span class="label !mb-0 flex-1">Quick 1:1 notes</span><input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="input input-sm !w-auto" aria-label="Date"></div>
+            <textarea name="notes" rows="2" required placeholder="Notes from this 1:1…" class="input"></textarea>
+            <div class="flex justify-end"><button class="btn btn-sm">Save notes</button></div>
+          </form>
         </div>
       </section>
     {% endif %}
