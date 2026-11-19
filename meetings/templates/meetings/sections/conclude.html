@@ -1,56 +1,88 @@
 {% load sn %}
-<div class="grid md:grid-cols-2 gap-5 items-start">
+<div class="grid lg:grid-cols-[1fr_24rem] gap-5 items-start">
   <div class="space-y-5">
-    <section>
-      <h3 class="section-title mb-2">New to-dos <span class="text-xs font-normal text-neutral-500">({{ new_todos|length }})</span></h3>
-      <div class="list-group">
+    <section class="card">
+      <div class="card-head"><h3 class="section-title">New to-dos</h3><span class="text-xs text-neutral-500">{{ new_todos|length }} · read them back: who, what, when</span></div>
+      <div class="divide-y divide-black/5">
         {% for t in new_todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No new to-dos this meeting.</p>{% endfor %}
       </div>
     </section>
-    <section>
-      <h3 class="section-title mb-2">Issues solved <span class="text-xs font-normal text-neutral-500">({{ solved|length }})</span></h3>
-      <div class="list-group">
-        {% for i in solved %}<div class="px-4 py-2.5 text-sm"><div class="flex items-center gap-2"><span class="pill st-done">Solved</span><span class="flex-1">{{ i.title }}</span></div>{% if i.resolution %}<p class="mt-1 text-neutral-500 prose-pre">{{ i.resolution }}</p>{% endif %}</div>
+
+    <section class="card">
+      <div class="card-head"><h3 class="section-title">Issues solved</h3><span class="text-xs text-neutral-500">{{ solved|length }}</span></div>
+      <div class="divide-y divide-black/5">
+        {% for i in solved %}<div class="px-4 py-2.5 text-sm"><div class="flex items-center gap-2"><span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Solved</span><span class="flex-1 font-medium">{{ i.title }}</span></div>{% if i.resolution %}<p class="mt-1 text-neutral-500 prose-pre">{{ i.resolution }}</p>{% endif %}</div>
         {% empty %}<p class="px-4 py-4 text-sm text-neutral-500">None solved yet.</p>{% endfor %}
       </div>
     </section>
-    <p class="text-sm text-neutral-600">Cascading messages? Note them below, then send the recap.</p>
-    <form method="post" action="{% url 'meeting_update' meeting.pk %}" class="card card-pad">{% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-      <label class="eyebrow block mb-1" for="notes">Cascading messages / notes</label>
-      <textarea id="notes" name="notes" rows="3" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14px]" {% if not can_run %}disabled{% endif %}>{{ meeting.notes }}</textarea>
-      {% if can_run %}<div class="mt-2 flex justify-end"><button class="btn btn-sm btn-primary">Save</button></div>{% endif %}
-    </form>
+
+    <section class="card" id="cascades">
+      <div class="card-head"><h3 class="section-title inline-flex items-center gap-2">{% icon "megaphone" "h-4 w-4" %}Cascading messages</h3><span class="text-xs text-neutral-500 hidden sm:inline">Lands in their next L10 headlines</span></div>
+      <div class="divide-y divide-black/5">
+        {% for c in cascades %}
+          <div class="px-4 py-3 flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm">{{ c.text }}</p>
+              <div class="mt-1 flex flex-wrap gap-1">
+                {% if c.to_everyone %}<span class="pill pill-dark">Everyone</span>{% else %}{% for t in c.to_teams.all %}<span class="pill pill-muted">{{ t.name }}</span>{% endfor %}{% endif %}
+              </div>
+            </div>
+            {% if can_run %}<form hx-post="{% url 'cascade_delete' c.pk %}" hx-swap="none">{% csrf_token %}<button class="btn btn-ghost btn-sm !px-2" aria-label="Remove message">{% icon "x" "h-3.5 w-3.5" %}</button></form>{% endif %}
+          </div>
+        {% empty %}
+          <p class="px-4 py-3 text-sm text-neutral-500">Anything the rest of the company needs to hear?</p>
+        {% endfor %}
+        {% if can_run %}
+          <form hx-post="{% url 'cascade_add' meeting.pk %}" hx-swap="none" class="px-4 py-3 bg-neutral-50/70 space-y-2" x-data="{ all: true }">{% csrf_token %}
+            <textarea name="text" rows="2" required class="input" placeholder="e.g. 2027 budgets go out Friday."></textarea>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-semibold text-neutral-500 mr-1">To</span>
+              <label class="chip-toggle !pl-3"><input type="checkbox" name="to_everyone" value="1" class="sr-only" x-model="all" checked>Everyone</label>
+              {% for t in cascade_teams %}<label class="chip-toggle !pl-3" :class="all && 'opacity-40 pointer-events-none'"><input type="checkbox" name="to_teams" value="{{ t.pk }}" class="sr-only">{{ t.name }}</label>{% endfor %}
+              <button class="btn btn-primary btn-sm ml-auto">{% icon "send" "h-3.5 w-3.5" %}Add message</button>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <label for="notes" class="section-title block mb-2">Meeting notes</label>
+      <form {% if can_run %}hx-post="{% url 'meeting_update' meeting.pk %}" hx-trigger="autosave" hx-swap="none" data-autosave{% endif %}>{% csrf_token %}
+        <textarea id="notes" name="notes" rows="3" class="input" placeholder="Anything else worth keeping in the recap" {% if not can_run %}disabled{% endif %}>{{ meeting.notes }}</textarea>
+      </form>
+    </section>
   </div>
 
-  <div class="space-y-4">
-    <section class="card card-pad">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="section-title">Rate the meeting (1–10)</h3>
-        <div class="text-right"><div class="font-display font-extrabold text-3xl leading-none">{{ average|default:"—" }}</div><div class="eyebrow !text-[10px]">average</div></div>
+  <div class="space-y-4 lg:sticky lg:top-20">
+    <section class="card">
+      <div class="card-head">
+        <h3 class="section-title">Rate the meeting</h3>
+        <div class="text-right"><span class="font-display text-3xl font-extrabold leading-none">{{ average|default:"—" }}</span><div class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">avg · {{ rated }}/{{ attendee_ratings|length }} in</div></div>
       </div>
       <div class="divide-y divide-black/5">
         {% for u, r in attendee_ratings %}
-          <form method="post" action="{% url 'meeting_rate' meeting.pk %}" class="flex items-center gap-3 py-2">{% csrf_token %}
-            <input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
-            {% avatar u %}<span class="flex-1 text-sm">{{ u.display_name }}</span>
+          <div class="px-4 py-2.5">
+            <div class="flex items-center gap-2 mb-1.5">{% avatar u "sm" %}<span class="text-sm font-semibold flex-1">{{ u.display_name }}</span>{% if r %}<span class="text-sm font-bold">{{ r }}</span>{% endif %}</div>
             {% if u.pk == user.pk or is_facilitator or user.is_admin %}
-              <select name="rating" onchange="this.form.requestSubmit()" class="rounded-lg border bg-white px-2 py-1 text-sm font-semibold w-20" aria-label="Rating for {{ u.display_name }}">
-                <option value="">–</option>{% for n in rating_range %}<option value="{{ n }}" {% if r == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
-              </select>
-            {% else %}<span class="w-20 text-center font-semibold">{{ r|default:"–" }}</span>{% endif %}
-          </form>
-        {% empty %}<p class="text-sm text-neutral-500 py-2">Add attendees in Segue.</p>{% endfor %}
+              <form hx-post="{% url 'meeting_rate' meeting.pk %}" hx-swap="none" class="grid grid-cols-10 gap-1" aria-label="Rating for {{ u.display_name }}">{% csrf_token %}
+                <input type="hidden" name="user" value="{{ u.pk }}">
+                {% for n in rating_range %}<button name="rating" value="{{ n }}" class="rate-btn {% if r == n %}on{% endif %}">{{ n }}</button>{% endfor %}
+              </form>
+            {% endif %}
+          </div>
+        {% empty %}<p class="px-4 py-3 text-sm text-neutral-500">Add attendees in Segue.</p>{% endfor %}
       </div>
+      <p class="px-4 py-3 text-xs text-neutral-500 border-t border-black/5">Anything under 8? Say why. That's the most useful part of the rating.</p>
     </section>
     <div class="flex flex-wrap gap-2">
       {% if can_run %}
-        <form method="post" action="{% url 'meeting_conclude' meeting.pk %}" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">{% csrf_token %}
+        <form method="post" action="{% url 'meeting_conclude' meeting.pk %}">{% csrf_token %}
           {% if meeting.is_concluded %}<input type="hidden" name="reopen" value="1"><button class="btn">Reopen meeting</button>
-          {% else %}<button class="btn btn-bolt">✓ Conclude meeting</button>{% endif %}
+          {% else %}<button class="btn btn-bolt">{% icon "check" %}Conclude meeting</button>{% endif %}
         </form>
       {% endif %}
-      <a href="{% url 'meeting_recap' meeting.pk %}" class="btn" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">Printable recap</a>
+      <a href="{% url 'meeting_recap' meeting.pk %}" class="btn">{% icon "doc" %}Recap</a>
     </div>
   </div>
 </div>

@@ -1,12 +1,30 @@
 {% load sn %}
-<p class="text-sm text-neutral-600 mb-3">Good and bad news about customers and employees, one sentence each. Anything that needs discussion drops to Issues.</p>
-<div class="list-group">
+{% if cascades_in %}
+  <section class="card mb-4 overflow-hidden">
+    <div class="card-head bg-black text-white"><h3 class="section-title !text-white inline-flex items-center gap-2">{% icon "megaphone" "h-4 w-4 text-bolt" %}Cascading messages for {{ meeting.team.name }}</h3><span class="text-xs text-white/60">{{ cascades_in|length }} new</span></div>
+    <div class="divide-y divide-black/5">
+      {% for c in cascades_in %}
+        <div class="px-4 sm:px-5 py-3 flex items-start gap-3">
+          {% avatar c.author "sm" %}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-neutral-900">{{ c.text }}</p>
+            <p class="mt-0.5 text-xs text-neutral-500">From the {{ c.meeting.team.name }} L10 · {{ c.meeting.date|date:"M j" }}{% if c.to_everyone %} · to everyone{% endif %}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<div class="card divide-y divide-black/5">
   {% if can_run %}
-  <form method="post" action="{% url 'headline_add' meeting.pk %}" class="flex flex-wrap gap-2 px-4 py-3 bg-neutral-50/70">{% csrf_token %}
-    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-    <select name="kind" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Headline type"><option value="customer">Customer</option><option value="employee">Employee</option></select>
-    <input name="text" required placeholder="Add a headline…" aria-label="Headline" class="flex-1 min-w-[14rem] rounded-lg border bg-white px-3 py-2 text-[15px]">
-    <button class="btn btn-primary h-10">Add</button>
+  <form hx-post="{% url 'headline_add' meeting.pk %}" hx-swap="none" class="flex flex-wrap gap-2 px-4 py-3 bg-neutral-50/70">{% csrf_token %}
+    <div class="seg" role="radiogroup" aria-label="Headline type">
+      <label class="!py-2"><input type="radio" name="kind" value="customer" class="sr-only" checked>Customer</label>
+      <label class="!py-2"><input type="radio" name="kind" value="employee" class="sr-only">Employee</label>
+    </div>
+    <input name="text" required placeholder="Add a headline, one sentence…" aria-label="Headline" class="input flex-1 min-w-[14rem]" data-shortcut-focus autocomplete="off">
+    <button class="btn btn-primary">{% icon "plus" %}Add</button>
   </form>
   {% endif %}
   {% for h in headlines %}
@@ -16,5 +34,7 @@
       <span class="text-xs text-neutral-500 hidden sm:inline">{{ h.author.first }}</span>
       {% include "issues/_drop_button.html" with kind="headline" obj_id=h.pk %}
     </div>
-  {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No headlines yet.</p>{% endfor %}
+  {% empty %}
+    {% empty "No headlines yet" "Customer and employee news from the past week. One sentence each." "megaphone" compact=True %}
+  {% endfor %}
 </div>

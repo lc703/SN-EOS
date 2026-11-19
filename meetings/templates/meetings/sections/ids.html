@@ -1,12 +1,12 @@
-<p class="text-sm text-neutral-600 mb-3">Pick the top 3 (1, 2, 3), then Identify, Discuss, Solve, one at a time. Solutions become to-dos.
-  {% if long_count %}<a class="link ml-1" href="{% url 'issues' %}?team={{ meeting.team.slug }}&list=long" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">{{ long_count }} long-term</a>{% endif %}</p>
-<div class="list-group">
+{% load sn %}
+{% if long_count %}<p class="mb-3 text-sm text-neutral-500">{{ long_count }} more on the <a class="link" href="{% url 'issues' %}?team={{ meeting.team.slug }}&list=long">long-term list</a>; those wait for the Quarterly.</p>{% endif %}
+<div class="card divide-y divide-black/5">
   {% if can_run %}{% include "issues/_add.html" %}{% endif %}
-  {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">The Issues list is clear.</p>{% endfor %}
+  {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}{% empty "The Issues list is clear" "Nothing to IDS this week. Nice." "check" compact=True %}{% endfor %}
 </div>
 {% if solved_here %}
   <h3 class="section-title mt-6 mb-2">Solved in this meeting</h3>
-  <div class="list-group">
-    {% for i in solved_here %}<div class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill st-done">Solved</span><span class="flex-1">{{ i.title }}</span></div>{% endfor %}
+  <div class="card divide-y divide-black/5">
+    {% for i in solved_here %}<div class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Solved</span><span class="flex-1">{{ i.title }}</span></div>{% endfor %}
   </div>
 {% endif %}

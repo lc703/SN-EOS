@@ -68,6 +68,8 @@ urlpatterns = [
     path("meetings/<int:pk>/headlines/", meetings.headline_add, name="headline_add"),
     path("meetings/<int:pk>/rate/", meetings.rate, name="meeting_rate"),
     path("meetings/<int:pk>/conclude/", meetings.conclude, name="meeting_conclude"),
+    path("meetings/<int:pk>/cascades/", meetings.cascade_add, name="cascade_add"),
+    path("cascades/<int:pk>/delete/", meetings.cascade_delete, name="cascade_delete"),
     path("meetings/<int:pk>/recap/", meetings.recap, name="meeting_recap"),
     path("meetings/<int:pk>/recap/send/", meetings.send_recap, name="meeting_send_recap"),
     # Quarterly & annual sessions

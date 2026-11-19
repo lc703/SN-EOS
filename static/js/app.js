@@ -212,6 +212,11 @@
       if (btn) { e.preventDefault(); btn.click(); }
       return;
     }
+    if (e.key === "[" || e.key === "]") {
+      var step = document.querySelector(e.key === "[" ? "[data-shortcut-prev]" : "[data-shortcut-next]");
+      if (step) { e.preventDefault(); step.click(); }
+      return;
+    }
     if (e.key === "/") {
       var f = document.querySelector("main [data-shortcut-focus], main input[type=search], main input[type=text]");
       if (f) { e.preventDefault(); f.focus(); }

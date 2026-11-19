@@ -16,7 +16,7 @@ from django.utils import timezone
 from core.models import Quarter, Team, User, monday_of
 from core.permissions import can_edit_owned, can_edit_team_item, can_edit_todo, is_admin, is_team_member
 from issues.models import Issue
-from meetings.models import Headline, Meeting, MeetingRating
+from meetings.models import CascadingMessage, Headline, Meeting, MeetingRating
 from rocks.models import RAG_CHOICES, RED, Rock, RockUpdate
 from scorecard.models import Measurable, ScoreEntry
 from todos.models import Todo, default_due
@@ -614,6 +614,32 @@ def add_meeting_notes(user, meeting_id, text, field="notes"):
     setattr(meeting, attr, (current + "\n" if current else "") + str(text).strip())
     meeting.save(update_fields=[attr])
     return meeting_json(meeting, detail=True)
+
+
+@tool(
+    "add_cascading_message",
+    "Add a cascading message at a Level 10's Conclude. It shows up in the recipient teams' next L10 headlines.",
+    {
+        "meeting_id": {"type": "integer"},
+        "text": {"type": "string"},
+        "to_everyone": {"type": "boolean", "description": "Send to every team (default when no teams are given)."},
+        "to_teams": {"type": "array", "items": {"type": "string"}, "description": "Team slugs, names or ids."},
+    },
+    ["meeting_id", "text"],
+    write=True,
+)
+def add_cascading_message(user, meeting_id, text, to_everyone=None, to_teams=None):
+    meeting = _get(Meeting, meeting_id, "meeting")
+    _member_or_admin(user, meeting.team)
+    text = str(text).strip()
+    if not text:
+        raise ApiError(400, "text is required")
+    teams = [_team(user, t, required=True) for t in (to_teams or [])]
+    everyone = bool(to_everyone) or not teams
+    c = CascadingMessage.objects.create(meeting=meeting, text=text, to_everyone=everyone, author=user)
+    if not everyone:
+        c.to_teams.set([t for t in teams if t.pk != meeting.team_id])
+    return {"id": c.pk, "meeting_id": meeting.pk, "text": c.text, "to_everyone": everyone, "to_teams": [t.slug for t in c.to_teams.all()]}
 
 
 # ---------------------------------------------------------------- runner

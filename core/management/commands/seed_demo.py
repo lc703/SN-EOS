@@ -321,9 +321,17 @@ class Command(BaseCommand):
             for j, u in enumerate(leaders):
                 MeetingRating.objects.create(meeting=m, user=u, rating=max(6, min(10, ratings[(j + n) % len(ratings)] - (1 if n == 4 and j < 3 else 0))))
             if n == 1:
-                CascadingMessage.objects.create(meeting=m, text="2027 budget approved by the board. Department budgets go out Friday.", to_everyone=True, author=self.u["rachel"])
-                c = CascadingMessage.objects.create(meeting=m, text="Le Roy downtime is down 18% this quarter. Thank the maintenance crew!", author=self.u["dan"])
+                CascadingMessage.objects.create(meeting=m, text="2027 budget approved by the board. Department budgets go out Friday.", to_everyone=True, author=self.u["rachel"], created_at=m.concluded_at)
+                c = CascadingMessage.objects.create(meeting=m, text="Le Roy downtime is down 18% this quarter. Thank the maintenance crew!", author=self.u["dan"], created_at=m.concluded_at)
                 c.to_teams.add(self.teams["Le Roy"])
+                c = CascadingMessage.objects.create(meeting=m, text="New SQF audit date is Dec 9. Kentucky leads the mock audit for all three mills.", author=self.u["dan"], created_at=m.concluded_at)
+                c.to_teams.add(self.teams["Kentucky"])
+        ky = self.teams["Kentucky"]
+        live = Meeting.objects.create(team=ky, quarter=self.q, date=self.today, facilitator=self.u["luke"], current_section="rocks",
+                                      segue_notes="Luke: daughter's first deer season\nSam: passed the feed safety exam\nAmy: lab audit prep is done")
+        live.attendees.set(ky.members.filter(is_active=True))
+        Headline.objects.create(team=ky, meeting=live, kind="customer", text="Miller Dairy asked for a second weekly delivery", author=self.u["sam"])
+        Headline.objects.create(team=ky, meeting=live, kind="employee", text="Night shift has been fully staffed for 3 weeks", author=self.u["luke"])
         Headline.objects.create(team=co, kind="customer", text="Hillcrest Farms doubled their mineral order after the ration review", author=self.u["kyle"])
         Headline.objects.create(team=co, kind="employee", text="Sam Ortiz earned his feed safety certification", author=self.u["luke"])
         Headline.objects.create(team=co, kind="customer", text="Two late deliveries in Mabel route last week — fixed", author=self.u["olivia"])

@@ -27,3 +27,14 @@ def go_back(request, default="/"):
 def require(allowed):
     if not allowed:
         raise PermissionDenied("You can't change this.")
+
+
+def hx_trigger(response, toast=None, kind=None, **events):
+    """Attach HX-Trigger events (and an optional toast) to an htmx response."""
+    import json
+
+    if toast:
+        events["toast"] = {"value": toast, **({"kind": kind} if kind else {})}
+    if events:
+        response["HX-Trigger"] = json.dumps(events)
+    return response

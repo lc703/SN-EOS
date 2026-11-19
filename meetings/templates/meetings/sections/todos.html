@@ -1,12 +1,24 @@
 {% load sn %}
-<div class="flex flex-wrap items-center gap-3 mb-3">
-  <p class="text-sm text-neutral-600 flex-1">Last week’s to-dos: done or not done. Check them off as owners report.</p>
-  <div class="card px-3 py-1.5 text-center">
-    <div class="font-display font-extrabold text-xl leading-none {{ due_pct|pct_class }}">{% if due_pct is None %}—{% else %}{{ due_pct }}%{% endif %}</div>
-    <div class="eyebrow !text-[10px]">{{ due_done }}/{{ due_total }} due done</div>
+<div class="grid sm:grid-cols-3 gap-4 mb-4">
+  <div class="card card-pad">
+    <div class="eyebrow">Due this week, done</div>
+    <div class="mt-1 flex items-baseline gap-1"><span class="font-display text-3xl font-extrabold {{ due_pct|pct_class }}">{% if due_pct is None %}—{% else %}{{ due_pct }}%{% endif %}</span><span class="text-neutral-400 font-semibold">{{ due_done }}/{{ due_total }}</span></div>
+    <p class="mt-1 text-xs text-neutral-500">EOS target: 90% or better.</p>
+  </div>
+  <div class="card card-pad sm:col-span-2">
+    <div class="eyebrow mb-2">Last 4 weeks</div>
+    <div class="flex items-end gap-3">
+      {% for monday, pct, done, total in weekly %}
+        <div class="flex-1 text-center">
+          <div class="h-12 flex items-end justify-center"><div class="w-full max-w-[3rem] rounded-md {% if pct is None %}bg-neutral-100{% elif pct >= 90 %}bg-[var(--green)]{% elif pct >= 70 %}bg-[var(--yellow)]{% else %}bg-[var(--red)]{% endif %}" style="height: {% if pct is None %}8{% else %}{{ pct|default:4 }}{% endif %}%"></div></div>
+          <div class="mt-1 text-[11px] font-semibold">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</div>
+          <div class="text-[10px] text-neutral-400">{{ monday|date:"M j" }}</div>
+        </div>
+      {% endfor %}
+    </div>
   </div>
 </div>
-<div class="list-group">
-  {% include "todos/_add.html" with uid="l10" %}
-  {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
+<div class="card divide-y divide-black/5">
+  {% if can_run %}{% include "todos/_add.html" with uid="l10" %}{% endif %}
+  {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}{% empty "No open to-dos" "Everything from last week is done." "check" compact=True %}{% endfor %}
 </div>

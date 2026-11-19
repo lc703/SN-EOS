@@ -1,43 +1,61 @@
 {% extends "base.html" %}
 {% load sn %}
-{% block title %}{{ meeting.team.name }} L10{% endblock %}
+{% block title %}{{ meeting.team.name }} L10 · {{ section_label }}{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-center gap-3 mb-4">
+<div id="l10" hx-get="{{ request.get_full_path }}" hx-select="#l10" hx-target="this" hx-swap="outerHTML" hx-trigger="meetingChanged from:body, rocksChanged from:body" hx-disinherit="*">
+<div class="flex flex-wrap items-end gap-4 mb-5">
   <div class="flex-1 min-w-0">
-    <a href="{% url 'meetings' %}?team={{ meeting.team.slug }}" class="eyebrow hover:text-black">← {{ meeting.team.label }} · Level 10</a>
-    <h1 class="text-2xl leading-tight">{{ meeting.date|date:"l, F j" }}</h1>
-    <div class="text-sm text-neutral-500 flex flex-wrap items-center gap-x-2">
-      <span>Facilitator: <strong class="text-neutral-800">{{ meeting.facilitator.display_name|default:"—" }}</strong></span>
+    <a href="{% url 'meetings' %}?team={{ meeting.team.slug }}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-black">{% icon "chev-left" "h-3.5 w-3.5" %}{{ meeting.team.name }} · Level 10</a>
+    <h1 class="page-title mt-1">{{ meeting.date|date:"l, F j" }}</h1>
+    <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600">
+      <span class="inline-flex items-center gap-1.5">{% icon "user" "h-3.5 w-3.5" %}Facilitator <strong class="text-neutral-900">{{ meeting.facilitator.display_name|default:"—" }}</strong></span>
       {% if can_run and not is_facilitator and not meeting.is_concluded %}
-        <form method="post" action="{% url 'meeting_update' meeting.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="facilitate" value="1"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="link text-xs">Take over</button></form>
+        <form hx-post="{% url 'meeting_update' meeting.pk %}" hx-swap="none" class="inline">{% csrf_token %}<input type="hidden" name="facilitate" value="1"><button class="link text-xs">Take over</button></form>
       {% endif %}
-      <span>· {{ meeting.attendees.count }} attendees</span>
-      {% if meeting.is_concluded %}<span class="pill st-done">Concluded</span>{% endif %}
+      <span class="inline-flex items-center">
+        <span class="flex -space-x-1.5 mr-1.5">{% for u in attendees|slice:":8" %}<span class="ring-2 ring-paper rounded-full" title="{{ u.display_name }}">{% avatar u "sm" %}</span>{% endfor %}</span>
+        {{ attendees|length }} attending
+      </span>
+      {% if meeting.is_concluded %}<span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Concluded{% if meeting.average_rating %} · {{ meeting.average_rating }}/10{% endif %}</span>{% else %}<span class="pill pill-bolt pill-dot">In progress</span>{% endif %}
     </div>
   </div>
-  <a href="{% url 'meeting_recap' meeting.pk %}" class="btn">Recap</a>
+  <a href="{% url 'meeting_recap' meeting.pk %}" class="btn">{% icon "doc" %}Recap</a>
 </div>
 
-<div class="grid lg:grid-cols-[13.5rem_1fr] gap-5 items-start">
-  <nav class="rail card p-1.5 lg:sticky lg:top-[4.5rem] flex lg:flex-col gap-0.5 overflow-x-auto" aria-label="Agenda">
-    {% for key, label in sections %}
-      <a href="?s={{ key }}" class="{% if key == section %}on{% endif %}">
-        <span class="rail-n">{{ forloop.counter }}</span>{{ label }}
-        {% if key == meeting.current_section and not meeting.is_concluded %}<span class="fac" title="Facilitator is here"></span>{% endif %}
-      </a>
-    {% endfor %}
+<div class="grid lg:grid-cols-[14rem_1fr] gap-6 items-start">
+  <nav class="l10-rail card p-1.5 lg:sticky lg:top-20" aria-label="Agenda">
+    <div class="flex lg:flex-col gap-0.5 overflow-x-auto no-scrollbar">
+      {% for key, label in sections %}
+        <a href="?s={{ key }}" class="l10-step {% if key == section %}on{% endif %}" {% if key == section %}aria-current="step"{% endif %}>
+          <span class="l10-n">{{ forloop.counter }}</span>
+          <span class="flex-1 whitespace-nowrap">{{ label }}</span>
+          {% with n=badges|get_item:key %}{% if n %}<span class="l10-badge {% if key == 'rocks' %}l10-badge-red{% endif %}">{{ n }}</span>{% endif %}{% endwith %}
+          {% if key == meeting.current_section and not meeting.is_concluded and key != section %}<span class="fac" title="Facilitator is here"></span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    <div class="hidden lg:block px-2.5 pt-3 pb-1.5">
+      <div class="flex justify-between text-[11px] text-neutral-500 mb-1"><span>Agenda</span><span>{{ section_n }} of {{ sections|length }}</span></div>
+      <div class="bar"><span style="width: {{ progress }}%"></span></div>
+      <p class="mt-3 text-[11px] text-neutral-400 leading-snug">No timers. Press <kbd class="kbd">[</kbd> <kbd class="kbd">]</kbd> to move between sections.</p>
+    </div>
   </nav>
 
   <div class="min-w-0">
-    <div class="flex items-center gap-2 mb-3">
-      <h2 class="text-xl flex-1">{{ section_label }}</h2>
-      {% if prev %}<a href="?s={{ prev }}" class="btn btn-sm">← Back</a>{% endif %}
-      {% if next_s %}<a href="?s={{ next_s }}" class="btn btn-sm btn-primary">Next →</a>{% endif %}
+    <div class="flex flex-wrap items-start gap-3 mb-4">
+      <div class="flex-1 min-w-0">
+        <div class="eyebrow">Section {{ section_n }}</div>
+        <h2 class="font-display text-2xl font-extrabold tracking-tight leading-tight">{{ section_label }}</h2>
+        <p class="mt-1 text-sm text-neutral-600 max-w-2xl">{{ section_hint }}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if prev %}<a href="?s={{ prev }}" class="btn btn-sm" data-shortcut-prev>{% icon "chev-left" "h-3.5 w-3.5" %}Back</a>{% endif %}
+        {% if next_s %}<a href="?s={{ next_s }}" class="btn btn-sm btn-primary" data-shortcut-next>Next{% icon "chev-right" "h-3.5 w-3.5" %}</a>{% endif %}
+      </div>
     </div>
-    <div id="l10-body" hx-target="#l10-body" hx-select="#l10-body" hx-swap="outerHTML show:none" hx-push-url="false">
-      <div hx-get="{% url 'meeting_where' meeting.pk %}?s={{ section }}" hx-trigger="every 8s" hx-target="this" hx-select="unset" hx-swap="innerHTML"></div>
-      {% include "meetings/sections/"|add:section|add:".html" %}
-    </div>
+    <div hx-get="{% url 'meeting_where' meeting.pk %}?s={{ section }}" hx-trigger="every 8s" hx-target="this" hx-swap="innerHTML"></div>
+    <div id="l10-body">{% include "meetings/sections/"|add:section|add:".html" %}</div>
   </div>
+</div>
 </div>
 {% endblock %}

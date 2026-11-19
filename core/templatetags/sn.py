@@ -7,6 +7,11 @@ register = template.Library()
 
 
 @register.filter
+def get_item(mapping, key):
+    return (mapping or {}).get(key)
+
+
+@register.filter
 def num(value):
     """Decimal for an input box: 85.00 -> 85, 1.50 -> 1.5."""
     if value is None or value == "":

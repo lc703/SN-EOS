@@ -1,34 +1,52 @@
 {% extends "base.html" %}
-{% block title %}L10 meetings{% endblock %}
+{% load sn %}
+{% block title %}Level 10 meetings{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+<div class="page-head">
   <div>
     <div class="eyebrow">{{ team.label }}</div>
-    <h1 class="text-2xl">Level 10 meetings</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">Weekly, same day, same time. Jump between sections freely; there are no timers.</p>
+    <h1 class="page-title">Level 10 meetings</h1>
+    <p class="page-sub">Weekly, same day, same time, same agenda. Jump between sections freely; there are no timers.</p>
   </div>
   {% if can_run %}
-    <form method="post" action="{% url 'meeting_start' %}">{% csrf_token %}
-      <button class="btn btn-bolt h-11 px-5 text-[14px]">▶ Start today’s L10</button>
-    </form>
+    {% if open_meeting %}
+      <a href="{% url 'meeting' open_meeting.pk %}" class="btn btn-bolt h-11 px-5">{% icon "play" %}Resume {{ open_meeting.date|date:"D M j" }} L10</a>
+    {% else %}
+      <form method="post" action="{% url 'meeting_start' %}">{% csrf_token %}<button class="btn btn-bolt h-11 px-5" data-shortcut-new>{% icon "play" %}Start today's L10</button></form>
+    {% endif %}
   {% endif %}
 </div>
-<div class="list-group">
+
+{% if meetings %}
+<div class="grid lg:grid-cols-[1fr_16rem] gap-4 mb-6">
+  <section class="card card-pad">
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">Meeting rating</h2><span class="text-xs text-neutral-500">Goal: 8 or better</span></div>
+    {% if chart %}{{ chart|safe }}{% else %}<p class="text-sm text-neutral-500 py-8 text-center">Ratings show up here after two meetings.</p>{% endif %}
+  </section>
+  <div class="grid grid-cols-2 lg:grid-cols-1 gap-4">
+    <div class="card card-pad"><div class="eyebrow">Average rating</div><div class="mt-1 font-display text-4xl font-extrabold {% if avg_rating and avg_rating >= 8 %}text-[var(--green-ink)]{% elif avg_rating %}text-[var(--red-ink)]{% endif %}">{{ avg_rating|default:"—" }}</div><p class="text-xs text-neutral-500">{% if rated_n %}last {{ rated_n }} meeting{{ rated_n|pluralize }}{% else %}no ratings yet{% endif %}</p></div>
+    <div class="card card-pad"><div class="eyebrow">Meetings held</div><div class="mt-1 font-display text-4xl font-extrabold">{{ held }}</div><p class="text-xs text-neutral-500">in this list</p></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card divide-y divide-black/5">
   {% for m in meetings %}
-    <a href="{% url 'meeting' m.pk %}" class="flex items-center gap-4 px-4 py-3">
-      <div class="w-14 text-center shrink-0">
-        <div class="eyebrow !text-[10px]">{{ m.date|date:"M" }}</div>
+    <a href="{% url 'meeting' m.pk %}" class="flex items-center gap-4 px-4 py-3 hover:bg-neutral-50">
+      <div class="w-12 text-center shrink-0">
+        <div class="text-[10px] font-bold uppercase tracking-wide text-neutral-500">{{ m.date|date:"M" }}</div>
         <div class="font-display font-extrabold text-xl leading-none">{{ m.date|date:"j" }}</div>
       </div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold">{{ m.team.name }} L10 · {{ m.date|date:"l" }}</div>
         <div class="text-xs text-neutral-500">{{ m.attendees.all|length }} attendees{% if m.facilitator %} · facilitated by {{ m.facilitator.first }}{% endif %}</div>
       </div>
-      {% with avg=m.average_rating %}{% if avg %}<div class="text-right"><div class="font-display font-extrabold text-lg leading-none">{{ avg }}</div><div class="eyebrow !text-[10px]">rating</div></div>{% endif %}{% endwith %}
-      {% if m.is_concluded %}<span class="pill st-done">Concluded</span>{% else %}<span class="pill pill-bolt">In progress</span>{% endif %}
+      {% with avg=m.average_rating %}{% if avg %}<div class="text-right"><div class="font-display font-extrabold text-lg leading-none {% if avg >= 8 %}text-[var(--green-ink)]{% else %}text-[var(--red-ink)]{% endif %}">{{ avg }}</div><div class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">rating</div></div>{% endif %}{% endwith %}
+      {% if m.is_concluded %}<span class="pill rag-done">Concluded</span>{% else %}<span class="pill pill-bolt pill-dot">In progress</span>{% endif %}
+      <span class="text-neutral-300">{% icon "chev-right" "h-4 w-4" %}</span>
     </a>
   {% empty %}
-    <p class="px-4 py-8 text-center text-sm text-neutral-500">No meetings yet. Start one above.</p>
+    {% empty "No meetings yet" "Start your first Level 10. Everything from the week (scorecard, rocks, to-dos, issues) is pulled in automatically." "calendar" %}
   {% endfor %}
 </div>
 {% endblock %}

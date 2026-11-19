@@ -1,4 +1,4 @@
-<p class="text-sm text-neutral-600 mb-3">Report the numbers: on or off. Anything red goes to the Issues list; don't solve it here.
-  {% if off_count %}<span class="pill st-off_track ml-1">{{ off_count }} off goal</span>{% endif %}</p>
+{% load sn %}
+{% if off_count %}<p class="mb-3"><span class="pill pill-dot rag-red">{{ off_count }} off goal last week</span></p>{% endif %}
 {% include "scorecard/_table.html" %}
-<p class="mt-2 text-xs text-neutral-500">Last {{ weeks|length }} weeks. <a class="link" href="{% url 'scorecard' %}?team={{ meeting.team.slug }}" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">Full scorecard</a></p>
+<p class="mt-2 text-xs text-neutral-500">Last {{ weeks|length }} weeks. <a class="link" href="{% url 'scorecard' %}?team={{ meeting.team.slug }}">Full scorecard</a></p>

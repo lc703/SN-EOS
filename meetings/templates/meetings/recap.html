@@ -4,7 +4,7 @@
 {% block content %}
 <div class="max-w-3xl mx-auto">
   <div class="flex items-center gap-2 mb-4 print:hidden">
-    <a href="{% url 'meeting' meeting.pk %}?s=conclude" class="text-sm text-neutral-500 hover:text-black flex-1">← Back to the meeting</a>
+    <a href="{% url 'meeting' meeting.pk %}?s=conclude" class="text-sm text-neutral-500 hover:text-black flex-1 inline-flex items-center gap-1">{% icon "chev-left" "h-3.5 w-3.5" %}Back to the meeting</a>
     <button onclick="window.print()" class="btn">Print</button>
     <form method="post" action="{% url 'meeting_send_recap' meeting.pk %}">{% csrf_token %}<button class="btn btn-primary">Email to attendees</button></form>
   </div>
@@ -43,9 +43,27 @@
     </section>
     {% endif %}
 
-    {% if meeting.notes %}
+    {% if rocks %}
+    <section class="pt-6">
+      <h2 class="section-title mb-2">Rocks · {{ rock_summary.green }} green · {{ rock_summary.yellow }} yellow · {{ rock_summary.red }} red · {{ rock_summary.done }} done</h2>
+      <ul class="space-y-1.5 text-sm">
+        {% for r in rocks %}<li class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full dot-{{ r.rag }} shrink-0"></span><span class="flex-1">{{ r.title }}</span><span class="text-neutral-500 whitespace-nowrap">{{ r.owner.display_name }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if cascades %}
     <section class="pt-6">
       <h2 class="section-title mb-2">Cascading messages</h2>
+      <ul class="space-y-2 text-sm">
+        {% for c in cascades %}<li><span>{{ c.text }}</span> <span class="text-neutral-500">→ {% if c.to_everyone %}Everyone{% else %}{% for t in c.to_teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if meeting.notes %}
+    <section class="pt-6">
+      <h2 class="section-title mb-2">Notes</h2>
       <p class="text-sm prose-pre">{{ meeting.notes }}</p>
     </section>
     {% endif %}

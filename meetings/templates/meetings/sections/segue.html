@@ -1,17 +1,17 @@
-<div class="grid md:grid-cols-[1fr_18rem] gap-5 items-start">
-  <form method="post" action="{% url 'meeting_update' meeting.pk %}" class="card card-pad">{% csrf_token %}
-    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-    <p class="text-sm text-neutral-600 mb-2">Everyone shares one personal and one professional best from the past week.</p>
-    <textarea name="segue_notes" rows="8" class="block w-full rounded-lg border bg-white px-3 py-2 text-[14.5px]" placeholder="Good news…" {% if not can_run %}disabled{% endif %}>{{ meeting.segue_notes }}</textarea>
-    {% if can_run %}<div class="mt-3 flex justify-end"><button class="btn btn-primary">Save notes</button></div>{% endif %}
+{% load sn %}
+<div class="grid md:grid-cols-[1fr_19rem] gap-5 items-start">
+  <form class="card card-pad" {% if can_run %}hx-post="{% url 'meeting_update' meeting.pk %}" hx-trigger="autosave" hx-swap="none" data-autosave{% endif %}>{% csrf_token %}
+    <div class="flex items-center justify-between mb-2"><label for="segue" class="section-title">Good news</label>{% if can_run %}<span class="text-xs text-neutral-400">Saves as you type</span>{% endif %}</div>
+    <textarea id="segue" name="segue_notes" rows="9" class="input !h-auto py-2.5 leading-relaxed" placeholder="Ben: great harvest weekend&#10;Maria: Ohio dealer signed" {% if not can_run %}disabled{% endif %}>{{ meeting.segue_notes }}</textarea>
   </form>
-  <form method="post" action="{% url 'meeting_update' meeting.pk %}" class="card card-pad">{% csrf_token %}
-    <input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="hidden" name="attendees_present" value="1">
-    <div class="eyebrow mb-2">Attendees</div>
-    <div class="space-y-1.5">
+  <form class="card card-pad" {% if can_run %}hx-post="{% url 'meeting_update' meeting.pk %}" hx-trigger="change" hx-swap="none"{% endif %}>{% csrf_token %}
+    <input type="hidden" name="attendees_present" value="1">
+    <div class="flex items-center justify-between mb-3"><span class="section-title">Who's here</span><span class="text-xs text-neutral-500">{{ attendee_ids|length }} of {{ members|length }}</span></div>
+    <div class="flex flex-wrap gap-2">
       {% for m in members %}
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="attendees" value="{{ m.pk }}" class="h-4 w-4" {% if m.pk in attendee_ids %}checked{% endif %} {% if can_run %}onchange="this.form.requestSubmit()"{% else %}disabled{% endif %}> {{ m.display_name }}</label>
+        <label class="chip-toggle"><input type="checkbox" name="attendees" value="{{ m.pk }}" class="sr-only" {% if m.pk in attendee_ids %}checked{% endif %} {% if not can_run %}disabled{% endif %}>{% avatar m "sm" %}{{ m.first|default:m.display_name }}</label>
       {% endfor %}
     </div>
+    <p class="mt-3 text-xs text-neutral-500">Attendees rate the meeting at Conclude and get the recap.</p>
   </form>
 </div>

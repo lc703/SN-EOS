@@ -63,7 +63,7 @@ def line_chart(points, goal=None, width=640, height=220, fmt=str, title=""):
     """points: [(label, value-or-None, state)]. Draws a trend line, a dashed goal line and labelled axes."""
     vals = [_f(v) for _, v, _ in points]
     g = _f(goal)
-    pl, pr, pt, pb = 46, 14, 14, 26
+    pl, pr, pt, pb = 46, 24, 14, 26
     w, h = width - pl - pr, height - pt - pb
     lo, hi = _scale(vals, [g] if g is not None else [])
     n = max(len(points) - 1, 1)

@@ -10,7 +10,7 @@
       <span>{{ r.owner.display_name|default:"No owner" }}</span>
       {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
       {% if r.is_company and mode != 'company' %}<span class="pill pill-dark !h-5 !text-[10px]">Company</span>{% endif %}
-      {% if not r.team.is_leadership and mode != 'team' %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% if not r.team.is_leadership and mode != 'team' and mode != 'meeting' %}<span>· {{ r.team.name }}</span>{% endif %}
       {% if r.goal_id %}<span class="inline-flex items-center gap-1 text-neutral-600" title="1-year goal: {{ r.goal.title }}">· {% icon "target" "h-3 w-3" %}<span class="truncate max-w-[14rem]">{{ r.goal.title }}</span></span>{% endif %}
     </div>
   </div>
@@ -22,13 +22,6 @@
   <div class="shrink-0 hidden sm:block">{% rock_strip r %}</div>
   <div class="flex items-center gap-2 shrink-0 ml-auto">
     {% if r.status == 'off_track' and mode != 'home' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}{% endif %}
-    {% if mode == 'meeting' and can %}
-      <select name="status" aria-label="Status for {{ r.title }}"
-              class="pill st-{{ r.status }} !h-8 border-0 pr-7 cursor-pointer text-[12px]"
-              hx-post="{% url 'rock_status' r.pk %}" hx-trigger="change" hx-target="#rock-{{ r.pk }}" hx-swap="outerHTML" hx-select="unset">
-        {% for v, label in statuses %}<option value="{{ v }}" {% if v == r.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-    {% endif %}
     {% if r.status == 'done' %}
       <span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Done</span>
     {% elif can %}

@@ -20,6 +20,7 @@ SHORTCUTS = [
     (["/"], "Focus the first search or input"),
     (["←", "→", "↑", "↓"], "Move between Scorecard cells"),
     (["Enter"], "Edit the selected cell"),
+    (["[", "]"], "L10 and sessions: previous / next section"),
     (["+", "−", "0"], "Chart: zoom in, out, fit"),
     (["Esc"], "Close panel or dialog"),
     (["?"], "Show this help"),
