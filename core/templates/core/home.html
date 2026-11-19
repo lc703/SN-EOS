@@ -2,60 +2,125 @@
 {% load sn %}
 {% block title %}My 90{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+<div id="home" hx-get="{{ request.get_full_path }}" hx-select="#home" hx-target="this" hx-swap="outerHTML" hx-trigger="rocksChanged from:body" hx-disinherit="*">
+<div class="page-head">
   <div>
-    <div class="eyebrow">{{ quarter.name }} · {{ today|date:"l, F j" }}</div>
-    <h1 class="text-2xl sm:text-3xl">Hi {{ user.first }}, here’s your 90.</h1>
+    <div class="eyebrow">{{ quarter.name }} · Week {{ week_n }} of 13 · {{ today|date:"l, F j" }}</div>
+    <h1 class="page-title">Hi {{ user.first }}, here's your 90.</h1>
+    <p class="page-sub">{% if attention_count %}{{ attention_count }} thing{{ attention_count|pluralize }} need{{ attention_count|pluralize:"s," }} you this week.{% else %}You're caught up for the week. Nice.{% endif %}</p>
   </div>
   <div class="flex flex-wrap gap-2">
-    {% for m in open_meetings %}<a href="{% url 'meeting' m.pk %}" class="btn btn-bolt">▶ Rejoin {{ m.team.name }} L10</a>{% endfor %}
-    {% if not open_meetings %}<a href="{% url 'meetings' %}" class="btn">L10 meetings</a>{% endif %}
+    {% for m in open_meetings %}<a href="{% url 'meeting' m.pk %}" class="btn btn-bolt">{% icon "play" %}Rejoin {{ m.team.name }} L10</a>{% endfor %}
+    {% if not open_meetings %}<a href="{% url 'meetings' %}" class="btn">{% icon "calendar" %}Level 10</a>{% endif %}
   </div>
 </div>
 
-<div class="grid sm:grid-cols-4 gap-3 mb-6">
-  {% with last=completion|last %}
-  <div class="card card-pad"><div class="eyebrow">Open to-dos</div><div class="font-display font-extrabold text-2xl">{{ todos|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">Rocks</div><div class="font-display font-extrabold text-2xl">{{ rocks|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">My open issues</div><div class="font-display font-extrabold text-2xl">{{ issues|length }}</div></div>
-  <div class="card card-pad"><div class="eyebrow">To-do completion</div>
-    <div class="flex items-end gap-2">{% for w, pct, done, total in completion %}<div class="text-center"><div class="font-display font-extrabold {% if forloop.last %}text-2xl{% else %}text-sm{% endif %} {{ pct|pct_class }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</div><div class="text-[10px] text-neutral-400">{{ w|date:"n/j" }}</div></div>{% endfor %}</div>
-  </div>
-  {% endwith %}
+{% if attention_count %}
+<div class="grid sm:grid-cols-3 gap-3 mb-5">
+  {% if attention.updates %}
+    <div class="attn">
+      <div class="attn-icon">{% icon "rocks" "h-4 w-4" %}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold">{{ attention.updates|length }} rock update{{ attention.updates|length|pluralize }} due</div>
+        <div class="mt-1.5 flex flex-wrap gap-1.5">
+          {% for r in attention.updates %}<button type="button" class="pill pill-muted hover:bg-black hover:text-white max-w-full" hx-get="{% url 'rock_update' r.pk %}" hx-target="#panel-content"><span class="truncate max-w-[12rem]">{{ r.title }}</span></button>{% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+  {% if attention.missing %}
+    <a href="{% url 'scorecard' %}?owner=me" class="attn hover:border-black/30">
+      <div class="attn-icon">{% icon "scorecard" "h-4 w-4" %}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold">{{ attention.missing|length }} number{{ attention.missing|length|pluralize }} missing for last week</div>
+        <div class="mt-0.5 text-xs text-neutral-500 truncate">{% for r in attention.missing %}{{ r.measurable.title }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+      </div>
+      {% icon "chev-right" "h-4 w-4 text-neutral-400" %}
+    </a>
+  {% endif %}
+  {% if attention.overdue %}
+    <a href="{% url 'todos' %}" class="attn hover:border-black/30">
+      <div class="attn-icon !bg-[var(--red-bg)] !text-[var(--red-ink)]">{% icon "alert" "h-4 w-4" %}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold">{{ attention.overdue|length }} overdue to-do{{ attention.overdue|length|pluralize }}</div>
+        <div class="mt-0.5 text-xs text-neutral-500 truncate">{% for t in attention.overdue %}{{ t.title }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+      </div>
+      {% icon "chev-right" "h-4 w-4 text-neutral-400" %}
+    </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+  <section class="card card-pad">
+    <div class="eyebrow">Quarter</div>
+    <div class="mt-1 flex items-baseline gap-1.5"><span class="font-display text-3xl font-extrabold">Week {{ week_n }}</span><span class="text-neutral-400 font-semibold">/ 13</span></div>
+    <div class="bar mt-3"><span style="width: {{ quarter_pct }}%"></span></div>
+    <p class="mt-2 text-xs text-neutral-500">{% if days_left is not None %}{{ days_left }} day{{ days_left|pluralize }} left in {{ quarter.name }}{% endif %}</p>
+  </section>
+  <a href="{% url 'rocks' %}" class="card card-pad flex items-center gap-4 hover:border-black/20">
+    <div>{{ rock_donut|safe }}</div>
+    <div class="min-w-0">
+      <div class="eyebrow">{{ team.name }} rocks</div>
+      <ul class="mt-1.5 space-y-0.5 text-[12.5px]">
+        <li class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full dot-green"></span>{{ rsum.green }} green</li>
+        <li class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full dot-yellow"></span>{{ rsum.yellow }} yellow</li>
+        <li class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full dot-red"></span>{{ rsum.red }} red</li>
+      </ul>
+    </div>
+  </a>
+  <a href="{% url 'scorecard' %}" class="card card-pad hover:border-black/20">
+    <div class="flex items-baseline justify-between"><span class="eyebrow">Scorecard on goal</span>{% if sc_last %}<span class="text-xs text-neutral-500">{{ sc_last.on }}/{{ sc_last.scored }} last week</span>{% endif %}</div>
+    <div class="mt-1 font-display text-3xl font-extrabold {% if sc_last.pct >= 80 %}text-[var(--green-ink)]{% elif sc_last %}text-[var(--red-ink)]{% endif %}">{% if sc_last %}{{ sc_last.pct }}%{% else %}—{% endif %}</div>
+    <div class="mt-1">{{ sc_bars|safe }}</div>
+  </a>
+  <a href="{% url 'meetings' %}" class="card card-pad hover:border-black/20">
+    <div class="flex items-baseline justify-between"><span class="eyebrow">L10 rating</span><span class="text-xs text-neutral-500">goal 8+</span></div>
+    <div class="mt-1 font-display text-3xl font-extrabold {% if rating_last >= 8 %}text-[var(--green-ink)]{% elif rating_last %}text-[var(--red-ink)]{% endif %}">{{ rating_last|default:"—" }}</div>
+    <div class="mt-2">{% if rating_spark %}{{ rating_spark|safe }}{% else %}<p class="text-xs text-neutral-500">Trend shows after two meetings.</p>{% endif %}</div>
+  </a>
 </div>
 
-<div class="grid lg:grid-cols-2 gap-6 items-start">
-  <section>
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My to-dos</h2><a href="{% url 'todos' %}" class="text-xs link">All to-dos</a></div>
-    <div class="list-group">
-      {% for t in todos %}{% include "todos/_todo.html" with compact=1 %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
+<div class="grid lg:grid-cols-[1.35fr_1fr] gap-6 items-start">
+  <section class="card">
+    <div class="card-head"><h2 class="section-title">My rocks</h2><a href="{% url 'rocks' %}?owner=me" class="text-xs link">All rocks</a></div>
+    <div class="divide-y divide-black/5">
+      {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}{% empty "No rocks this quarter" "Rocks you own on any team show up here." "rocks" compact=True %}{% endfor %}
     </div>
   </section>
 
-  <section>
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My rocks</h2><a href="{% url 'rocks' %}" class="text-xs link">All rocks</a></div>
-    <div class="list-group">
-      {% for r in rocks %}{% include "rocks/_rock.html" with mode="home" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No rocks this quarter.</p>{% endfor %}
+  <section class="card">
+    <div class="card-head"><h2 class="section-title">My to-dos</h2><a href="{% url 'todos' %}" class="text-xs link">All to-dos</a></div>
+    {% if completion_bars %}
+    <div class="px-4 sm:px-5 pt-3 pb-2 border-b border-black/5">
+      <div class="flex items-baseline justify-between text-xs text-neutral-500"><span>Due to-dos done, last 6 weeks</span><span>goal 90%</span></div>
+      <div class="mt-1">{{ completion_bars|safe }}</div>
+    </div>
+    {% endif %}
+    <div class="divide-y divide-black/5">
+      {% for t in todos|slice:":8" %}{% include "todos/_todo.html" with compact=1 %}{% empty %}{% empty "No open to-dos" "You're all clear." "check" compact=True %}{% endfor %}
+      {% if todos|length > 8 %}<a href="{% url 'todos' %}" class="block px-4 py-2.5 text-xs link">{{ todos|length|add:"-8" }} more</a>{% endif %}
     </div>
   </section>
 
   <section class="lg:col-span-2">
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My measurables</h2><a href="{% url 'scorecard' %}" class="text-xs link">Scorecard</a></div>
-    {% if rows %}{% include "scorecard/_table.html" with mode="home" %}{% else %}<div class="card card-pad text-sm text-neutral-500">You don’t own any measurables yet.</div>{% endif %}
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My measurables</h2><a href="{% url 'scorecard' %}?owner=me" class="text-xs link">Scorecard</a></div>
+    {% include "scorecard/_table.html" with mode="home" %}
   </section>
 
-  <section class="lg:col-span-2">
-    <div class="flex items-center justify-between mb-2"><h2 class="section-title">My issues</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
-    <div class="list-group">
+  <section class="card lg:col-span-2">
+    <div class="card-head"><h2 class="section-title">My issues</h2><a href="{% url 'issues' %}" class="text-xs link">Issues list</a></div>
+    <div class="divide-y divide-black/5">
       {% for i in issues|slice:":10" %}
-        <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5">
+        <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50">
           {% if i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
           <span class="flex-1 text-sm font-medium truncate">{{ i.title }}</span>
           <span class="pill pill-muted">{{ i.team.name }}</span><span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
         </a>
-      {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open issues you own.</p>{% endfor %}
+      {% empty %}{% empty "No open issues" "Issues you own on any team show up here." "issues" compact=True %}{% endfor %}
       {% if issues|length > 10 %}<a href="{% url 'issues' %}" class="block px-4 py-2.5 text-xs link">{{ issues|length|add:"-10" }} more on the Issues lists</a>{% endif %}
     </div>
   </section>
+</div>
 </div>
 {% endblock %}

@@ -217,6 +217,8 @@ class Command(BaseCommand):
             for i, (title, owner, unit, compare, goal, trailing, base, spread) in enumerate(rows):
                 m = Measurable.objects.create(team=self.teams[team_name], title=title, owner=self.u[owner], unit=unit, goal_compare=compare, goal=goal, trailing=trailing, sort=i)
                 for w, v in self._values(m, base, spread, self.prev_q.weeks() + self.q.weeks(), compare):
+                    if title == "Gross margin" and w == self.monday - dt.timedelta(weeks=1):
+                        continue  # one late number so My 90 has something to nag about
                     ScoreEntry.objects.create(measurable=m, week_start=w, value=v, updated_by=m.owner)
 
     def _updates(self, rock, pattern, notes):
@@ -236,7 +238,7 @@ class Command(BaseCommand):
         co, ky = self.teams["Company"], self.teams["Kentucky"]
         g = self.goals
         specs = [
-            (co, True, "Launch ERP inventory module at all three mills", "tom", g[2], "ggyyygyy", ["Kentucky live; Le Roy data load underway", "Vendor training booked", "Le Roy counts don't reconcile yet", "Mabel scheduled for Dec 1"], ["Kentucky go-live", "Le Roy go-live", "Mabel go-live", "Retire inventory spreadsheet"], 2),
+            (co, True, "Launch ERP inventory module at all three mills", "tom", g[2], "ggyyygy", ["Kentucky live; Le Roy data load underway", "Vendor training booked", "Le Roy counts don't reconcile yet", "Mabel scheduled for Dec 1"], ["Kentucky go-live", "Le Roy go-live", "Mabel go-live", "Retire inventory spreadsheet"], 2),
             (co, True, "Hire Territory Sales Rep — West", "maria", g[3], "ggyyrrry", ["Job posted", "12 applicants, 2 strong", "Top candidate declined", "Recruiter engaged; 3 new candidates"], ["Post job", "First interviews", "Ride-alongs", "Offer accepted"], 2),
             (co, True, "Close 3 new dealer accounts in Ohio", "maria", g[0], "gggggggg", ["Two dealers signed", "Third dealer reviewing terms", "On track"], ["Dealer #1", "Dealer #2", "Dealer #3"], 2),
             (co, True, "Cut Le Roy unplanned downtime 25%", "dan", g[1], "yyygggyg", ["PM schedule loaded", "Hammer mill rebuild done", "Down 18% so far"], ["PM schedule in software", "Hammer mill rebuild", "Critical spares list", "4 weeks under target"], 2),
