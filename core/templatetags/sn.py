@@ -138,4 +138,13 @@ def empty(title, body="", icon_name="sparkle", action_url="", action_label="", c
 
 @register.inclusion_tag("rocks/_strip.html")
 def rock_strip(rock):
-    return {"strip": rock.week_strip()}
+    from core.models import monday_of
+
+    return {"strip": rock.week_strip(), "now": monday_of(timezone.localdate())}
+
+
+@register.filter
+def can_edit_rock(rock, user):
+    from core.permissions import can_edit_owned
+
+    return can_edit_owned(user, rock)

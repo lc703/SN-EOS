@@ -1,0 +1,37 @@
+{% load sn %}<section id="milestones" class="card">
+  <div class="card-head">
+    <h2 class="section-title flex items-center gap-2">Milestones {% with p=rock.milestone_progress %}{% if p %}<span class="pill pill-muted">{{ p.0 }}/{{ p.1 }}</span>{% endif %}{% endwith %}</h2>
+    {% if rock.milestone_pct is not None %}<div class="w-32 bar"><span style="width: {{ rock.milestone_pct }}%"></span></div>{% endif %}
+  </div>
+  <ul class="divide-y divide-black/5" {% if editable %}data-sortable="{% url 'milestone_reorder' rock.pk %}" data-handle=".drag-handle"{% endif %}>
+    {% for m in milestones %}
+      <li data-id="{{ m.pk }}" class="flex items-center gap-3 px-4 py-2.5 group">
+        {% if editable %}<span class="drag-handle -ml-1">{% icon "grip" %}</span>{% endif %}
+        {% if editable %}
+          <form hx-post="{% url 'milestone_toggle' m.pk %}" hx-target="#milestones" hx-swap="outerHTML" class="flex">{% csrf_token %}
+            <input type="hidden" name="done" value="{% if m.done %}0{% else %}1{% endif %}">
+            <button class="h-5 w-5 rounded-md border-2 inline-flex items-center justify-center {% if m.done %}bg-black border-black text-bolt{% else %}border-neutral-300 hover:border-black{% endif %}" aria-label="{% if m.done %}Mark not done{% else %}Mark done{% endif %}">{% if m.done %}{% icon "check" "h-3 w-3" "3.2" %}{% endif %}</button>
+          </form>
+        {% else %}
+          <span class="h-5 w-5 rounded-md border-2 inline-flex items-center justify-center {% if m.done %}bg-black border-black text-bolt{% else %}border-neutral-300{% endif %}">{% if m.done %}{% icon "check" "h-3 w-3" "3.2" %}{% endif %}</span>
+        {% endif %}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm {% if m.done %}line-through text-neutral-400{% else %}font-medium{% endif %}">{{ m.title }}</div>
+          <div class="text-[11.5px] text-neutral-500 flex flex-wrap gap-x-2">{% if m.owner %}<span>{{ m.owner.display_name }}</span>{% endif %}{% if m.due_date %}<span class="{% if m.overdue %}text-red-700 font-semibold{% endif %}">· due {{ m.due_date|date:"M j" }}{% if m.overdue %} (overdue){% endif %}</span>{% endif %}{% if m.done_at %}<span>· done {{ m.done_at|date:"M j" }}</span>{% endif %}</div>
+        </div>
+        {% if editable %}<form hx-post="{% url 'milestone_toggle' m.pk %}" hx-target="#milestones" hx-swap="outerHTML" class="opacity-0 group-hover:opacity-100 focus-within:opacity-100">{% csrf_token %}<input type="hidden" name="delete" value="1"><button class="btn btn-ghost btn-icon btn-sm text-neutral-400 hover:text-red-700" aria-label="Delete milestone">{% icon "trash" "h-3.5 w-3.5" %}</button></form>{% endif %}
+      </li>
+    {% empty %}
+      <li>{% empty "No milestones yet" "Break the rock into 3–5 dated steps so progress is visible each week." "flag" compact=True %}</li>
+    {% endfor %}
+  </ul>
+  {% if editable %}
+  <form hx-post="{% url 'milestone_add' rock.pk %}" hx-target="#milestones" hx-swap="outerHTML" class="border-t border-black/5 p-3 grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_10rem_9.5rem_auto] gap-2">
+    {% csrf_token %}
+    <input name="title" class="input input-sm" placeholder="Add a milestone…" required maxlength="200">
+    <select name="owner" class="input input-sm hidden sm:block">{% for p in people %}<option value="{{ p.pk }}" {% if p.pk == rock.owner_id %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}</select>
+    <input type="date" name="due_date" class="input input-sm hidden sm:block" max="{{ rock.quarter.end_date|date:'Y-m-d' }}">
+    <button class="btn btn-sm btn-primary">{% icon "plus" "h-3.5 w-3.5" %}Add</button>
+  </form>
+  {% endif %}
+</section>

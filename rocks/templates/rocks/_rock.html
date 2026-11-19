@@ -1,27 +1,41 @@
-{% load sn %}
-<div id="rock-{{ r.pk }}" class="px-4 py-3 flex flex-wrap sm:flex-nowrap items-center gap-3"
+{% load sn %}{% with rag=r.rag can=r|can_edit_rock:user %}
+<div id="rock-{{ r.pk }}" data-id="{{ r.pk }}" class="rock-row group px-3 sm:px-4 py-3 flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-2"
      hx-vals='{"partial": "1", "mode": "{{ mode|default:"" }}", "meeting": "{{ meeting_id|default:"" }}"}'>
+  {% if reorder %}<span class="drag-handle -ml-1" title="Drag to reorder">{% icon "grip" %}</span>{% endif %}
+  <span class="rag-bar rag-bar-{{ rag }}" aria-hidden="true"></span>
   {% avatar r.owner %}
-  <div class="min-w-0 flex-1">
-    <a href="{% url 'rock_detail' r.pk %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-vals="unset">{{ r.title }}</a>
-    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-neutral-500">
+  <div class="min-w-0 flex-1 basis-60">
+    <a href="{% url 'rock_detail' r.pk %}" class="font-semibold leading-snug hover:underline decoration-bolt decoration-2 underline-offset-2" hx-select="unset" hx-target="unset" hx-swap="unset" hx-vals="unset">{{ r.title }}</a>
+    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
       <span>{{ r.owner.display_name|default:"No owner" }}</span>
       {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
-      {% if r.is_company and mode != 'company' %}<span class="pill pill-muted">Company</span>{% endif %}
-      {% if not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
-      {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
+      {% if r.is_company and mode != 'company' %}<span class="pill pill-dark !h-5 !text-[10px]">Company</span>{% endif %}
+      {% if not r.team.is_leadership and mode != 'team' %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% if r.goal_id %}<span class="inline-flex items-center gap-1 text-neutral-600" title="1-year goal: {{ r.goal.title }}">· {% icon "target" "h-3 w-3" %}<span class="truncate max-w-[14rem]">{{ r.goal.title }}</span></span>{% endif %}
     </div>
   </div>
-  <div class="flex items-center gap-2 shrink-0">
+  {% with p=r.milestone_progress %}
+  <div class="w-28 shrink-0 hidden md:block" title="{% if p %}{{ p.0 }} of {{ p.1 }} milestones done{% else %}No milestones yet{% endif %}">
+    {% if p %}<div class="flex items-center justify-between text-[11px] text-neutral-500 mb-1"><span>Milestones</span><span class="font-semibold text-neutral-700">{{ p.0 }}/{{ p.1 }}</span></div><div class="bar"><span style="width: {{ r.milestone_pct }}%"></span></div>{% else %}<span class="text-[11px] text-neutral-400">No milestones</span>{% endif %}
+  </div>
+  {% endwith %}
+  <div class="shrink-0 hidden sm:block">{% rock_strip r %}</div>
+  <div class="flex items-center gap-2 shrink-0 ml-auto">
     {% if r.status == 'off_track' and mode != 'home' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=r.pk %}{% endif %}
-    {% if user.is_admin or r.owner_id == user.pk or not r.owner_id %}
+    {% if mode == 'meeting' and can %}
       <select name="status" aria-label="Status for {{ r.title }}"
               class="pill st-{{ r.status }} !h-8 border-0 pr-7 cursor-pointer text-[12px]"
               hx-post="{% url 'rock_status' r.pk %}" hx-trigger="change" hx-target="#rock-{{ r.pk }}" hx-swap="outerHTML" hx-select="unset">
         {% for v, label in statuses %}<option value="{{ v }}" {% if v == r.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
+    {% endif %}
+    {% if r.status == 'done' %}
+      <span class="pill rag-done">{% icon "check" "h-3 w-3" "3" %}Done</span>
+    {% elif can %}
+      <button type="button" class="pill pill-dot rag-{{ rag }} !h-8 !px-3 hover:ring-2 hover:ring-black/10 {% if r.needs_update_this_week %}ring-2 ring-bolt ring-offset-1{% endif %}" hx-get="{% url 'rock_update' r.pk %}" hx-target="#panel-content" hx-swap="innerHTML" hx-select="unset" hx-vals="unset" hx-push-url="false" title="{% if r.needs_update_this_week %}Weekly update due{% else %}Change this week's update{% endif %}">{{ rag|rag_label }}{% if r.needs_update_this_week %}<span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-black/60">· update</span>{% endif %}</button>
     {% else %}
-      {% status_pill r %}
+      <span class="pill pill-dot rag-{{ rag }}">{{ rag|rag_label }}</span>
     {% endif %}
   </div>
 </div>
+{% endwith %}

@@ -9,6 +9,10 @@ module.exports = {
     "./core/templatetags/*.py",
     "./core/charts.py",
   ],
+  // Status classes are built from model values in templates (e.g. rag-bar-{{ rag }}).
+  safelist: [
+    { pattern: /^(rag|rag-bar|dot|st|s)-(green|yellow|red|done|none|on_track|off_track|future)$/ },
+  ],
   theme: {
     extend: {
       colors: {

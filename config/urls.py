@@ -37,9 +37,12 @@ urlpatterns = [
     # Rocks
     path("rocks/", rocks.rocks_list, name="rocks"),
     path("rocks/new/", rocks.rock_new, name="rock_new"),
+    path("rocks/reorder/", rocks.rocks_reorder, name="rocks_reorder"),
     path("rocks/<int:pk>/", rocks.rock_detail, name="rock_detail"),
     path("rocks/<int:pk>/status/", rocks.rock_status, name="rock_status"),
+    path("rocks/<int:pk>/update/", rocks.rock_update, name="rock_update"),
     path("rocks/<int:pk>/milestones/", rocks.milestone_add, name="milestone_add"),
+    path("rocks/<int:pk>/milestones/reorder/", rocks.milestone_reorder, name="milestone_reorder"),
     path("rocks/<int:pk>/todos/", rocks.rock_todo, name="rock_todo"),
     path("milestones/<int:pk>/", rocks.milestone_toggle, name="milestone_toggle"),
     # Issues

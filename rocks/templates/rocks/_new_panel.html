@@ -1,0 +1,19 @@
+{% load sn %}
+<div class="panel-head">
+  <div><div class="eyebrow">Rocks · {{ team.name }} · {{ quarter.name }}</div><h2 class="text-lg leading-tight">New rock</h2></div>
+  <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="$store.ui.closePanel()" aria-label="Close">{% icon "x" %}</button>
+</div>
+<form hx-post="{% url 'rock_new' %}" hx-target="#panel-content" class="panel-body space-y-4">
+  {% csrf_token %}
+  <div class="rounded-xl bg-bolt/30 border border-black/10 px-3 py-2.5 text-[13px] text-neutral-700">A rock is <b>SMART</b>: specific, measurable, attainable, realistic and done by the end of the quarter. One owner.</div>
+  <label class="block"><span class="label">Title</span><input name="title" value="{{ form.title.value|default:'' }}" class="input" required maxlength="200" placeholder="e.g. Hire Territory Sales Rep — West" autofocus>{% for e in form.title.errors %}<span class="text-xs text-red-700">{{ e }}</span>{% endfor %}</label>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="block"><span class="label">Owner</span>{{ form.owner }}</label>
+    <label class="block"><span class="label">Due</span>{{ form.due_date }}</label>
+  </div>
+  <label class="block"><span class="label">1-year goal it moves forward</span>{{ form.goal }}</label>
+  {% if form.is_company %}<label class="flex items-center gap-2 text-sm">{{ form.is_company }}<span><b>Company rock</b> — shows for every team. Leave off for a departmental rock.</span></label>{% endif %}
+  <label class="block"><span class="label">Description</span>{{ form.description }}</label>
+  <input type="hidden" name="status" value="on_track">
+  <div class="flex items-center gap-2 pt-1"><button class="btn btn-primary">{% icon "plus" %}Add rock</button><button type="button" class="btn btn-ghost" @click="$store.ui.closePanel()">Cancel</button></div>
+</form>

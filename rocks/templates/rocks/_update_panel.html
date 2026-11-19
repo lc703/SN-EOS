@@ -1,0 +1,59 @@
+{% load sn %}
+<div class="panel-head">
+  <div class="min-w-0">
+    <div class="eyebrow">Weekly update · {{ rock.owner.display_name|default:"No owner" }}</div>
+    <h2 class="text-lg leading-tight truncate">{{ rock.title }}</h2>
+  </div>
+  <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="$store.ui.closePanel()" aria-label="Close">{% icon "x" %}</button>
+</div>
+<form hx-post="{% url 'rock_update' rock.pk %}" hx-target="#panel-content" class="panel-body space-y-5" x-data="{rag: '{{ u.rag|default:'' }}'}">
+  {% csrf_token %}
+  <div class="rounded-xl border border-black/[.08] p-3">
+    <div class="flex items-center justify-between mb-2"><span class="stat-label">13-week status</span><span class="text-[11px] text-neutral-500">{{ rock.quarter.name }}</span></div>
+    {% rock_strip rock %}
+  </div>
+
+  <label class="block">
+    <span class="label">Week</span>
+    <select name="week" class="input" hx-get="{% url 'rock_update' rock.pk %}" hx-target="#panel-content" hx-trigger="change" hx-include="this">
+      {% for w in weeks reversed %}<option value="{{ w|date:'Y-m-d' }}" {% if w == week %}selected{% endif %}>Week of {{ w|date:"M j" }}{% if forloop.first %} (this week){% endif %}</option>{% endfor %}
+    </select>
+  </label>
+
+  <div>
+    <span class="label">How is it going?</span>
+    <div class="grid grid-cols-3 gap-2">
+      {% for v, label in rags %}
+        <label class="rag-card" data-rag="{{ v }}">
+          <input type="radio" name="rag" value="{{ v }}" x-model="rag" class="sr-only" {% if u.rag == v %}checked{% endif %} required>
+          <span class="h-3 w-3 rounded-full bg-[var(--{{ v }})]"></span>
+          <span class="font-semibold text-sm">{{ label }}</span>
+          <span class="text-[11px] text-neutral-500 leading-tight">{% if v == 'green' %}On track{% elif v == 'yellow' %}At risk{% else %}Off track{% endif %}</span>
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <label class="block"><span class="label">Note</span><textarea name="note" rows="3" class="input" placeholder="What moved this week? What's next?">{{ u.note|default:'' }}</textarea></label>
+
+  <label class="block" x-show="rag === 'red'" x-transition>
+    <span class="label text-red-800">Recovery plan <span class="font-normal text-red-700">(required for red)</span></span>
+    <textarea name="recovery_plan" rows="3" class="input !border-red-300" placeholder="What will you do to get this back on track, and by when?" :required="rag === 'red'">{{ u.recovery_plan|default:'' }}</textarea>
+  </label>
+
+  {% if error %}<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-3 py-2 flex items-start gap-2">{% icon "alert" "h-4 w-4 mt-0.5 shrink-0" %}{{ error }}</div>{% endif %}
+
+  {% if previous %}
+    <div class="rounded-xl bg-neutral-50 border border-black/[.06] p-3 text-[13px]">
+      <div class="flex items-center gap-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wide"><span class="dot dot-{{ previous.rag }}"></span>Last update · week of {{ previous.week_start|date:"M j" }}</div>
+      {% if previous.note %}<p class="mt-1 text-neutral-700">{{ previous.note }}</p>{% endif %}
+      {% if previous.recovery_plan %}<p class="mt-1 text-red-800"><b>Recovery plan:</b> {{ previous.recovery_plan }}</p>{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="flex items-center gap-2 pt-1">
+    <button class="btn btn-primary">{% icon "check" %}Post update</button>
+    <button type="button" class="btn btn-ghost" @click="$store.ui.closePanel()">Cancel</button>
+    <a href="{% url 'rock_detail' rock.pk %}" class="ml-auto text-sm font-semibold link">Open rock</a>
+  </div>
+</form>

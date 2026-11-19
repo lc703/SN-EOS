@@ -1,44 +1,73 @@
 {% extends "base.html" %}
+{% load sn %}
 {% block title %}Rocks{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+<div class="page-head">
   <div>
     <div class="eyebrow">{{ team.label }} · {{ quarter.name }}</div>
-    <h1 class="text-2xl">Rocks</h1>
-    <p class="text-sm text-neutral-500 mt-0.5">
-      {{ summary.total }} rocks · <span class="text-green-700 font-semibold">{{ summary.on_track }} on track</span> ·
-      <span class="text-red-700 font-semibold">{{ summary.off_track }} off track</span> · {{ summary.done }} done
-    </p>
+    <h1 class="page-title">Rocks</h1>
+    <p class="page-sub">The 3–7 most important things to get done this quarter. Each owner posts a green, yellow or red update every week; red needs a recovery plan.</p>
   </div>
-  {% if can_add %}
-    <div x-data="{open:false}">
-      <button type="button" class="btn btn-primary" @click="open=!open">+ Rock</button>
-      <div x-cloak x-show="open" @click.outside="open=false" class="absolute right-4 mt-2 w-[min(34rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
-        <form method="post" action="{% url 'rock_new' %}">{% csrf_token %}
-          {% include "_form.html" %}
-          <div class="mt-4 flex justify-end gap-2"><button type="button" class="btn" @click="open=false">Cancel</button><button class="btn btn-primary">Add rock</button></div>
-        </form>
-      </div>
-    </div>
-  {% endif %}
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="seg"><a href="?owner=" class="{% if not mine %}on{% endif %}">All</a><a href="?owner=me" class="{% if mine %}on{% endif %}">Mine</a></div>
+    {% if can_add %}<button type="button" class="btn btn-primary" data-shortcut-new hx-get="{% url 'rock_new' %}" hx-target="#panel-content">{% icon "plus" %}Rock</button>{% endif %}
+  </div>
 </div>
 
-<section class="mb-8">
-  <div class="flex items-center justify-between mb-2">
-    <h2 class="section-title">Company rocks</h2>
-    <span class="text-xs text-neutral-500">Leadership team priorities for {{ quarter.name }}</span>
+<div id="rocks-wrap" hx-get="{{ request.get_full_path }}" hx-select="#rocks-wrap" hx-target="this" hx-swap="outerHTML" hx-trigger="rocksChanged from:body" hx-disinherit="*">
+{% if summary.total %}
+<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <div class="card card-pad flex items-center gap-4 lg:col-span-1">
+    {{ donut|safe }}
+    <ul class="text-[12.5px] space-y-1">
+      <li class="flex items-center gap-2"><span class="dot dot-green"></span>{{ summary.green }} green</li>
+      <li class="flex items-center gap-2"><span class="dot dot-yellow"></span>{{ summary.yellow }} yellow</li>
+      <li class="flex items-center gap-2"><span class="dot dot-red"></span>{{ summary.red }} red</li>
+      <li class="flex items-center gap-2"><span class="dot bg-black"></span>{{ summary.done }} done</li>
+    </ul>
   </div>
-  <div class="list-group">
-    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No company rocks this quarter.</p>{% endfor %}
+  <div class="stat">
+    <div class="stat-label">Updates this week</div>
+    <div class="stat-value">{{ summary.updated }}<span class="text-neutral-400 text-lg font-semibold"> / {{ summary.open }}</span></div>
+    <div class="bar mt-2"><span style="width: {% widthratio summary.updated summary.open|default:1 100 %}%"></span></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Milestones done</div>
+    <div class="stat-value">{{ milestones_done }}<span class="text-neutral-400 text-lg font-semibold"> / {{ milestones_total }}</span></div>
+    <div class="bar mt-2"><span style="width: {% widthratio milestones_done milestones_total|default:1 100 %}%"></span></div>
+  </div>
+  <div class="stat {% if due_mine %}!border-black !bg-bolt/25{% endif %}">
+    <div class="stat-label">Your weekly updates</div>
+    {% if due_mine %}
+      <div class="mt-1 text-sm font-semibold">{{ due_mine|length }} due this week</div>
+      <button type="button" class="btn btn-sm btn-primary mt-2" hx-get="{% url 'rock_update' due_mine.0.pk %}" hx-target="#panel-content">{% icon "edit" "h-3.5 w-3.5" %}Update “{{ due_mine.0.title|truncatechars:22 }}”</button>
+    {% else %}
+      <div class="mt-1 flex items-center gap-2 text-sm font-semibold text-green-700">{% icon "check" "h-4 w-4" "2.6" %}All caught up</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<section class="mb-8">
+  <div class="section-head">
+    <h2 class="section-title flex items-center gap-2">Company rocks <span class="pill pill-muted">{{ company_rocks|length }}</span></h2>
+    <span class="text-xs text-neutral-500 flex items-center gap-3"><span class="hidden sm:inline">13-week status</span><span>Leadership team priorities</span></span>
+  </div>
+  <div class="list-group" {% if company_reorder %}data-sortable="{% url 'rocks_reorder' %}" data-handle=".drag-handle"{% endif %}>
+    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" reorder=company_reorder %}{% empty %}{% empty "No company rocks yet" "The leadership team sets 3–7 company rocks each quarter at the Quarterly Session." "rocks" compact=True %}{% endfor %}
   </div>
 </section>
 
 {% if not team.is_leadership or team_rocks %}
 <section>
-  <h2 class="section-title mb-2">{{ team.name }} rocks</h2>
-  <div class="list-group">
-    {% for r in team_rocks %}{% include "rocks/_rock.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No {{ team.name }} rocks this quarter.</p>{% endfor %}
+  <div class="section-head">
+    <h2 class="section-title flex items-center gap-2">{{ team.name }} departmental rocks <span class="pill pill-muted">{{ team_rocks|length }}</span></h2>
+    <span class="text-xs text-neutral-500">What this team owns this quarter</span>
+  </div>
+  <div class="list-group" {% if can_reorder %}data-sortable="{% url 'rocks_reorder' %}" data-handle=".drag-handle"{% endif %}>
+    {% for r in team_rocks %}{% include "rocks/_rock.html" with mode="team" reorder=can_reorder %}{% empty %}{% if can_add %}{% empty "No departmental rocks yet" "Add 1–3 rocks that move a company rock or a 1-year goal forward. Press N." "rocks" compact=True %}{% else %}{% empty "No departmental rocks yet" "" "rocks" compact=True %}{% endif %}{% endfor %}
   </div>
 </section>
 {% endif %}
+</div>
 {% endblock %}
