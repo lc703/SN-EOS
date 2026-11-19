@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import OneOnOne, PeopleReview, SuccessStatement, ValueRating
+from .models import ConversationScore, OneOnOne, PeopleReview, SuccessStatement, ValueRating
 
 
 class ValueRatingInline(admin.TabularInline):
@@ -14,5 +14,14 @@ class PeopleReviewAdmin(admin.ModelAdmin):
     inlines = [ValueRatingInline]
 
 
-admin.site.register(OneOnOne, list_display=["person", "manager", "date"])
+class ConversationScoreInline(admin.TabularInline):
+    model = ConversationScore
+    extra = 0
+
+
+@admin.register(OneOnOne)
+class OneOnOneAdmin(admin.ModelAdmin):
+    list_display = ["person", "manager", "kind", "quarter", "date", "completed_at"]
+    list_filter = ["kind", "quarter"]
+    inlines = [ConversationScoreInline]
 admin.site.register(SuccessStatement, list_display=["person", "text", "sort"])

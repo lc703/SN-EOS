@@ -14,7 +14,7 @@ from core.utils import is_htmx, require, scope
 from issues.models import Issue
 from rocks.models import Rock
 
-from .models import VTO, CoreValue, Seat
+from .models import VTO, CoreProcess, CoreValue, Seat
 
 
 class VTOForm(StyledForm, forms.ModelForm):
@@ -46,6 +46,7 @@ def vto(request):
         if leadership
         else []
     )
+    processes = list(CoreProcess.objects.select_related("owner"))
     return render(
         request,
         "vision/vto.html",
@@ -55,8 +56,30 @@ def vto(request):
             "rocks": rocks,
             "long_issues": issues,
             "leadership": leadership,
+            "processes": processes,
+            "fba": sum(1 for p in processes if p.followed_by_all),
+            "can_edit": is_admin(request.user),
+            "people": User.objects.filter(is_active=True).order_by("name") if is_admin(request.user) else [],
         },
     )
+
+
+@require_POST
+def core_process(request, pk=None):
+    require(is_admin(request.user))
+    proc = get_object_or_404(CoreProcess, pk=pk) if pk else CoreProcess(sort=CoreProcess.objects.count())
+    if request.POST.get("delete") and proc.pk:
+        proc.delete()
+        return redirect("/vto/#processes")
+    name = (request.POST.get("name") or "").strip()
+    if name:
+        proc.name = name[:120]
+        proc.owner = User.objects.filter(pk=request.POST.get("owner") or 0).first()
+        proc.steps = request.POST.get("steps", "").strip()
+        proc.documented = bool(request.POST.get("documented"))
+        proc.followed_by_all = bool(request.POST.get("followed_by_all"))
+        proc.save()
+    return redirect("/vto/#processes")
 
 
 def vto_edit(request):
