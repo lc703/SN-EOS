@@ -8,15 +8,16 @@ from django.core.management import CommandError, call_command
 from core.models import LegacyRecord, Quarter, Team, User
 from issues.models import Issue
 from meetings.models import Meeting, MeetingRating
-from people.models import OneOnOne, PeopleReview, SuccessStatement
-from rocks.models import Milestone, Rock
+from people.models import ConversationScore, OneOnOne, PeopleReview, SuccessStatement
+from planning.models import Session, SessionItem
+from rocks.models import Milestone, Rock, RockUpdate
 from scorecard.models import Measurable
 from todos.models import Todo
 from vision.models import VTO, CoreValue, Seat
 
 FIXTURE = Path(__file__).parent / "fixtures" / "battle_planner_sample.json"
 MODELS = [Team, User, Quarter, CoreValue, Rock, Milestone, Issue, Todo, Measurable, Seat, SuccessStatement, OneOnOne,
-          PeopleReview, Meeting, MeetingRating, LegacyRecord]
+          PeopleReview, Meeting, MeetingRating, LegacyRecord, RockUpdate, ConversationScore, Session, SessionItem]
 
 pytestmark = pytest.mark.django_db
 
@@ -49,7 +50,9 @@ def test_rock_status_comes_from_latest_weekly_status():
     revenue = Rock.objects.get(title="Close new revenue")
     assert revenue.status == Rock.OFF_TRACK  # latest rockstatus is red although current_rag says green
     assert revenue.is_company and revenue.owner.name == "Alex Admin"
-    assert [h["rag"] for h in revenue.legacy["status_history"]] == ["green", "red"]
+    updates = list(revenue.updates.order_by("week_start").values_list("week_start", "color", "recovery_plan"))
+    assert [(w.isoformat(), c, r) for w, c, r in updates] == [("2026-10-05", "green", ""), ("2026-10-12", "red", "More calls")]
+    assert revenue.updates.get(color="red").author.name == "Alex Admin"
     assert Rock.objects.get(title="Install new line").status == Rock.ON_TRACK  # yellow -> on track
     assert Rock.objects.get(title="Hire QA lead").status == Rock.DONE
     assert list(revenue.milestones.values_list("title", "done")) == [("Send 10 proposals", True), ("Close 2 deals", False)]
@@ -83,13 +86,27 @@ def test_measurables_vto_values_and_chart():
     assert vto.ten_year_target == "1 million happy customers by 2030."
     assert vto.uniques.splitlines() == ["Speed", "Quality", "Formats"]
     assert vto.three_year_measurables.startswith("Double revenue.")
-    assert vto.legacy["strategy_house"]["major_business_challenge"] == "Grow faster."
-    assert vto.legacy["boxes"][0]["dri"] == "Alex Admin"
+    assert vto.one_year_measurables.splitlines() == ["On-time delivery", "Revenue: $1M"]
+    assert vto.legacy["strategy_house"]["lessons"][0]["title"] == "Lesson one"
 
     assert list(CoreValue.objects.values_list("name", flat=True)) == ["Own It", "Be Kind"]
     lead = Seat.objects.get(title="Line Lead")
     assert lead.parent.title == "Plant Manager" and lead.parent.person.name == "Drew Plant"
     assert lead.person.name == "Fran Floor"  # matched by name when the seat had no linked user
+    assert lead.status == Seat.FUTURE and not lead.agency
+    tech = Seat.objects.get(title="Maintenance Tech")
+    assert tech.status == Seat.OPEN and tech.agency and tech.is_open
+    assert Seat.objects.get(title="Plant Manager").status == Seat.FILLED
+
+
+def test_strategy_house_lands_on_vto_issues_list():
+    run_import()
+    long_term = Issue.objects.filter(horizon=Issue.LONG, team__is_leadership=True)
+    titles = set(long_term.values_list("title", flat=True))
+    assert {"Grow faster.", "Win deals", "Look at a second warehouse"} <= titles
+    box = long_term.get(title="Win deals")
+    assert box.owner.name == "Alex Admin" and "Strategy: Focus" in box.description and "- Call" in box.description
+    assert box.legacy["source"] == "core.box:1"
 
 
 def test_one_on_ones_people_analyzer_and_meetings():
@@ -97,8 +114,10 @@ def test_one_on_ones_people_analyzer_and_meetings():
     fran = User.objects.get(email="fran@pending.invalid")
     one = OneOnOne.objects.get(person=fran)
     assert one.manager.name == "Drew Plant"  # from the accountability chart
-    assert "The line hits its OEE target" in one.notes and "OEE was low" in one.notes
-    assert "Be Kind: Watch tone" in one.notes
+    assert one.highlight == "Good week" and one.completed_at is not None and one.quarter.name == "Q4 2026"
+    grid = {(str(sc.subject), sc.color, sc.note) for sc in one.scores.all()}
+    assert grid == {("Own It", "green", ""), ("Be Kind", "yellow", "Watch tone"), ("The line hits its OEE target", "red", "OEE was low")}
+    assert one.is_struggling
     review = PeopleReview.objects.get(person=fran)
     assert dict(review.ratings.values_list("value__name", "rating")) == {"Own It": "+", "Be Kind": "+/-"}
 
@@ -113,8 +132,33 @@ def test_one_on_ones_people_analyzer_and_meetings():
 
 def test_unmapped_models_are_archived_and_reported():
     output = run_import()
-    assert set(LegacyRecord.objects.values_list("model", flat=True)) == {"core.offsite", "core.swotitem", "core.meetingcriterion"}
-    assert "Not mapped" in output and "core.swotitem" in output
+    assert set(LegacyRecord.objects.values_list("model", flat=True)) == {"core.meetingcriterion"}
+    assert "Not mapped" in output and "core.meetingcriterion" in output and "core.swotitem" not in output.split("Not mapped")[1]
+
+
+def test_offsites_become_planning_sessions():
+    run_import()
+    session = Session.objects.get()
+    assert session.kind == "annual" and session.team.name == "Kentucky" and session.is_concluded
+    items = {(i.section, i.kind, i.text, i.color) for i in session.items.all()}
+    assert ("swot", "strength", "Strong team", "") in items
+    assert ("segue", "working", "Daily huddles", "") in items
+    assert ("segue", "not_working", "Broken: Shift handoff", "") in items
+    assert ("review", "lesson", "Start earlier: Plan installs a month ahead", "") in items
+    assert ("vto", "vto_check", "Core value · Own It: Visible at every level. (Mostly)", "yellow") in items
+    assert ("vto", "vto_check", "Mission · why", "green") in items
+    assert any(k == "best_news" and "Chapter title: Momentum (We shipped)" in t for _, k, t, _ in items)
+    assert any(k == "priority" and t.startswith("#1: Staffing") for _, k, t, _ in items)
+    assert set(session.attendees.values_list("name", flat=True)) == {"Alex Admin", "Drew Plant"}
+
+
+def test_existing_rows_get_grids_and_updates_without_refresh():
+    run_import()
+    ConversationScore.objects.all().delete()
+    RockUpdate.objects.all().delete()
+    run_import()
+    assert ConversationScore.objects.count() == 3
+    assert RockUpdate.objects.count() == 3
 
 
 def test_import_is_idempotent():

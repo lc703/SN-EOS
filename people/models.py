@@ -21,12 +21,24 @@ class SuccessStatement(LegacyMixin):
 
 
 class OneOnOne(LegacyMixin):
+    """A 1:1 or an EOS Quarterly Conversation (5-5-5: core values, roles, rocks)."""
+
+    ONE_ON_ONE, QUARTERLY = "one_on_one", "quarterly"
+    KIND_CHOICES = [(ONE_ON_ONE, "1:1"), (QUARTERLY, "Quarterly Conversation")]
+
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default=ONE_ON_ONE)
+    quarter = models.ForeignKey("core.Quarter", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     person = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="one_on_ones")
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     date = models.DateField(default=timezone.localdate)
+    highlight = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    gets_it = models.BooleanField("Gets it", null=True, blank=True)
+    wants_it = models.BooleanField("Wants it", null=True, blank=True)
+    capacity = models.BooleanField("Capacity to do it", null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -34,11 +46,48 @@ class OneOnOne(LegacyMixin):
 
     class Meta:
         ordering = ["-date", "-id"]
-        verbose_name = "1:1"
-        verbose_name_plural = "1:1s"
+        verbose_name = "conversation"
+        verbose_name_plural = "1:1s and quarterly conversations"
 
     def __str__(self):
-        return f"1:1 {self.person} {self.date}"
+        return f"{self.get_kind_display()} {self.person} {self.date}"
+
+    @property
+    def color_counts(self):
+        counts = {"green": 0, "yellow": 0, "red": 0}
+        for sc in self.scores.all():
+            if sc.color in counts:
+                counts[sc.color] += 1
+        return counts
+
+    @property
+    def is_struggling(self):
+        """Any red, or a 'no' on GWC."""
+        return self.color_counts["red"] > 0 or False in (self.gets_it, self.wants_it, self.capacity)
+
+
+class ConversationScore(models.Model):
+    """One green/yellow/red cell in a 1:1 or Quarterly Conversation grid."""
+
+    GREEN, YELLOW, RED = "green", "yellow", "red"
+    COLOR_CHOICES = [(GREEN, "Green"), (YELLOW, "Yellow"), (RED, "Red")]
+
+    conversation = models.ForeignKey(OneOnOne, on_delete=models.CASCADE, related_name="scores")
+    statement = models.ForeignKey(SuccessStatement, null=True, blank=True, on_delete=models.CASCADE, related_name="scores")
+    value = models.ForeignKey("vision.CoreValue", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    rock = models.ForeignKey("rocks.Rock", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    color = models.CharField(max_length=6, choices=COLOR_CHOICES, blank=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["value__sort", "statement__sort", "rock__sort", "id"]
+
+    def __str__(self):
+        return f"{self.subject}: {self.color}"
+
+    @property
+    def subject(self):
+        return self.value or self.statement or self.rock
 
 
 class PeopleReview(models.Model):

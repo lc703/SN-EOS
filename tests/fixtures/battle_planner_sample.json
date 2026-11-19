@@ -1,43 +1,715 @@
 [
-{"model": "core.facility", "pk": 1, "fields": {"name": "Company", "short_code": "CO", "sort": 0, "meeting_weekday": 0, "team": [1, 2]}},
-{"model": "core.facility", "pk": 2, "fields": {"name": "Kentucky", "short_code": "KY", "sort": 1, "meeting_weekday": 0, "team": [1, 3]}},
-{"model": "core.user", "pk": 1, "fields": {"username": "alex@steuartnutrition.com", "email": "alex@steuartnutrition.com", "name": "Alex Admin", "role": "admin", "facility": 1, "is_active": true, "is_superuser": true, "is_staff": true, "first_name": "", "last_name": "", "asana_email": "", "groups": [], "user_permissions": []}},
-{"model": "core.user", "pk": 2, "fields": {"username": "casey@steuartnutrition.com", "email": "casey@steuartnutrition.com", "name": "Casey Member", "role": "member", "facility": 1, "is_active": true, "is_superuser": false, "is_staff": false, "first_name": "", "last_name": "", "asana_email": "", "groups": [], "user_permissions": []}},
-{"model": "core.user", "pk": 3, "fields": {"username": "drew@steuartnutrition.com", "email": "drew@steuartnutrition.com", "name": "Drew Plant", "role": "member", "facility": 2, "is_active": true, "is_superuser": false, "is_staff": false, "first_name": "", "last_name": "", "asana_email": "", "groups": [], "user_permissions": []}},
-{"model": "core.user", "pk": 4, "fields": {"username": "fran@pending.invalid", "email": "fran@pending.invalid", "name": "Fran Floor", "role": "member", "facility": 2, "is_active": true, "is_superuser": false, "is_staff": false, "first_name": "", "last_name": "", "asana_email": "", "groups": [], "user_permissions": []}},
-{"model": "core.quarter", "pk": 1, "fields": {"name": "Q4 2026", "start_date": "2026-10-01", "end_date": "2026-12-31", "is_active": true}},
-{"model": "core.value", "pk": 1, "fields": {"name": "Own It", "sort": 0, "active": true}},
-{"model": "core.value", "pk": 2, "fields": {"name": "Be Kind", "sort": 1, "active": true}},
-{"model": "core.valuestatement", "pk": 1, "fields": {"value": 1, "text": "Visible at every level.", "sort": 0}},
-{"model": "core.strategyhouse", "pk": 1, "fields": {"quarter": 1, "purpose": "Make healthy products.", "vision": "1 million happy customers by 2030.", "major_business_challenge": "Grow faster.", "lessons": [{"title": "Lesson one", "body": "Body"}], "targets": [{"label": "Revenue", "value": "$1M", "sub": ""}], "rudder_note": "", "parked": []}},
-{"model": "core.box", "pk": 1, "fields": {"house": 1, "kind": "opportunity", "statement": "Win deals", "strategy": "Focus", "tactics": ["Call"], "dri": 1, "due_date": "2026-12-31", "sort": 0}},
-{"model": "core.visiondoc", "pk": 1, "fields": {"ten_year_target": "", "target_market": "Fast growing brands.", "uniques": "Speed\nQuality\nFormats", "proven_process": "Quote fast.", "guarantee": "Quote in 3 days.", "three_year_date": "Dec 31, 2028", "three_year_target": "Double revenue.", "three_year_revenue": "$10M", "three_year_profit": "20%", "three_year_measurables": "Live OEE", "three_year_picture": "Two plants\nGreat culture", "one_year_date": "Dec 31, 2026", "one_year_revenue": "$5M", "one_year_profit": "15%", "one_year_measurables": "On-time delivery", "one_year_goals": "Close new revenue\nFix quality", "updated_at": "2026-10-07T10:32:27Z"}},
-{"model": "core.rock", "pk": 1, "fields": {"quarter": 1, "box": 1, "facility": 1, "title": "Close new revenue", "description": "Big one", "owner": 1, "due_date": "2026-12-31", "current_rag": "green", "is_complete": false, "sort": 0, "asana_task_gid": null, "contributors": [2]}},
-{"model": "core.rock", "pk": 2, "fields": {"quarter": 1, "box": null, "facility": 2, "title": "Install new line", "description": "", "owner": 3, "due_date": "2026-11-30", "current_rag": "yellow", "is_complete": false, "sort": 1, "asana_task_gid": null, "contributors": []}},
-{"model": "core.rock", "pk": 3, "fields": {"quarter": 1, "box": null, "facility": 2, "title": "Hire QA lead", "description": "", "owner": 3, "due_date": "2026-11-15", "current_rag": "green", "is_complete": true, "sort": 2, "asana_task_gid": null, "contributors": []}},
-{"model": "core.rockstatus", "pk": 1, "fields": {"rock": 1, "week_start": "2026-10-05", "rag": "green", "note": "", "recovery_plan": "", "author": 1, "created_at": "2026-10-05T19:33:09Z"}},
-{"model": "core.rockstatus", "pk": 2, "fields": {"rock": 1, "week_start": "2026-10-12", "rag": "red", "note": "Slipping", "recovery_plan": "More calls", "author": 1, "created_at": "2026-10-12T19:33:09Z"}},
-{"model": "core.rockstatus", "pk": 3, "fields": {"rock": 2, "week_start": "2026-10-12", "rag": "yellow", "note": "", "recovery_plan": "", "author": 3, "created_at": "2026-10-12T19:33:09Z"}},
-{"model": "core.milestone", "pk": 1, "fields": {"rock": 1, "title": "Send 10 proposals", "due_date": "2026-10-31", "is_done": true, "completed_at": null, "created_by": 1, "created_at": "2026-10-05T19:15:14Z", "people": []}},
-{"model": "core.milestone", "pk": 2, "fields": {"rock": 1, "title": "Close 2 deals", "due_date": "2026-11-30", "is_done": false, "completed_at": null, "created_by": 1, "created_at": "2026-10-05T19:15:14Z", "people": []}},
-{"model": "core.issue", "pk": 1, "fields": {"quarter": 1, "facility": 2, "text": "Metal detector is unreliable", "raised_by": 3, "status": "resolved", "high_priority": false, "created_at": "2026-10-05T20:05:46Z"}},
-{"model": "core.issue", "pk": 2, "fields": {"quarter": 1, "facility": 2, "text": "Changeovers take too long", "raised_by": 3, "status": "open", "high_priority": true, "created_at": "2026-10-06T20:05:46Z"}},
-{"model": "core.issue", "pk": 3, "fields": {"quarter": 1, "facility": 1, "text": "Consider a third plant", "raised_by": 1, "status": "parked", "high_priority": false, "created_at": "2026-10-07T20:05:46Z"}},
-{"model": "core.commitment", "pk": 1, "fields": {"quarter": 1, "week_start": "2026-10-05", "text": "Send quote to customer", "description": "", "due_date": "2026-10-07", "rock": 1, "issue": null, "owner": 2, "result": "miss", "why_not": "Costs were high", "asana_task_gid": null, "asana_sent_at": null, "asana_completed_at": null, "asana_unassigned": false, "created_by": 2, "created_at": "2026-10-05T19:31:32Z"}},
-{"model": "core.commitment", "pk": 2, "fields": {"quarter": 1, "week_start": "2026-10-05", "text": "Fix metal detector", "description": "Call vendor", "due_date": "2026-10-09", "rock": null, "issue": 1, "owner": 3, "result": "hit", "why_not": "", "asana_task_gid": null, "asana_sent_at": null, "asana_completed_at": "2026-10-08T12:00:00Z", "asana_unassigned": false, "created_by": 3, "created_at": "2026-10-05T19:31:32Z"}},
-{"model": "core.commitment", "pk": 3, "fields": {"quarter": 1, "week_start": "2026-10-12", "text": "Draft hiring plan", "description": "", "due_date": "2026-10-16", "rock": null, "issue": null, "owner": 3, "result": "open", "why_not": "", "asana_task_gid": null, "asana_sent_at": null, "asana_completed_at": null, "asana_unassigned": false, "created_by": 3, "created_at": "2026-10-12T19:31:32Z"}},
-{"model": "core.scorecardmetric", "pk": 1, "fields": {"name": "OEE", "facility": 2, "unit": "%", "sort": 0, "active": true}},
-{"model": "core.scorecardmetric", "pk": 2, "fields": {"name": "Leads pursued", "facility": null, "unit": "count", "sort": 1, "active": true}},
-{"model": "core.scorecardmetric", "pk": 3, "fields": {"name": "Proposal system followed", "facility": null, "unit": "yes/no", "sort": 2, "active": true}},
-{"model": "core.seat", "pk": 1, "fields": {"facility": 2, "parent": null, "title": "Plant Manager", "person_name": "Drew Plant", "person": 3, "status": "green", "responsibilities": "Run the plant\nHire\nSafety", "agency": false, "sort": 0}},
-{"model": "core.seat", "pk": 2, "fields": {"facility": 2, "parent": 1, "title": "Line Lead", "person_name": "Fran Floor", "person": null, "status": "yellow", "responsibilities": "Run the line", "agency": false, "sort": 1}},
-{"model": "core.successstatement", "pk": 10, "fields": {"user": 4, "text": "The line hits its OEE target", "standard": "", "sort": 0}},
-{"model": "core.oneonone", "pk": 1, "fields": {"user": 4, "date": "2026-10-01", "highlight": "Good week", "scores": {"cv1": {"rag": "green", "note": ""}, "cv2": {"rag": "yellow", "note": "Watch tone"}, "ss10": {"rag": "red", "note": "OEE was low"}}, "created_by": null, "completed_at": "2026-10-01T16:00:00Z", "completed_by": null}},
-{"model": "core.meeting", "pk": 1, "fields": {"quarter": 1, "facility": 2, "date": "2026-10-12", "round_robin_question": "One win?", "notes": "", "current_step": "evaluate", "current_rock": null, "is_closed": true, "summary_sent_at": null, "attendees": [1, 3]}},
-{"model": "core.meetingevaluation", "pk": 1, "fields": {"meeting": 1, "user": 1, "scores": {"1": "green", "2": "green", "3": "yellow"}}},
-{"model": "core.meetingevaluation", "pk": 2, "fields": {"meeting": 1, "user": 3, "scores": {"1": "red", "2": "yellow"}}},
-{"model": "core.roundrobinanswer", "pk": 1, "fields": {"meeting": 1, "user": 3, "answer": "New line ran clean"}},
-{"model": "core.meetingcriterion", "pk": 1, "fields": {"text": "Priorities known.", "sort": 0, "active": true}},
-{"model": "core.offsite", "pk": 1, "fields": {"quarter": 1, "facility": 2, "date": "2026-10-01", "status": "complete", "agenda_notes": "", "current_step": "done"}},
-{"model": "core.swotitem", "pk": 1, "fields": {"offsite": 1, "kind": "strength", "text": "Strong team", "author": 1, "created_at": "2026-10-01T14:30:14Z"}}
+ {
+  "model": "core.facility",
+  "pk": 1,
+  "fields": {
+   "name": "Company",
+   "short_code": "CO",
+   "sort": 0,
+   "meeting_weekday": 0,
+   "team": [
+    1,
+    2
+   ]
+  }
+ },
+ {
+  "model": "core.facility",
+  "pk": 2,
+  "fields": {
+   "name": "Kentucky",
+   "short_code": "KY",
+   "sort": 1,
+   "meeting_weekday": 0,
+   "team": [
+    1,
+    3
+   ]
+  }
+ },
+ {
+  "model": "core.user",
+  "pk": 1,
+  "fields": {
+   "username": "alex@steuartnutrition.com",
+   "email": "alex@steuartnutrition.com",
+   "name": "Alex Admin",
+   "role": "admin",
+   "facility": 1,
+   "is_active": true,
+   "is_superuser": true,
+   "is_staff": true,
+   "first_name": "",
+   "last_name": "",
+   "asana_email": "",
+   "groups": [],
+   "user_permissions": []
+  }
+ },
+ {
+  "model": "core.user",
+  "pk": 2,
+  "fields": {
+   "username": "casey@steuartnutrition.com",
+   "email": "casey@steuartnutrition.com",
+   "name": "Casey Member",
+   "role": "member",
+   "facility": 1,
+   "is_active": true,
+   "is_superuser": false,
+   "is_staff": false,
+   "first_name": "",
+   "last_name": "",
+   "asana_email": "",
+   "groups": [],
+   "user_permissions": []
+  }
+ },
+ {
+  "model": "core.user",
+  "pk": 3,
+  "fields": {
+   "username": "drew@steuartnutrition.com",
+   "email": "drew@steuartnutrition.com",
+   "name": "Drew Plant",
+   "role": "member",
+   "facility": 2,
+   "is_active": true,
+   "is_superuser": false,
+   "is_staff": false,
+   "first_name": "",
+   "last_name": "",
+   "asana_email": "",
+   "groups": [],
+   "user_permissions": []
+  }
+ },
+ {
+  "model": "core.user",
+  "pk": 4,
+  "fields": {
+   "username": "fran@pending.invalid",
+   "email": "fran@pending.invalid",
+   "name": "Fran Floor",
+   "role": "member",
+   "facility": 2,
+   "is_active": true,
+   "is_superuser": false,
+   "is_staff": false,
+   "first_name": "",
+   "last_name": "",
+   "asana_email": "",
+   "groups": [],
+   "user_permissions": []
+  }
+ },
+ {
+  "model": "core.quarter",
+  "pk": 1,
+  "fields": {
+   "name": "Q4 2026",
+   "start_date": "2026-10-01",
+   "end_date": "2026-12-31",
+   "is_active": true
+  }
+ },
+ {
+  "model": "core.value",
+  "pk": 1,
+  "fields": {
+   "name": "Own It",
+   "sort": 0,
+   "active": true
+  }
+ },
+ {
+  "model": "core.value",
+  "pk": 2,
+  "fields": {
+   "name": "Be Kind",
+   "sort": 1,
+   "active": true
+  }
+ },
+ {
+  "model": "core.valuestatement",
+  "pk": 1,
+  "fields": {
+   "value": 1,
+   "text": "Visible at every level.",
+   "sort": 0
+  }
+ },
+ {
+  "model": "core.strategyhouse",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "purpose": "Make healthy products.",
+   "vision": "1 million happy customers by 2030.",
+   "major_business_challenge": "Grow faster.",
+   "lessons": [
+    {
+     "title": "Lesson one",
+     "body": "Body"
+    }
+   ],
+   "targets": [
+    {
+     "label": "Revenue",
+     "value": "$1M",
+     "sub": ""
+    }
+   ],
+   "rudder_note": "Stay the course",
+   "parked": [
+    "Look at a second warehouse"
+   ]
+  }
+ },
+ {
+  "model": "core.box",
+  "pk": 1,
+  "fields": {
+   "house": 1,
+   "kind": "opportunity",
+   "statement": "Win deals",
+   "strategy": "Focus",
+   "tactics": [
+    "Call"
+   ],
+   "dri": 1,
+   "due_date": "2026-12-31",
+   "sort": 0
+  }
+ },
+ {
+  "model": "core.visiondoc",
+  "pk": 1,
+  "fields": {
+   "ten_year_target": "",
+   "target_market": "Fast growing brands.",
+   "uniques": "Speed\nQuality\nFormats",
+   "proven_process": "Quote fast.",
+   "guarantee": "Quote in 3 days.",
+   "three_year_date": "Dec 31, 2028",
+   "three_year_target": "Double revenue.",
+   "three_year_revenue": "$10M",
+   "three_year_profit": "20%",
+   "three_year_measurables": "Live OEE",
+   "three_year_picture": "Two plants\nGreat culture",
+   "one_year_date": "Dec 31, 2026",
+   "one_year_revenue": "$5M",
+   "one_year_profit": "15%",
+   "one_year_measurables": "On-time delivery",
+   "one_year_goals": "Close new revenue\nFix quality",
+   "updated_at": "2026-10-07T10:32:27Z"
+  }
+ },
+ {
+  "model": "core.rock",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "box": 1,
+   "facility": 1,
+   "title": "Close new revenue",
+   "description": "Big one",
+   "owner": 1,
+   "due_date": "2026-12-31",
+   "current_rag": "green",
+   "is_complete": false,
+   "sort": 0,
+   "asana_task_gid": null,
+   "contributors": [
+    2
+   ]
+  }
+ },
+ {
+  "model": "core.rock",
+  "pk": 2,
+  "fields": {
+   "quarter": 1,
+   "box": null,
+   "facility": 2,
+   "title": "Install new line",
+   "description": "",
+   "owner": 3,
+   "due_date": "2026-11-30",
+   "current_rag": "yellow",
+   "is_complete": false,
+   "sort": 1,
+   "asana_task_gid": null,
+   "contributors": []
+  }
+ },
+ {
+  "model": "core.rock",
+  "pk": 3,
+  "fields": {
+   "quarter": 1,
+   "box": null,
+   "facility": 2,
+   "title": "Hire QA lead",
+   "description": "",
+   "owner": 3,
+   "due_date": "2026-11-15",
+   "current_rag": "green",
+   "is_complete": true,
+   "sort": 2,
+   "asana_task_gid": null,
+   "contributors": []
+  }
+ },
+ {
+  "model": "core.rockstatus",
+  "pk": 1,
+  "fields": {
+   "rock": 1,
+   "week_start": "2026-10-05",
+   "rag": "green",
+   "note": "",
+   "recovery_plan": "",
+   "author": 1,
+   "created_at": "2026-10-05T19:33:09Z"
+  }
+ },
+ {
+  "model": "core.rockstatus",
+  "pk": 2,
+  "fields": {
+   "rock": 1,
+   "week_start": "2026-10-12",
+   "rag": "red",
+   "note": "Slipping",
+   "recovery_plan": "More calls",
+   "author": 1,
+   "created_at": "2026-10-12T19:33:09Z"
+  }
+ },
+ {
+  "model": "core.rockstatus",
+  "pk": 3,
+  "fields": {
+   "rock": 2,
+   "week_start": "2026-10-12",
+   "rag": "yellow",
+   "note": "",
+   "recovery_plan": "",
+   "author": 3,
+   "created_at": "2026-10-12T19:33:09Z"
+  }
+ },
+ {
+  "model": "core.milestone",
+  "pk": 1,
+  "fields": {
+   "rock": 1,
+   "title": "Send 10 proposals",
+   "due_date": "2026-10-31",
+   "is_done": true,
+   "completed_at": null,
+   "created_by": 1,
+   "created_at": "2026-10-05T19:15:14Z",
+   "people": []
+  }
+ },
+ {
+  "model": "core.milestone",
+  "pk": 2,
+  "fields": {
+   "rock": 1,
+   "title": "Close 2 deals",
+   "due_date": "2026-11-30",
+   "is_done": false,
+   "completed_at": null,
+   "created_by": 1,
+   "created_at": "2026-10-05T19:15:14Z",
+   "people": []
+  }
+ },
+ {
+  "model": "core.issue",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "facility": 2,
+   "text": "Metal detector is unreliable",
+   "raised_by": 3,
+   "status": "resolved",
+   "high_priority": false,
+   "created_at": "2026-10-05T20:05:46Z"
+  }
+ },
+ {
+  "model": "core.issue",
+  "pk": 2,
+  "fields": {
+   "quarter": 1,
+   "facility": 2,
+   "text": "Changeovers take too long",
+   "raised_by": 3,
+   "status": "open",
+   "high_priority": true,
+   "created_at": "2026-10-06T20:05:46Z"
+  }
+ },
+ {
+  "model": "core.issue",
+  "pk": 3,
+  "fields": {
+   "quarter": 1,
+   "facility": 1,
+   "text": "Consider a third plant",
+   "raised_by": 1,
+   "status": "parked",
+   "high_priority": false,
+   "created_at": "2026-10-07T20:05:46Z"
+  }
+ },
+ {
+  "model": "core.commitment",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "week_start": "2026-10-05",
+   "text": "Send quote to customer",
+   "description": "",
+   "due_date": "2026-10-07",
+   "rock": 1,
+   "issue": null,
+   "owner": 2,
+   "result": "miss",
+   "why_not": "Costs were high",
+   "asana_task_gid": null,
+   "asana_sent_at": null,
+   "asana_completed_at": null,
+   "asana_unassigned": false,
+   "created_by": 2,
+   "created_at": "2026-10-05T19:31:32Z"
+  }
+ },
+ {
+  "model": "core.commitment",
+  "pk": 2,
+  "fields": {
+   "quarter": 1,
+   "week_start": "2026-10-05",
+   "text": "Fix metal detector",
+   "description": "Call vendor",
+   "due_date": "2026-10-09",
+   "rock": null,
+   "issue": 1,
+   "owner": 3,
+   "result": "hit",
+   "why_not": "",
+   "asana_task_gid": null,
+   "asana_sent_at": null,
+   "asana_completed_at": "2026-10-08T12:00:00Z",
+   "asana_unassigned": false,
+   "created_by": 3,
+   "created_at": "2026-10-05T19:31:32Z"
+  }
+ },
+ {
+  "model": "core.commitment",
+  "pk": 3,
+  "fields": {
+   "quarter": 1,
+   "week_start": "2026-10-12",
+   "text": "Draft hiring plan",
+   "description": "",
+   "due_date": "2026-10-16",
+   "rock": null,
+   "issue": null,
+   "owner": 3,
+   "result": "open",
+   "why_not": "",
+   "asana_task_gid": null,
+   "asana_sent_at": null,
+   "asana_completed_at": null,
+   "asana_unassigned": false,
+   "created_by": 3,
+   "created_at": "2026-10-12T19:31:32Z"
+  }
+ },
+ {
+  "model": "core.scorecardmetric",
+  "pk": 1,
+  "fields": {
+   "name": "OEE",
+   "facility": 2,
+   "unit": "%",
+   "sort": 0,
+   "active": true
+  }
+ },
+ {
+  "model": "core.scorecardmetric",
+  "pk": 2,
+  "fields": {
+   "name": "Leads pursued",
+   "facility": null,
+   "unit": "count",
+   "sort": 1,
+   "active": true
+  }
+ },
+ {
+  "model": "core.scorecardmetric",
+  "pk": 3,
+  "fields": {
+   "name": "Proposal system followed",
+   "facility": null,
+   "unit": "yes/no",
+   "sort": 2,
+   "active": true
+  }
+ },
+ {
+  "model": "core.seat",
+  "pk": 1,
+  "fields": {
+   "facility": 2,
+   "parent": null,
+   "title": "Plant Manager",
+   "person_name": "Drew Plant",
+   "person": 3,
+   "status": "green",
+   "responsibilities": "Run the plant\nHire\nSafety",
+   "agency": false,
+   "sort": 0
+  }
+ },
+ {
+  "model": "core.seat",
+  "pk": 2,
+  "fields": {
+   "facility": 2,
+   "parent": 1,
+   "title": "Line Lead",
+   "person_name": "Fran Floor",
+   "person": null,
+   "status": "yellow",
+   "responsibilities": "Run the line",
+   "agency": false,
+   "sort": 1
+  }
+ },
+ {
+  "model": "core.successstatement",
+  "pk": 10,
+  "fields": {
+   "user": 4,
+   "text": "The line hits its OEE target",
+   "standard": "",
+   "sort": 0
+  }
+ },
+ {
+  "model": "core.oneonone",
+  "pk": 1,
+  "fields": {
+   "user": 4,
+   "date": "2026-10-01",
+   "highlight": "Good week",
+   "scores": {
+    "cv1": {
+     "rag": "green",
+     "note": ""
+    },
+    "cv2": {
+     "rag": "yellow",
+     "note": "Watch tone"
+    },
+    "ss10": {
+     "rag": "red",
+     "note": "OEE was low"
+    }
+   },
+   "created_by": null,
+   "completed_at": "2026-10-01T16:00:00Z",
+   "completed_by": null
+  }
+ },
+ {
+  "model": "core.meeting",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "facility": 2,
+   "date": "2026-10-12",
+   "round_robin_question": "One win?",
+   "notes": "",
+   "current_step": "evaluate",
+   "current_rock": null,
+   "is_closed": true,
+   "summary_sent_at": null,
+   "attendees": [
+    1,
+    3
+   ]
+  }
+ },
+ {
+  "model": "core.meetingevaluation",
+  "pk": 1,
+  "fields": {
+   "meeting": 1,
+   "user": 1,
+   "scores": {
+    "1": "green",
+    "2": "green",
+    "3": "yellow"
+   }
+  }
+ },
+ {
+  "model": "core.meetingevaluation",
+  "pk": 2,
+  "fields": {
+   "meeting": 1,
+   "user": 3,
+   "scores": {
+    "1": "red",
+    "2": "yellow"
+   }
+  }
+ },
+ {
+  "model": "core.roundrobinanswer",
+  "pk": 1,
+  "fields": {
+   "meeting": 1,
+   "user": 3,
+   "answer": "New line ran clean"
+  }
+ },
+ {
+  "model": "core.meetingcriterion",
+  "pk": 1,
+  "fields": {
+   "text": "Priorities known.",
+   "sort": 0,
+   "active": true
+  }
+ },
+ {
+  "model": "core.offsite",
+  "pk": 1,
+  "fields": {
+   "quarter": 1,
+   "facility": 2,
+   "date": "2026-10-01",
+   "status": "complete",
+   "agenda_notes": "",
+   "current_step": "done"
+  }
+ },
+ {
+  "model": "core.swotitem",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "kind": "strength",
+   "text": "Strong team",
+   "author": 1,
+   "created_at": "2026-10-01T14:30:14Z"
+  }
+ },
+ {
+  "model": "core.seat",
+  "pk": 3,
+  "fields": {
+   "facility": 2,
+   "parent": 1,
+   "title": "Maintenance Tech",
+   "person_name": "",
+   "person": null,
+   "status": "red",
+   "responsibilities": "Fix things",
+   "agency": true,
+   "sort": 2
+  }
+ },
+ {
+  "model": "core.fourwhatsitem",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "kind": "working",
+   "text": "Daily huddles",
+   "author": 3,
+   "created_at": "2026-10-01T14:31:00Z"
+  }
+ },
+ {
+  "model": "core.fourwhatsitem",
+  "pk": 2,
+  "fields": {
+   "offsite": 1,
+   "kind": "broken",
+   "text": "Shift handoff",
+   "author": 3,
+   "created_at": "2026-10-01T14:32:00Z"
+  }
+ },
+ {
+  "model": "core.offsitereflection",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "user": 3,
+   "wins": "Line 2 is up",
+   "team_growth": "",
+   "personal_growth": "",
+   "chapter_title": "Momentum",
+   "chapter_why": "We shipped"
+  }
+ },
+ {
+  "model": "core.offsitelesson",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "title": "Start earlier",
+   "body": "Plan installs a month ahead",
+   "author": 1,
+   "sort": 0
+  }
+ },
+ {
+  "model": "core.valueseval",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "value_statement": 1,
+   "rag": "yellow",
+   "note": "Mostly"
+  }
+ },
+ {
+  "model": "core.missioneval",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "statement_key": "why",
+   "rag": "green",
+   "note": ""
+  }
+ },
+ {
+  "model": "core.priorityeval",
+  "pk": 1,
+  "fields": {
+   "offsite": 1,
+   "number_one": "Staffing",
+   "top_three_to_five": [
+    "Staffing",
+    "Training"
+   ],
+   "notes": ""
+  }
+ }
 ]

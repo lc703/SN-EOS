@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     "meetings",
     "vision",
     "people",
+    "planning",
+    "api",
 ]
 
 MIDDLEWARE = [

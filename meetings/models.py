@@ -28,6 +28,9 @@ class Meeting(LegacyMixin):
     current_section = models.CharField(max_length=12, choices=SECTIONS, default="segue")
     segue_notes = models.TextField("Segue / good news", blank=True)
     notes = models.TextField(blank=True)
+    cascading_messages = models.TextField(
+        blank=True, help_text="What needs to be communicated to the rest of the company, and who tells them."
+    )
     started_at = models.DateTimeField(default=timezone.now)
     concluded_at = models.DateTimeField(null=True, blank=True)
     recap_sent_at = models.DateTimeField(null=True, blank=True)
