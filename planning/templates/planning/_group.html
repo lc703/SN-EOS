@@ -1,0 +1,34 @@
+<section class="card overflow-hidden">
+  <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center gap-2"><h3 class="section-title flex-1">{{ label }}</h3><span class="text-xs text-neutral-400 tabular-nums">{{ items|length }}</span></div>
+  <ul class="divide-y divide-black/[.05]">
+    {% for i in items %}
+      <li class="px-4 py-2 flex items-start gap-2 group">
+        {% if i.color %}<span class="dot dot-{{ i.color }} mt-1.5"></span>{% endif %}
+        <div class="flex-1 min-w-0 text-sm">
+          {% if i.about %}<span class="font-semibold">{{ i.about.first }}:</span> {% endif %}{{ i.text|linebreaksbr }}
+          <div class="text-[11px] text-neutral-400">{{ i.author.first|default:"" }}{% if i.legacy.issue_created %} · on the Issues List{% endif %}</div>
+        </div>
+        {% if can_run %}
+          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+            {% if not i.legacy.issue_created and kind in "weakness,threat,not_working,priority,vto_check,lesson,work_on,note,opportunity" %}
+              <form method="post" action="{% url 'session_item' i.pk %}">{% csrf_token %}<input type="hidden" name="action" value="issue"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm" title="Add to the Issues List">→ Issue</button></form>
+            {% endif %}
+            <form method="post" action="{% url 'session_item' i.pk %}">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm" title="Remove" aria-label="Remove">×</button></form>
+          </div>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="px-4 py-3 text-sm text-neutral-400">Nothing yet.</li>
+    {% endfor %}
+  </ul>
+  {% if can_run %}
+    <form method="post" action="{% url 'session_item_add' session.pk %}" class="px-3 py-2 border-t border-black/[.06] bg-[#fcfcfb] flex gap-2">{% csrf_token %}
+      <input type="hidden" name="section" value="{{ section }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% if section == "team_health" %}
+        <select name="about" class="rounded-lg border bg-white px-2 h-9 text-sm" required aria-label="About">{% for p in people %}<option value="{{ p.pk }}">{{ p.first }}</option>{% endfor %}</select>
+      {% endif %}
+      <input name="text" required placeholder="Add {{ label|lower }}…" class="flex-1 min-w-0 rounded-lg border bg-white px-3 h-9 text-sm">
+      <button class="btn btn-sm h-9">Add</button>
+    </form>
+  {% endif %}
+</section>

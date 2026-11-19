@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Recap · {{ session.get_kind_display }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="flex flex-wrap items-end gap-3 mb-5 print:mb-3">
+    <div class="flex-1 min-w-0">
+      <a href="{% url 'session' session.pk %}" class="eyebrow hover:text-black print:hidden">← Back to the session</a>
+      <h1 class="text-2xl leading-tight">{{ session.team.name }} {{ session.get_kind_display }}</h1>
+      <p class="text-sm text-neutral-500">{{ session.date|date:"l, F j, Y" }} · Facilitated by {{ session.facilitator.display_name|default:"—" }}{% if session.average_rating %} · Rated <strong class="text-black">{{ session.average_rating }}</strong>/10{% endif %}</p>
+    </div>
+    <button type="button" class="btn print:hidden" onclick="window.print()">Print / PDF</button>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-4">
+    <section class="card overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-black/[.06]"><h2 class="section-title">Rocks{% if session.next_quarter %} · {{ session.next_quarter.name }}{% endif %}</h2></div>
+      <ul class="divide-y divide-black/[.05]">{% for r in rocks %}<li class="px-4 py-2 flex items-center gap-2 text-sm"><span class="flex-1">{{ r.title }}</span><span class="text-xs text-neutral-500">{{ r.owner.first|default:"" }} · {{ r.kind_label }}</span></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">No rocks yet.</li>{% endfor %}</ul>
+    </section>
+    <section class="card overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-black/[.06]"><h2 class="section-title">To-dos</h2></div>
+      <ul class="divide-y divide-black/[.05]">{% for t in todos %}<li class="px-4 py-2 flex items-center gap-2 text-sm"><span class="flex-1">{{ t.title }}</span><span class="text-xs text-neutral-500">{{ t.owner.first }} · {{ t.due_date|date:"M j" }}</span></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">None.</li>{% endfor %}</ul>
+    </section>
+  </div>
+
+  <div class="space-y-4">
+    {% for s in sections %}
+      <section class="card card-pad break-inside-avoid">
+        <h2 class="text-lg mb-2">{{ s.title }}</h2>
+        {% for kind, label, items in s.groups %}
+          <div class="mb-2"><div class="eyebrow mb-0.5">{{ label }}</div>
+            <ul class="list-disc pl-5 text-sm space-y-0.5">{% for i in items %}<li>{% if i.about %}<strong>{{ i.about.first }}:</strong> {% endif %}{{ i.text }}{% if i.author and kind != "cascade" %} <span class="text-neutral-400">· {{ i.author.first }}</span>{% endif %}</li>{% endfor %}</ul>
+          </div>
+        {% endfor %}
+        {% if s.notes %}<p class="text-sm text-neutral-700 prose-pre mt-1">{{ s.notes }}</p>{% endif %}
+      </section>
+    {% empty %}
+      {% include "_empty.html" with title="Nothing captured yet" text="Items and notes added during the session show up here." %}
+    {% endfor %}
+  </div>
+
+  {% if ratings %}
+    <p class="mt-4 text-sm text-neutral-600">Ratings: {% for r in ratings %}{{ r.user.first }} {{ r.rating|default:"—" }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+</div>
+{% endblock %}

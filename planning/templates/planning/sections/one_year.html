@@ -1,0 +1,10 @@
+<form class="card card-pad space-y-3" {% if can_edit_vto %}hx-post="{% url 'session_update' session.pk %}" hx-trigger="input delay:800ms, change" hx-swap="none"{% endif %}>{% csrf_token %}
+  <div class="grid sm:grid-cols-3 gap-3">
+    <label class="block"><span class="block text-[13px] font-semibold text-neutral-700 mb-1">Future date</span><input name="one_year_date" value="{{ vto.one_year_date }}" class="block w-full rounded-lg border bg-white px-3 h-9 text-sm" {% if not can_edit_vto %}disabled{% endif %}></label>
+    <label class="block"><span class="block text-[13px] font-semibold text-neutral-700 mb-1">Revenue</span><input name="one_year_revenue" value="{{ vto.one_year_revenue }}" class="block w-full rounded-lg border bg-white px-3 h-9 text-sm" {% if not can_edit_vto %}disabled{% endif %}></label>
+    <label class="block"><span class="block text-[13px] font-semibold text-neutral-700 mb-1">Profit</span><input name="one_year_profit" value="{{ vto.one_year_profit }}" class="block w-full rounded-lg border bg-white px-3 h-9 text-sm" {% if not can_edit_vto %}disabled{% endif %}></label>
+  </div>
+  <label class="block"><span class="block text-[13px] font-semibold text-neutral-700 mb-1">Measurables <span class="font-normal text-neutral-500">one per line</span></span><textarea name="one_year_measurables" rows="3" class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" {% if not can_edit_vto %}disabled{% endif %}>{{ vto.one_year_measurables }}</textarea></label>
+  <label class="block"><span class="block text-[13px] font-semibold text-neutral-700 mb-1">Goals for the year <span class="font-normal text-neutral-500">three to seven, one per line</span></span><textarea name="one_year_goals" rows="5" class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" {% if not can_edit_vto %}disabled{% endif %}>{{ vto.one_year_goals }}</textarea></label>
+  <p class="text-xs text-neutral-500">{% if can_edit_vto %}Writes straight to the V/TO as you type.{% else %}Only admins can edit the V/TO.{% endif %}</p>
+</form>

@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from api import views as api
 from core import views as core
 from issues import views as issues
 from meetings import views as meetings
 from people import views as people
+from planning import views as planning
 from rocks import views as rocks
 from scorecard import views as scorecard
 from todos import views as todos
@@ -62,9 +64,36 @@ urlpatterns = [
     path("chart/", vision.chart, name="chart"),
     path("chart/seats/new/", vision.seat_edit, name="seat_new"),
     path("chart/seats/<int:pk>/", vision.seat_edit, name="seat_edit"),
+    path("chart/seats/panel/", vision.seat_panel, name="seat_panel_new"),
+    path("chart/seats/<int:pk>/panel/", vision.seat_panel, name="seat_panel"),
+    path("chart/seats/<int:pk>/move/", vision.seat_move, name="seat_move"),
     # People
     path("people/", people.people_list, name="people"),
     path("people/<int:pk>/", people.person, name="person"),
     path("people/<int:pk>/one-on-ones/", people.one_on_one_add, name="one_on_one_add"),
     path("people/<int:pk>/reviews/", people.review_add, name="review_add"),
+    path("people/<int:pk>/conversations/new/", people.conversation_new, name="conversation_new"),
+    path("people/<int:pk>/statements/", people.statement_add, name="statement_add"),
+    path("conversations/", people.conversations, name="conversations"),
+    path("conversations/<int:pk>/", people.conversation, name="conversation"),
+    path("conversations/<int:pk>/score/", people.conversation_score, name="conversation_score"),
+    # Quarterly & annual planning
+    path("planning/", planning.sessions_list, name="planning"),
+    path("planning/start/", planning.session_start, name="session_start"),
+    path("planning/<int:pk>/", planning.session_view, name="session"),
+    path("planning/<int:pk>/items/", planning.item_add, name="session_item_add"),
+    path("planning/<int:pk>/update/", planning.session_update, name="session_update"),
+    path("planning/<int:pk>/rocks/", planning.session_rock, name="session_rock"),
+    path("planning/<int:pk>/todos/", planning.session_todo, name="session_todo"),
+    path("planning/<int:pk>/rate/", planning.session_rate, name="session_rate"),
+    path("planning/<int:pk>/conclude/", planning.session_conclude, name="session_conclude"),
+    path("planning/<int:pk>/recap/", planning.session_recap, name="session_recap"),
+    path("planning/items/<int:pk>/", planning.item_update, name="session_item"),
+    # Integrations
+    path("settings/api/", api.tokens, name="api_tokens"),
+    path("settings/api/<int:pk>/revoke/", api.token_revoke, name="api_token_revoke"),
+    path("settings/audit/", api.audit_log, name="audit_log"),
+    path("api/v1/<path:path>", api.rest, name="api_rest"),
+    path("mcp", api.mcp, name="mcp"),
+    path("mcp/", api.mcp),
 ]

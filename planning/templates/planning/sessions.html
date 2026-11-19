@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Planning{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div>
+    <div class="eyebrow">{{ team.label }}</div>
+    <h1 class="text-2xl">Quarterly &amp; Annual Planning</h1>
+    <p class="text-sm text-neutral-500 mt-0.5 max-w-2xl">Run the EOS planning sessions here: step through the agenda, capture what's said, set next quarter's rocks and send the cascading messages.</p>
+  </div>
+</div>
+
+{% if can_run %}
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    {% for key, label, agenda in agendas %}
+      <form method="post" action="{% url 'session_start' %}" class="card card-pad flex flex-col">{% csrf_token %}
+        <input type="hidden" name="kind" value="{{ key }}">
+        <div class="flex items-center gap-2 mb-1"><h2 class="text-lg flex-1">{{ label }}</h2><span class="badge">{{ agenda|length }} steps</span></div>
+        <p class="text-sm text-neutral-500 mb-3">{% if key == "annual" %}Two days, once a year: team health, SWOT, the V/TO, the 1-year plan and the first quarter's rocks.{% else %}One day, every 90 days: review the quarter, check the V/TO, set new rocks, solve the big issues.{% endif %}</p>
+        <ol class="text-[13px] text-neutral-700 grid grid-cols-2 gap-x-4 gap-y-1 mb-4 flex-1">
+          {% for k, t, p in agenda %}<li class="flex items-center gap-2"><span class="rail-n">{{ forloop.counter }}</span>{{ t }}</li>{% endfor %}
+        </ol>
+        <div><button class="btn {% if key == 'quarterly' %}btn-primary{% endif %}" {% if key == 'quarterly' %}data-shortcut="new"{% endif %}>Start {{ label }}</button></div>
+      </form>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<h2 class="section-title mb-2">Sessions</h2>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Date</th><th>Session</th><th>Quarter</th><th>Facilitator</th><th>Captured</th><th>Rating</th><th></th></tr></thead>
+    <tbody>
+      {% for s in sessions %}
+        <tr>
+          <td class="whitespace-nowrap font-semibold">{{ s.date|date:"M j, Y" }}</td>
+          <td><a href="{% url 'session' s.pk %}" class="font-semibold hover:underline">{{ s.get_kind_display }}</a>{% if s.is_concluded %} <span class="badge badge-green">Concluded</span>{% else %} <span class="badge badge-yellow">In progress</span>{% endif %}{% if s.legacy_id %} <span class="badge" title="Imported from the Battle Planner">BP offsite</span>{% endif %}</td>
+          <td class="text-neutral-600 whitespace-nowrap">{{ s.quarter.name|default:"—" }}{% if s.next_quarter %} → {{ s.next_quarter.name }}{% endif %}</td>
+          <td class="text-neutral-600">{{ s.facilitator.display_name|default:"—" }}</td>
+          <td class="tabular-nums text-neutral-600">{{ s.items.all|length }} item{{ s.items.all|length|pluralize }}</td>
+          <td class="tabular-nums font-semibold">{{ s.average_rating|default:"—" }}</td>
+          <td class="text-right whitespace-nowrap"><a href="{% url 'session_recap' s.pk %}" class="btn btn-sm">Recap</a> <a href="{% url 'session' s.pk %}" class="btn btn-sm">{% if s.is_concluded %}Open{% else %}Continue{% endif %}</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include "_empty.html" with title="No planning sessions yet" text="Start a Quarterly Planning session at the end of each quarter. Imported Battle Planner offsites show up here too." icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
