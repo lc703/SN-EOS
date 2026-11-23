@@ -39,6 +39,13 @@ DEV_LOGIN = False
 STAGING_PASSWORD_LOGIN = env_bool("STAGING_PASSWORD_LOGIN", False)
 TAILWIND_CDN = env_bool("TAILWIND_CDN", False)
 
+# "Send to Asana" for to-dos. Same variable names and defaults as the Battle Planner, so one Railway
+# config can serve both. Without ASANA_PAT the Asana buttons stay hidden.
+ASANA_PAT = env("ASANA_PAT", "")
+ASANA_PROJECT_GID = env("ASANA_PROJECT_GID", "")
+ASANA_WORKSPACE_GID = env("ASANA_WORKSPACE_GID", "1201499979026080")
+ASANA_TEAM_GID = env("ASANA_TEAM_GID", "1206830892890847")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

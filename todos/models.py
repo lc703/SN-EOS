@@ -42,6 +42,12 @@ class Todo(LegacyMixin):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     created_at = models.DateTimeField(default=timezone.now)
+    asana_task_gid = models.CharField(max_length=40, blank=True)
+    asana_sent_at = models.DateTimeField(null=True, blank=True)
+    asana_completed_at = models.DateTimeField(null=True, blank=True)
+    asana_unassigned = models.BooleanField(
+        default=False, help_text="Sent before the owner was found in Asana, so the task has no assignee yet."
+    )
 
     objects = TodoQuerySet.as_manager()
 
@@ -54,6 +60,16 @@ class Todo(LegacyMixin):
     @property
     def overdue(self):
         return not self.done and self.due_date < timezone.localdate()
+
+    @property
+    def asana_state(self):
+        if not self.asana_task_gid:
+            return "none"
+        return "done" if self.asana_completed_at and self.done else "sent"
+
+    @property
+    def asana_url(self):
+        return f"https://app.asana.com/0/0/{self.asana_task_gid}" if self.asana_task_gid else ""
 
     def set_done(self, done):
         self.done = bool(done)

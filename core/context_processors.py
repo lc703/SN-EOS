@@ -13,6 +13,7 @@ def app(request):
         "DEV_LOGIN": settings.DEV_LOGIN,
         "STAGING_PASSWORD_LOGIN": settings.STAGING_PASSWORD_LOGIN,
         "ALLOWED_EMAIL_DOMAIN": settings.ALLOWED_EMAIL_DOMAIN,
+        "ASANA_ON": bool(settings.ASANA_PAT and settings.ASANA_WORKSPACE_GID),
     }
     if getattr(request, "user", None) and request.user.is_authenticated:
         ctx.update(

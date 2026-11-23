@@ -11,7 +11,7 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ["email", "name"]
     ordering = ["name"]
     fieldsets = [
-        (None, {"fields": ["email", "username", "name", "title", "role", "home_team", "is_active"]}),
+        (None, {"fields": ["email", "username", "name", "title", "role", "home_team", "asana_email", "is_active"]}),
         ("Django admin", {"fields": ["is_staff", "is_superuser", "groups"], "classes": ["collapse"]}),
     ]
     add_fieldsets = [(None, {"fields": ["email", "username", "name", "role"]})]

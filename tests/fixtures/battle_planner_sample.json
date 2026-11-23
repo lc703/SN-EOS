@@ -60,7 +60,7 @@
    "is_staff": false,
    "first_name": "",
    "last_name": "",
-   "asana_email": "",
+   "asana_email": "casey@asana-login.example",
    "groups": [],
    "user_permissions": []
   }
@@ -404,8 +404,8 @@
    "owner": 3,
    "result": "hit",
    "why_not": "",
-   "asana_task_gid": null,
-   "asana_sent_at": null,
+   "asana_task_gid": "1200000000000002",
+   "asana_sent_at": "2026-10-05T20:00:00Z",
    "asana_completed_at": "2026-10-08T12:00:00Z",
    "asana_unassigned": false,
    "created_by": 3,
@@ -426,10 +426,10 @@
    "owner": 3,
    "result": "open",
    "why_not": "",
-   "asana_task_gid": null,
-   "asana_sent_at": null,
+   "asana_task_gid": "1200000000000003",
+   "asana_sent_at": "2026-10-12T20:00:00Z",
    "asana_completed_at": null,
-   "asana_unassigned": false,
+   "asana_unassigned": true,
    "created_by": 3,
    "created_at": "2026-10-12T19:31:32Z"
   }

@@ -21,5 +21,25 @@
     </div>
     {% endif %}
   </form>
+  {% if obj.asana_task_gid or ASANA_ON and editable and not obj.is_private %}
+  <div class="card card-pad mt-4 flex flex-wrap items-center gap-3">
+    <div class="min-w-0 flex-1">
+      <h2 class="text-sm font-semibold">Asana</h2>
+      <p class="text-sm text-neutral-500">
+        {% if obj.asana_state == 'done' %}Completed in Asana.
+        {% elif obj.asana_task_gid %}This to-do is in Asana{% if obj.asana_unassigned %}, but {{ obj.owner.first }} was not found there, so it has no assignee yet{% endif %}.
+        {% else %}Create a task in Asana for {{ obj.owner.first }}. Finishing it there checks it off here.{% endif %}
+      </p>
+    </div>
+    {% if obj.asana_task_gid %}
+      <a href="{{ obj.asana_url }}" target="_blank" rel="noopener" hx-boost="false" class="btn">Open in Asana ↗</a>
+    {% else %}
+      <form method="post" action="{% url 'todo_asana' obj.pk %}">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button class="btn btn-primary" hx-disabled-elt="this">Send to Asana</button>
+      </form>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

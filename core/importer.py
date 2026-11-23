@@ -205,6 +205,9 @@ class BattlePlannerImporter:
                 "home_team": self.teams.get(f.get("facility")),
             }
             legacy = {k: f.get(k) for k in ("asana_email", "date_joined", "last_login") if f.get(k)}
+            asana_email = (f.get("asana_email") or "").strip().lower()
+            if asana_email:
+                data["asana_email"] = asana_email
             if user is None:
                 # New accounts get an unusable password. Existing ones keep whatever
                 # password and social login they already have; this never touches those.
@@ -220,8 +223,11 @@ class BattlePlannerImporter:
                         setattr(user, k, v)
                     user.legacy = legacy
                     changed = True
-                elif not user.name and data["name"]:
-                    user.name, changed = data["name"], True
+                else:
+                    if not user.name and data["name"]:
+                        user.name, changed = data["name"], True
+                    if asana_email and not user.asana_email:
+                        user.asana_email, changed = asana_email, True
                 user.save()
                 self._count("Users", "updated" if changed else "unchanged")
             self.users[pk] = user
@@ -594,7 +600,15 @@ class BattlePlannerImporter:
             due = _date(f.get("due_date")) or (_date(f.get("week_start")) or timezone.localdate()) + dt.timedelta(days=7)
             done = result == "hit"
             done_at = (_dt(f.get("asana_completed_at")) or _day_start(due)) if done else None
-            self.upsert(
+            # The Asana link comes over only when the export has one, so a re-import never wipes a link
+            # that was made by sending the to-do from SN EOS.
+            asana = {}
+            if f.get("asana_task_gid"):
+                asana = {
+                    "asana_task_gid": str(f["asana_task_gid"]), "asana_sent_at": _dt(f.get("asana_sent_at")),
+                    "asana_completed_at": _dt(f.get("asana_completed_at")), "asana_unassigned": bool(f.get("asana_unassigned")),
+                }
+            obj, _ = self.upsert(
                 Todo, pk,
                 {
                     "team": self._todo_team(f, owner), "title": title, "notes": "\n\n".join(notes), "owner": owner,
@@ -602,9 +616,14 @@ class BattlePlannerImporter:
                     "issue": self.issues.get(f.get("issue")), "created_by": self.users.get(f.get("created_by")),
                     "created_at": _dt(f.get("created_at")) or timezone.now(),
                     "legacy": {k: f.get(k) for k in ("result", "why_not", "week_start", "asana_task_gid", "asana_completed_at") if f.get(k)},
-                },
+                } | asana,
                 label="To-dos",
             )
+            if asana and not obj.asana_task_gid:
+                for k, v in asana.items():
+                    setattr(obj, k, v)
+                obj.save(update_fields=list(asana))
+                self._count("Asana links", "added")
 
     def import_seats(self):
         by_name = {u.display_name.lower(): u for u in self.users.values()}

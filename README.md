@@ -68,6 +68,8 @@ The command is idempotent: every imported row stores its old id in `legacy_id`, 
 
 `--sync` implies `--refresh` and then deletes imported rows (ones with a `legacy_id`) that are no longer in the file, so a database can be made to mirror the export exactly. Rows created in SN EOS, which have no `legacy_id`, are kept, unless they hang off a parent the sync deleted. Users who are missing from the export are deactivated rather than deleted, and passwords and Google logins are never touched. The command prints what it removed.
 
+Asana links come across too: a Battle Planner action item that was sent to Asana keeps its task link (and sent / completed times) on the matching to-do, and each person's `asana_email` is kept. A re-import only fills a missing link, it never overwrites or clears one that was made by sending the to-do from SN EOS.
+
 ### Weekly values the old app filled by itself
 
 Battle Planner filled five Company rows without storing entries: Prelim quotes sent and R&D formulas sent (iQuote), and Prelim Proposal, R&D Stage and Final Proposal Deal Value (Attio deal totals by stage). SN EOS does not rebuild those connectors. An assistant with the iQuote and Attio MCP servers posts the numbers each week through `set_measurable_value`, and the import marks those rows with a quiet source note, "Filled weekly by assistant from Attio" (or iQuote). Anyone who can edit a measurable can change the note.
@@ -138,7 +140,25 @@ Only `ALLOWED_EMAIL_DOMAIN` emails get in (default `steuartnutrition.com`); anyo
 | `TAILWIND_CDN` | `0` (default everywhere) uses the compiled `static/css/app.css`. `1` loads the Tailwind CDN instead, handy while iterating on templates locally. |
 | `STAGING_PASSWORD_LOGIN` | Staging only. `1` shows an email + password form on the login page for existing users. Never set it in production. |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | SMTP for L10 recap emails. Without them dev prints emails to the console. |
+| `ASANA_PAT` | Asana personal access token. Turns on "Send to Asana"; without it the Asana buttons are hidden. Same name as the Battle Planner. |
+| `ASANA_WORKSPACE_GID` | Asana workspace. Defaults to Steuart's (`1201499979026080`), same as the Battle Planner. |
+| `ASANA_TEAM_GID` | Team the Strategic Action project is created in if it has to be made. Defaults to Steuart's. |
+| `ASANA_PROJECT_GID` | Optional. Pin the Asana project to use instead of finding or creating "Strategic Action". |
 | `TIME_ZONE` | Default `America/New_York` |
+
+## Send to Asana
+
+Most of the team works in Asana, so every to-do has a **Send to Asana** button (and a "Send to Asana" tick on the add forms). It works the way the Battle Planner's does and reads the same variables, so one set of Railway values can serve both apps.
+
+- **Auth:** one server-side personal access token (`ASANA_PAT`). No per-person OAuth. Without it, nothing Asana shows up.
+- **Where tasks go:** a private project called **Strategic Action**, with a section per team (Company, Kentucky, Le Roy, Mabel; anything else lands in Company). If `ASANA_PROJECT_GID` is not set, the app looks for a project with that name in the workspace and reuses it (so it shares the Battle Planner's project), and only creates it when none exists. The ids it looks up are cached in the `AppSetting` table.
+- **What is sent:** the title (prefixed with the rock or issue it belongs to), the notes plus a link back to the to-do, the due date, and the owner as assignee. The owner is matched to a workspace member by email (or by the optional **Asana email** on the person in `/admin/` when their Asana login differs). The assignee is added to the private project so the link opens. If the owner is not in Asana the task is created unassigned and gets assigned automatically once they show up.
+- **No duplicates:** once sent, the button turns into an **In Asana** link; sending again does nothing, and the send is locked per row so two taps make one task.
+- **Private to-dos are never sent** (the project is shared).
+- **Coming back:** completing the task in Asana checks the to-do off here (**Done in Asana**). It syncs from the To-Dos page at most every 10 minutes, or run `python manage.py sync_asana` (for example as a Railway cron). Editing a to-do's notes also updates the Asana task. Checking a to-do off here does not touch Asana.
+- **API and MCP:** `list_todos` / `GET /api/v1/todos` (and anything else that returns to-dos) include `in_asana`, `asana_url`, `asana_state` (`none`, `sent`, `done`) and `asana_unassigned`. Sending is done in the app.
+
+Setup: create a token in Asana (Asana developer console → Personal access tokens) for a user who can create and share projects in the workspace, and add it as `ASANA_PAT` on the web service. The defaults for the workspace and team already match Steuart's.
 
 ## Deploy (Railway)
 
@@ -254,12 +274,12 @@ python manage.py import_battle_planner battle-planner-export.json --refresh
 pytest
 ```
 
-Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`. `tests/test_mobile_overflow.py` opens every page at 375px in headless Chromium and fails if the page is wider than the phone; it skips when Playwright is not installed.
+Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, Send to Asana (against a fake Asana, including a phone-sized browser run), the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`. `tests/test_mobile_overflow.py` opens every page at 375px in headless Chromium and fails if the page is wider than the phone; it skips when Playwright is not installed.
 
 ## Code map
 
 - `config/` settings (`base`, `dev`, `prod`, `test`) and URLs
-- `core/` users, teams, quarters, permissions, login (allauth adapters, dev login), My 90, `/healthz`, `/export.json`, the importer (`core/importer.py`) and management commands
+- `core/` users, teams, quarters, permissions, login (allauth adapters, dev login), My 90, `/healthz`, `/export.json`, the importer (`core/importer.py`), the Asana adapter (`core/asana_client.py`) and management commands (`sync_asana`)
 - `scorecard/`, `rocks/` (+ `services.py` for weekly updates), `issues/`, `todos/`, `meetings/` (L10), `vision/` (V/TO, core values, core processes, Accountability Chart), `people/` (1:1s, Quarterly Conversations, People Analyzer, chart flags), `planning/` (Quarterly / Annual sessions)
 - `api/` tokens, audit log, the tool registry shared by REST and MCP (`api/tools.py`) and the endpoints (`api/views.py`)
 - `templates/` base layout, nav, login pages; each app has its own `templates/<app>/`

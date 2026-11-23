@@ -18,7 +18,9 @@
       {% if t.rock %}<a href="{% url 'rock_detail' t.rock.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Rock: {{ t.rock.title|truncatechars:32 }}</a>{% endif %}
       {% if t.issue %}<a href="{% url 'issue_detail' t.issue.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Issue: {{ t.issue.title|truncatechars:32 }}</a>{% endif %}
       {% if t.notes %}<span title="{{ t.notes }}">· notes</span>{% endif %}
+      {% include "todos/_asana_chip.html" %}
     </div>
+    {% if asana_error %}<p class="mt-1 text-[12px] text-red-700" role="alert">Not sent to Asana: {{ asana_error }}</p>{% endif %}
   </div>
   {% if not compact %}<div class="flex items-center gap-1.5 shrink-0 text-[12px] text-neutral-600">{% avatar t.owner %}<span class="hidden sm:inline">{{ t.owner.first }}</span></div>{% endif %}
 </div>

@@ -53,6 +53,7 @@ urlpatterns = [
     path("todos/new/", todos.todo_new, name="todo_new"),
     path("todos/<int:pk>/", todos.todo_edit, name="todo_edit"),
     path("todos/<int:pk>/toggle/", todos.todo_toggle, name="todo_toggle"),
+    path("todos/<int:pk>/asana/", todos.todo_asana, name="todo_asana"),
     # L10
     path("meetings/", meetings.meetings_list, name="meetings"),
     path("meetings/start/", meetings.meeting_start, name="meeting_start"),

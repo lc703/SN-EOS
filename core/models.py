@@ -43,6 +43,9 @@ class User(AbstractUser):
     home_team = models.ForeignKey(
         "core.Team", null=True, blank=True, on_delete=models.SET_NULL, related_name="home_users"
     )
+    asana_email = models.EmailField(
+        "Asana email", blank=True, help_text="Only if this person's Asana login differs from their work email."
+    )
     legacy_id = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
     legacy = models.JSONField(default=dict, blank=True, editable=False)
 
@@ -158,6 +161,26 @@ class Quarter(LegacyMixin):
             name=f"Q{q} {day.year}", defaults={"start_date": start, "end_date": end}
         )
         return obj
+
+
+class AppSetting(models.Model):
+    """Small key/value store. The Asana integration keeps the project, section and user ids it looked up here."""
+
+    key = models.CharField(max_length=120, primary_key=True)
+    value = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.key
+
+    @classmethod
+    def get(cls, key, default=""):
+        row = cls.objects.filter(pk=key).first()
+        return row.value if row else default
+
+    @classmethod
+    def put(cls, key, value):
+        cls.objects.update_or_create(pk=key, defaults={"value": value})
 
 
 class LegacyRecord(models.Model):

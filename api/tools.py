@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
+from core import asana_client
 from core.models import Quarter, Team, User, monday_of
 from core.permissions import can_edit_owned, can_edit_team_item, can_edit_todo, is_admin, is_team_member
 from issues.models import Issue
@@ -219,6 +220,8 @@ def _todo(t):
         "id": t.pk, "title": t.title, "notes": t.notes, "team": t.team.slug if t.team else None, "owner": _user(t.owner),
         "due_date": t.due_date, "done": t.done, "private": t.is_private, "overdue": t.overdue,
         "rock_id": t.rock_id, "issue_id": t.issue_id,
+        "in_asana": bool(t.asana_task_gid), "asana_url": t.asana_url or None, "asana_state": t.asana_state,
+        "asana_unassigned": t.asana_unassigned if t.asana_task_gid else None,
     }
 
 
@@ -343,7 +346,8 @@ def list_issues(actor, team=None, list="short_term", status="open"):
     return [_issue(i) for i in qs[:200]]
 
 
-@tool("list_todos", "To-Dos. Defaults to your own open to-dos. Private to-dos are only visible to their owner.",
+@tool("list_todos", "To-Dos. Defaults to your own open to-dos. Private to-dos are only visible to their owner. "
+      "Each to-do shows whether it is in Asana (in_asana, asana_url, asana_state: none/sent/done). Sending to Asana is done in the app.",
       {"team": {"type": "string"}, "owner": {"type": "string", "description": "'me' (default), email, name, or 'all'."},
        "include_done": {"type": "boolean", "default": False}})
 def list_todos(actor, team=None, owner="me", include_done=False):
@@ -566,7 +570,7 @@ def create_todo(actor, title, team=None, owner="me", due_date=None, notes="", pr
     return _todo(todo)
 
 
-@tool("update_todo", "Complete, reopen or edit a to-do.",
+@tool("update_todo", "Complete, reopen or edit a to-do. Edited notes are pushed to its Asana task if it has one.",
       {"todo_id": {"type": "integer"}, "done": {"type": "boolean"}, "title": {"type": "string"}, "due_date": {"type": "string"},
        "notes": {"type": "string"}, "owner": {"type": "string"}}, required=["todo_id"], write=True)
 def update_todo(actor, todo_id, done=None, title=None, due_date=None, notes=None, owner=None):
@@ -574,6 +578,7 @@ def update_todo(actor, todo_id, done=None, title=None, due_date=None, notes=None
     if not Todo.objects.visible_to(actor.user).filter(pk=todo.pk).exists():
         raise ToolError(f"No to-do with id {todo_id}.")
     _allow(can_edit_todo(actor.user, todo))
+    old_notes = todo.notes
     if title:
         todo.title = title.strip()[:240]
     if due_date:
@@ -586,7 +591,11 @@ def update_todo(actor, todo_id, done=None, title=None, due_date=None, notes=None
     if done is not None:
         todo.set_done(done)
     actor.log("todo.update", todo, f"{todo.title}{' (done)' if todo.done else ''}")
-    return _todo(todo)
+    out = _todo(todo)
+    problem = asana_client.push_notes_if_changed(todo, old_notes)
+    if problem:
+        out["asana_warning"] = f"Saved, but the Asana task was not updated: {problem}"
+    return out
 
 
 @tool("add_headline", "Share a customer or employee headline with a team. It shows up in the team's next L10.",

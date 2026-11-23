@@ -264,9 +264,9 @@ def milestone_toggle(request, pk):
 
 @require_POST
 def rock_todo(request, pk):
-    from todos.views import create_todo
+    from todos.views import create_todo, send_if_asked
 
     rock = get_object_or_404(Rock, pk=pk)
     require(can_edit_owned(request.user, rock) or is_team_member(request.user, rock.team))
-    create_todo(request.user, rock.team, request.POST, rock=rock)
+    send_if_asked(request, create_todo(request.user, rock.team, request.POST, rock=rock))
     return go_back(request, f"/rocks/{rock.pk}/")

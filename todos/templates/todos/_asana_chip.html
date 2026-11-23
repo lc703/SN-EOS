@@ -1,0 +1,11 @@
+{# Asana link or Send button for one to-do. Needs t; optional compact. Hidden when Asana is not connected and the to-do was never sent. #}
+{% load sn %}
+{% if t.asana_state == 'done' %}
+  <a href="{{ t.asana_url }}" target="_blank" rel="noopener" hx-boost="false" class="pill st-on_track hit" title="Completed in Asana">Done in Asana ↗</a>
+{% elif t.asana_state == 'sent' %}
+  <a href="{{ t.asana_url }}" target="_blank" rel="noopener" hx-boost="false" class="pill pill-muted hit hover:bg-neutral-200" title="Open the task in Asana">In Asana{% if t.asana_unassigned %} · unassigned{% endif %} ↗</a>
+{% elif ASANA_ON and not t.is_private and not t.done and t|editable_by:user %}
+  <button type="button" class="btn btn-sm" data-asana-send
+          hx-post="{% url 'todo_asana' t.pk %}" hx-vals='{"partial": "1", "compact": "{{ compact|default:"" }}"}'
+          hx-target="#todo-{{ t.pk }}" hx-swap="outerHTML" hx-select="unset" hx-disabled-elt="this">Send to Asana</button>
+{% endif %}

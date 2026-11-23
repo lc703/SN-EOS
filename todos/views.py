@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core import asana_client
 from core.forms import DateInput, PersonField, StyledForm, people_choices
 from core.models import User
 from core.permissions import can_edit_todo, can_view_todo, is_admin, is_team_member
@@ -58,6 +59,7 @@ def create_todo(user, team, data, issue=None, rock=None, meeting=None):
 
 
 def todos_list(request):
+    asana_client.maybe_sync()
     team, quarter = scope(request)
     user = request.user
     who = request.GET.get("owner", "")
@@ -114,6 +116,7 @@ def todo_new(request):
         todo.save()
         if not is_htmx(request):
             messages.success(request, f"To-do added for {todo.owner.first}.")
+        send_if_asked(request, todo)
     else:
         messages.error(request, "To-do needs a title and an owner.")
     return go_back(request, "/todos/")
@@ -129,10 +132,54 @@ def todo_toggle(request, pk):
     return go_back(request, "/todos/")
 
 
+def _try_send(todo):
+    """Send a to-do to Asana unless it is already there. Returns an error message or ''."""
+    if todo.asana_task_gid:
+        return ""
+    if not asana_client.is_configured():
+        return "Asana is not connected yet."
+    try:
+        asana_client.send_todo(todo)
+    except asana_client.AsanaError as exc:
+        return str(exc)
+    return ""
+
+
+def _notify_send(request, todo, error):
+    if error:
+        messages.error(request, f"Not sent to Asana: {error}")
+    elif todo.asana_unassigned:
+        messages.warning(request, f"Sent to Asana, but {todo.owner.first} was not found in Asana, so it is unassigned.")
+    else:
+        messages.success(request, "Sent to Asana.")
+
+
+def send_if_asked(request, todo):
+    """The add forms carry a 'Send to Asana' checkbox. Private to-dos never go."""
+    if todo and request.POST.get("send_asana") and not todo.is_private and asana_client.is_configured():
+        _notify_send(request, todo, _try_send(todo))
+
+
+@require_POST
+def todo_asana(request, pk):
+    """Send this to-do to Asana. Safe to repeat: a to-do that is already there is never sent twice."""
+    todo = get_object_or_404(Todo.objects.select_related("team", "owner", "rock", "issue"), pk=pk)
+    require(can_edit_todo(request.user, todo))
+    error = _try_send(todo)
+    if is_htmx(request) and request.POST.get("partial"):
+        return render(
+            request, "todos/_todo.html",
+            {"t": todo, "today": timezone.localdate(), "compact": request.POST.get("compact"), "asana_error": error},
+        )
+    _notify_send(request, todo, error)
+    return go_back(request, "/todos/")
+
+
 def todo_edit(request, pk):
     todo = get_object_or_404(Todo.objects.select_related("team", "rock", "issue"), pk=pk)
     require(can_view_todo(request.user, todo))
     editable = can_edit_todo(request.user, todo)
+    old_notes = todo.notes
     form = TodoForm(request.POST or None, instance=todo, user=request.user)
     if request.method == "POST":
         require(editable)
@@ -143,5 +190,8 @@ def todo_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "To-do saved.")
+            problem = asana_client.push_notes_if_changed(todo, old_notes)
+            if problem:
+                messages.warning(request, f"Saved here, but Asana was not updated: {problem}")
             return go_back(request, "/todos/")
     return render(request, "todos/todo_form.html", {"form": form, "obj": todo, "editable": editable})
