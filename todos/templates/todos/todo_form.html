@@ -10,7 +10,7 @@
     {% if obj.issue %} · Issue: <a class="link" href="{% url 'issue_detail' obj.issue.pk %}">{{ obj.issue.title }}</a>{% endif %}
     {% if obj.done %} · <span class="pill st-done">Done</span>{% endif %}
   </p>
-  <form method="post" class="card card-pad">{% csrf_token %}
+  <form method="post" action="{% url 'todo_edit' obj.pk %}" hx-boost="false" class="card card-pad">{% csrf_token %}
     <input type="hidden" name="next" value="{{ request.GET.next|default:'/todos/' }}">
     {% if editable %}{% include "_form.html" %}{% else %}<p class="text-sm">{{ obj.title }}</p><p class="text-sm text-neutral-600 prose-pre mt-2">{{ obj.notes }}</p>{% endif %}
     {% if editable %}

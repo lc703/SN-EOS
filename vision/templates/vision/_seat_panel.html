@@ -59,7 +59,7 @@
         {% if flags.pa %}<span>People Analyzer: <b>{% if flags.pa == 'ok' %}all +{% elif flags.pa == 'watch' %}some +/-{% else %}below the bar{% endif %}</b></span>{% endif %}
         {% if flags.convo %}<span>Last conversation {{ flags.convo.date|date:"M j" }}: <span class="dot dot-green"></span> {{ flags.convo.color_counts.green }} <span class="dot dot-yellow"></span> {{ flags.convo.color_counts.yellow }} <span class="dot dot-red"></span> {{ flags.convo.color_counts.red }}</span>{% endif %}
       </div>
-      {% if obj.person %}<a href="{% url 'person' obj.person.pk %}" class="mt-2 inline-block text-xs link">Open {{ obj.person.first }}'s profile</a>{% endif %}
+      {% if obj.person %}<a href="{% url 'person' obj.person.pk %}" class="mt-2 inline-block text-xs link" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">Open {{ obj.person.first }}'s profile</a>{% endif %}
     </div>
   {% endif %}
 

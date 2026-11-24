@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 from core.forms import people_choices
 from core.models import monday_of
@@ -127,6 +127,7 @@ def conclude_context(meeting):
     }
 
 
+@require_safe
 def meeting(request, pk):
     meeting = get_object_or_404(Meeting.objects.select_related("team", "quarter", "facilitator"), pk=pk)
     section = request.GET.get("s")

@@ -88,7 +88,7 @@
   </div>
 
   <aside>
-    <form method="post" class="card card-pad">{% csrf_token %}
+    <form method="post" action="{% url 'rock_detail' rock.pk %}" hx-boost="false" class="card card-pad">{% csrf_token %}
       <h2 class="section-title mb-3">Edit rock</h2>
       {% if editable %}
         {% include "_form.html" with cols="grid-cols-1" %}

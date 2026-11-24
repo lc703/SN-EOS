@@ -280,3 +280,63 @@ def test_mcp_exposes_include_all_and_still_accepts_old_calls(admin, all_teams, w
     assert len(payload) == 4
     r = rpc(raw, "tools/call", {"name": "list_issues", "arguments": {"team": "company"}}).json()
     assert len(json.loads(r["result"]["content"][0]["text"])) == 1
+
+
+# ---- bug: editing a measurable from the side panel inside an L10 --------------------------------------
+
+def _tag(html, needle):
+    return re.search(rf"<(?:a|form)\b[^>]*{re.escape(needle)}[^>]*>", html).group(0)
+
+
+def test_panel_edit_link_opts_out_of_boost_and_the_drawer_target(admin, world):
+    body = get(admin, f"/scorecard/{world['pipe'].pk}/panel/").content.decode()
+    link = _tag(body, f"/scorecard/{world['pipe'].pk}/edit/")
+    for attr in ('hx-select="unset"', 'hx-target="unset"', 'hx-swap="unset"', 'hx-boost="false"'):
+        assert attr in link
+
+
+def test_edit_form_posts_to_its_own_url_not_the_current_one(admin, world):
+    m = world["pipe"]
+    body = get(admin, f"/scorecard/{m.pk}/edit/").content.decode()
+    form = _tag(body, "card card-pad")
+    assert f'action="/scorecard/{m.pk}/edit/"' in form and 'hx-boost="false"' in form
+    new = get(admin, "/scorecard/new/").content.decode()
+    assert 'action="/scorecard/new/"' in _tag(new, "card card-pad")
+
+
+def test_posting_to_measurable_edit_updates_the_title(admin, world):
+    m = world["pipe"]
+    r = client_for(admin).post(f"/scorecard/{m.pk}/edit/", {
+        "title": "Total pipeline (renamed)", "unit": m.unit, "goal_compare": m.goal_compare, "goal": "11000000",
+        "trailing": "", "sort": 0, "plant": "",
+    })
+    assert r.status_code == 302
+    m.refresh_from_db()
+    assert m.title == "Total pipeline (renamed)"
+
+
+def test_posting_measurable_fields_to_the_meeting_url_is_refused(admin, all_teams, world, cur_q):
+    m = world["pipe"]
+    meeting = Meeting.objects.create(team=all_teams["company"], quarter=cur_q, date=timezone.localdate())
+    meeting.attendees.add(admin)
+    r = client_for(admin).post(f"/meetings/{meeting.pk}/", {"title": "Hijacked", "unit": m.unit})
+    assert r.status_code == 405
+    m.refresh_from_db()
+    assert m.title == "Total pipeline"
+    assert client_for(admin).get(f"/meetings/{meeting.pk}/").status_code == 200
+
+
+@pytest.mark.parametrize("path_fmt,key", [
+    ("/rocks/{}/", "rock"), ("/issues/{}/", "issue"), ("/todos/{}/", "todo"), ("/chart/seats/{}/", "seat"),
+])
+def test_other_edit_forms_have_an_explicit_action_and_no_boost(admin, all_teams, world, path_fmt, key):
+    from vision.models import Seat
+    obj = {
+        "rock": world["rocks"]["ky"], "issue": world["issues"]["ky"], "todo": world["todos"]["ky"],
+        "seat": Seat.objects.create(title="Plant Manager", team=all_teams["ky"]),
+    }[key]
+    path = path_fmt.format(obj.pk)
+    body = get(admin, path).content.decode()
+    forms = [f for f in re.findall(r"<form\b[^>]*>", body) if 'method="post"' in f and "csrf" not in f and "logout" not in f]
+    main = [f for f in forms if "card-pad" in f]
+    assert main and all(f'action="{path}"' in f and 'hx-boost="false"' in f for f in main)
