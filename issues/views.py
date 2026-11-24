@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from core.forms import PersonField, StyledForm, people_choices
@@ -92,19 +93,32 @@ def issues_list(request):
 
 @require_POST
 def issue_new(request):
-    team, _ = scope(request)
-    require(is_admin(request.user) or is_team_member(request.user, team))
-    form = IssueForm(request.POST, team=team, user=request.user)
+    mid = request.POST.get("meeting", "")
+    meeting = Meeting.objects.select_related("team").filter(pk=int(mid)).first() if mid.isdigit() else None
+    if meeting is not None:
+        # Raised from inside an L10: the meeting decides the team and permission, not whichever site the
+        # session happens to be browsing, so the issue always lands on that meeting's IDS list.
+        team = meeting.team
+        require(is_admin(request.user) or is_team_member(request.user, team))
+        data = request.POST.copy()
+        data["horizon"] = Issue.SHORT
+        if not team.is_leadership or not data.get("team"):
+            data["team"] = str(team.pk)
+    else:
+        team, _ = scope(request)
+        require(is_admin(request.user) or is_team_member(request.user, team))
+        data = request.POST
+    form = IssueForm(data, team=team, user=request.user)
     if form.is_valid():
         issue = form.save(commit=False)
         issue.created_by = request.user
         if not issue.owner_id:
             issue.owner = request.user
-        issue.raised_meeting = Meeting.objects.filter(pk=request.POST.get("meeting") or 0).first()
+        issue.raised_meeting = meeting
         issue.save()
     else:
         messages.error(request, "An issue needs a title." if "title" in form.errors else " ".join(form.errors.get("team", ["Couldn't add that issue."])))
-    return go_back(request, "/issues/")
+    return go_back(request, f"/meetings/{meeting.pk}/?s=ids" if meeting else "/issues/")
 
 
 def issue_detail(request, pk):
@@ -115,7 +129,7 @@ def issue_detail(request, pk):
     if request.method == "POST":
         require(editable)
         if "delete" in request.POST:
-            issue.delete()
+            issue.delete_and_recompact()
             messages.success(request, "Issue deleted.")
             return redirect("issues")
         if form.is_valid():
@@ -183,6 +197,26 @@ def issue_reopen(request, pk):
     require(can_edit_team_item(request.user, issue))
     issue.reopen()
     return go_back(request, f"/issues/{issue.pk}/")
+
+
+@require_POST
+def issue_delete(request, pk):
+    """Delete an issue (not the same as solving it). Owner, team members and admins; ranks below it move up."""
+    issue = get_object_or_404(Issue, pk=pk)
+    require(can_edit_team_item(request.user, issue))
+    title = issue.title
+    reranked = issue.delete_and_recompact()
+    if is_htmx(request):
+        resp = HttpResponse("")
+        if reranked or request.POST.get("refresh") == "1":
+            resp["HX-Refresh"] = "true"
+        return resp
+    messages.success(request, f"Deleted “{title}”.")
+    gone = f"/issues/{pk}/"
+    target = request.POST.get("next") or request.META.get("HTTP_REFERER") or ""
+    if gone in target or not url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
+        return redirect("issues")
+    return redirect(target)
 
 
 @require_POST

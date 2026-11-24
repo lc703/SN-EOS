@@ -22,7 +22,13 @@
       </div>
     </div>
     {% if can_edit %}
-      <button type="button" class="btn btn-sm shrink-0" :class="solve && 'btn-primary'" @click="solve=!solve">IDS</button>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" class="btn btn-sm" :class="solve && 'btn-primary'" @click="solve=!solve">IDS</button>
+        <button type="button" class="btn btn-sm btn-ghost btn-danger" title="Delete this issue" aria-label="Delete issue: {{ i.title }}"
+          hx-post="{% url 'issue_delete' i.pk %}" hx-target="#issue-{{ i.pk }}" hx-swap="outerHTML" hx-select="unset" hx-boost="false"
+          hx-vals='{"refresh": "{% if not meeting %}1{% endif %}"}'
+          hx-confirm="Delete this issue? This can't be undone. To-dos made from it are kept. (Use IDS to solve it instead.)">Delete</button>
+      </div>
     {% endif %}
   </div>
   {% if can_edit %}

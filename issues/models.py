@@ -73,6 +73,18 @@ class Issue(LegacyMixin):
         self.solved_meeting = None
         self.save()
 
+    def delete_and_recompact(self):
+        """Delete this issue. If it held a #1-#3 rank, the issues ranked below it move up one so ranks stay 1..n.
+
+        Returns True when other issues were re-ranked. To-dos made from it are kept (their issue link is cleared)."""
+        rank, team_id, horizon, was_open = self.priority, self.team_id, self.horizon, self.is_open
+        self.delete()
+        if not (rank and was_open):
+            return False
+        below = Issue.objects.filter(team_id=team_id, horizon=horizon, status=self.OPEN, priority__gt=rank)
+        moved = below.update(priority=models.F("priority") - 1)
+        return bool(moved)
+
     def clear_priority_if_taken(self):
         """After a team or list change: keep the rank only if nobody in the new list holds it."""
         if not (self.priority and self.is_open):

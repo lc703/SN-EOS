@@ -45,6 +45,7 @@ urlpatterns = [
     path("issues/drop/", issues.drop_to_issues, name="drop_to_issues"),
     path("issues/<int:pk>/", issues.issue_detail, name="issue_detail"),
     path("issues/<int:pk>/solve/", issues.issue_solve, name="issue_solve"),
+    path("issues/<int:pk>/delete/", issues.issue_delete, name="issue_delete"),
     path("issues/<int:pk>/reopen/", issues.issue_reopen, name="issue_reopen"),
     path("issues/<int:pk>/priority/", issues.issue_priority, name="issue_priority"),
     path("issues/<int:pk>/move/", issues.issue_move, name="issue_move"),

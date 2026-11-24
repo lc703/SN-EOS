@@ -44,7 +44,7 @@
       {% if editable %}
         {% include "_form.html" with cols="grid-cols-1" %}
         <div class="mt-4 flex items-center gap-2"><button class="btn btn-primary">Save</button>
-          <button name="delete" value="1" class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Delete this issue?')">Delete</button></div>
+          <button type="submit" formaction="{% url 'issue_delete' issue.pk %}" formnovalidate class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Delete this issue? This can\'t be undone. To-dos made from it are kept.')">Delete</button></div>
       {% else %}
         <p class="text-sm prose-pre">{{ issue.description|default:"No description." }}</p>
         <p class="text-sm mt-2 text-neutral-500">Owner: {{ issue.owner|default:"—" }}</p>
