@@ -12,10 +12,11 @@ from django.views.decorators.http import require_POST, require_safe
 
 from core.forms import people_choices
 from core.models import monday_of
-from core.scoping import for_team
+from core.scoping import company_items, for_team
 from core.permissions import is_admin, is_team_member
 from core.utils import go_back, is_htmx, require, scope
 from issues.models import Issue
+from issues.views import mark_editable
 from rocks.models import Rock
 from rocks.views import rock_summary, with_strips
 from scorecard.plants import scorecard_for_team
@@ -78,7 +79,10 @@ def section_context(request, meeting, section):
     elif section == "rocks":
         qs = Rock.objects.filter(quarter=meeting.quarter).select_related("owner", "team", "quarter").prefetch_related("milestones", "updates")
         rocks = with_strips(qs if team.is_leadership else qs.filter(team=team), meeting.quarter)
-        ctx.update(rocks=rocks, summary=rock_summary(rocks), statuses=Rock.STATUS_CHOICES)
+        ctx.update(
+            rocks=rocks, summary=rock_summary(rocks), statuses=Rock.STATUS_CHOICES,
+            company_rocks=with_strips(company_items(qs, team), meeting.quarter),
+        )
     elif section == "headlines":
         since = meeting.started_at - dt.timedelta(days=7)
         ctx["headlines"] = for_team(Headline.objects.all(), team).select_related("team").filter(
@@ -90,8 +94,12 @@ def section_context(request, meeting, section):
             Q(done=False) | Q(done_at__date__gte=week_ago)
         ).exclude(meeting=meeting).select_related("owner", "rock", "issue", "team")
         due = [t for t in todos if t.due_date <= meeting.date]
+        company_todos = company_items(Todo.objects.filter(is_private=False), team).filter(
+            Q(done=False) | Q(done_at__date__gte=week_ago)
+        ).exclude(meeting=meeting).select_related("owner", "rock", "issue", "team")
         ctx.update(
             todos=todos,
+            company_todos=list(company_todos),
             due_pct=round(100 * sum(t.done for t in due) / len(due)) if due else None,
             due_done=sum(t.done for t in due), due_total=len(due),
             weekly=weekly_completion(for_team(Todo.objects.filter(is_private=False), team), weeks=4, today=meeting.date),
@@ -100,6 +108,10 @@ def section_context(request, meeting, section):
     elif section == "ids":
         ctx.update(
             issues=for_team(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos"),
+            company_issues=mark_editable(
+                company_items(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos"),
+                request.user,
+            ),
             long_count=for_team(Issue.objects.filter(horizon=Issue.LONG, status=Issue.OPEN), team).count(),
             solved_here=meeting.solved_issues.all(),
             people=people_choices(team, include=[request.user.pk]),

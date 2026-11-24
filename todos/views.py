@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from core import asana_client
 from core.forms import DateInput, PersonField, StyledForm, people_choices
 from core.models import User
-from core.scoping import for_team, is_rollup
+from core.scoping import company_items, for_team, is_rollup
 from core.permissions import can_edit_todo, can_view_todo, is_admin, is_team_member
 from core.utils import go_back, is_htmx, require, scope
 from meetings.models import Meeting
@@ -72,6 +72,14 @@ def todos_list(request):
         listed = team_qs.filter(done=False)
     else:
         listed = team_qs.filter(Q(done=False) | Q(done_at__gte=timezone.now() - dt.timedelta(days=14)))
+    company_listed = None
+    if not is_rollup(team):
+        company_qs = company_items(Todo.objects.filter(is_private=False), team).select_related("owner", "rock", "issue", "team")
+        if who.isdigit():
+            company_qs = company_qs.filter(owner_id=int(who))
+        company_listed = company_qs.filter(done=False) if show == "open" else company_qs.filter(
+            Q(done=False) | Q(done_at__gte=timezone.now() - dt.timedelta(days=14))
+        )
     private = Todo.objects.filter(is_private=True).filter(Q(owner=user) | Q(created_by=user)).filter(done=False)
 
     base = for_team(Todo.objects.filter(is_private=False), team)
@@ -90,6 +98,7 @@ def todos_list(request):
         "todos/todos.html",
         {
             "todos": listed,
+            "company_todos": list(company_listed) if company_listed is not None else [],
             "private": private,
             "weekly": weekly,
             "people": people,

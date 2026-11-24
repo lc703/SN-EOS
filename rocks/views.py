@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from core.models import monday_of
 from core.forms import DateInput, PersonField, StyledForm, people_choices
 from core.permissions import can_edit_owned, is_admin, is_team_member
-from core.scoping import for_team, is_rollup
+from core.scoping import company_items, for_team, is_rollup, is_site
 from core.utils import go_back, is_htmx, require, scope
 from todos.views import TodoForm
 
@@ -64,6 +64,9 @@ def with_strips(rocks, quarter=None):
 
 def rocks_for(team, quarter):
     qs = Rock.objects.filter(quarter=quarter).select_related("owner", "team", "quarter").prefetch_related("milestones", "updates")
+    if is_site(team):
+        company = with_strips(company_items(qs, team), quarter)
+        return company, with_strips(for_team(qs, team), quarter)
     company = with_strips(qs.filter(is_company=True), quarter)
     team_rocks = with_strips(for_team(qs.filter(is_company=False), team), quarter)
     return company, team_rocks
@@ -85,7 +88,8 @@ def rocks_list(request):
         {
             "company_rocks": company,
             "team_rocks": team_rocks,
-            "summary": rock_summary(company + team_rocks),
+            "summary": rock_summary(team_rocks if is_site(team) else company + team_rocks),
+            "site_view": is_site(team),
             "can_add": can_add,
             "can_reorder": can_reorder(request.user, team) and not is_rollup(team),
             "rollup": is_rollup(team),
@@ -202,7 +206,7 @@ def rocks_sort(request):
     rocks = {r.pk: r for r in Rock.objects.filter(pk__in=ids, quarter=quarter)}
     for i, pk in enumerate(ids):
         r = rocks.get(pk)
-        if r and (r.team_id == team.pk or r.is_company or is_rollup(team)):
+        if r and (r.team_id == team.pk or is_rollup(team)):
             Rock.objects.filter(pk=pk).update(sort=i)
     return HttpResponse(status=204)
 

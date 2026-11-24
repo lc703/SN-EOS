@@ -10,3 +10,9 @@
   {% include "todos/_add.html" with uid="l10" %}
   {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
 </div>
+{% if company_todos %}
+  {% include "_company_group.html" with n=company_todos|length what="to-dos" team=meeting.team %}
+  <div class="list-group">
+    {% for t in company_todos %}{% include "todos/_todo.html" %}{% endfor %}
+  </div>
+{% endif %}

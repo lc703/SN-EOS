@@ -37,6 +37,7 @@
   </div>
 {% endif %}
 
+{% if not site_view %}
 <section class="mb-8">
   <div class="flex items-center justify-between mb-2">
     <h2 class="section-title">Company rocks</h2>
@@ -46,6 +47,8 @@
     {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" sortable=company_sortable %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No company rocks yet" text="Company rocks are the leadership team's three to seven priorities for the quarter." icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
   </div>
 </section>
+
+{% endif %}
 
 {% if rollup %}
   {% regroup team_rocks by team as site_groups %}
@@ -74,5 +77,13 @@
     {% for r in team_rocks %}{% include "rocks/_rock.html" with sortable=can_reorder %}{% empty %}<div class="px-4">{% include "_empty.html" with title="No departmental rocks yet" text="Each person on the team owns one to three rocks that support the company rocks." icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div>{% endfor %}
   </div>
 </section>
+{% endif %}
+{% if site_view %}
+{% if company_rocks %}
+  {% include "_company_group.html" with n=company_rocks|length what="rocks" %}
+  <div class="list-group" id="company-rocks">
+    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" %}{% endfor %}
+  </div>
+{% endif %}
 {% endif %}
 {% endblock %}

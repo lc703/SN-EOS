@@ -29,6 +29,14 @@
         {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">Nothing open. Nice.</p>{% endfor %}
       </div>
     </section>
+    {% if company_todos %}
+    <section>
+      {% include "_company_group.html" with n=company_todos|length what="to-dos" %}
+      <div class="list-group" id="company-todos">
+        {% for t in company_todos %}{% include "todos/_todo.html" %}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
     <section>
       <div class="flex items-center justify-between mb-2"><h2 class="section-title">My private to-dos</h2><span class="text-xs text-neutral-500">Only you see these</span></div>
       <div class="list-group">

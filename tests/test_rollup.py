@@ -101,7 +101,8 @@ def test_a_private_todo_still_shows_to_its_owner_in_the_company_view(ky_peer, al
 
 def test_site_todos_unchanged(member, all_teams, world):
     body = get(member, "/todos/", all_teams["ky"]).content.decode()
-    assert "Todo ky" in body and "Todo lr" not in body and "Todo company" not in body
+    assert "Todo ky" in body and "Todo lr" not in body and "Todo mabel" not in body
+    assert body.index("Todo ky") < body.index("Todo company")  # Company is a labeled group below the site's own
 
 
 def test_company_issues_roll_up_and_site_issues_do_not(admin, member, all_teams, world):
@@ -110,7 +111,8 @@ def test_company_issues_roll_up_and_site_issues_do_not(admin, member, all_teams,
         assert f"Issue {key}" in body
     assert "site-chip" in body
     ky = get(member, "/issues/", all_teams["ky"]).content.decode()
-    assert "Issue ky" in ky and "Issue lr" not in ky and "Issue company" not in ky
+    assert "Issue ky" in ky and "Issue lr" not in ky and "Issue mabel" not in ky
+    assert ky.index("Issue ky") < ky.index("Issue company")  # Company shown below, see test_site_company_groups.py
 
 
 def test_company_l10_runs_on_everything_a_site_l10_on_its_own(admin, member, all_teams, world, cur_q):

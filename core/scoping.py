@@ -24,3 +24,23 @@ def for_team(qs, team, field="team", extra=None):
     if extra is not None and q:
         q = q | extra
     return qs.filter(q)
+
+
+def company_team():
+    from core.models import Team
+
+    return Team.objects.filter(is_leadership=True).order_by("sort", "pk").first()
+
+
+def is_site(team):
+    return team is not None and not team.is_leadership
+
+
+def company_items(qs, team, field="team"):
+    """Company's own items for a site view (a Company group shown below the site's own), nothing elsewhere.
+
+    The items keep their Company team, so ranks, ownership and permissions stay Company's. Never includes
+    another site's items. Company and roll-up views return nothing here: they already show everything.
+    """
+    company = company_team() if is_site(team) else None
+    return qs.filter(**{field: company}) if company else qs.none()

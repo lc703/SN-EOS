@@ -3,3 +3,9 @@
 <div class="list-group">
   {% for r in rocks %}{% include "rocks/_rock.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No rocks for {{ meeting.quarter.name|default:"this quarter" }}.</p>{% endfor %}
 </div>
+{% if company_rocks %}
+  {% include "_company_group.html" with n=company_rocks|length what="rocks" team=meeting.team %}
+  <div class="list-group">
+    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" %}{% endfor %}
+  </div>
+{% endif %}

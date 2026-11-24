@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from core.forms import PersonField, StyledForm, people_choices
 from core.models import Team
 from core.permissions import can_edit_team_item, is_admin, is_team_member
-from core.scoping import for_team, is_rollup
+from core.scoping import company_items, for_team, is_rollup, is_site
 from core.utils import go_back, is_htmx, require, scope
 from meetings.models import Headline, Meeting
 from rocks.models import Rock
@@ -56,6 +56,14 @@ class IssueForm(StyledForm, forms.ModelForm):
         return team
 
 
+def mark_editable(items, user):
+    """Rows from another team (Company on a site view) are editable only under the normal item rules."""
+    items = list(items)
+    for i in items:
+        i.editable = can_edit_team_item(user, i)
+    return items
+
+
 def open_issues(team, horizon=Issue.SHORT):
     return for_team(Issue.objects.filter(horizon=horizon, status=Issue.OPEN), team).select_related("owner", "team")
 
@@ -73,11 +81,14 @@ def issues_list(request):
     issues = scoped(Issue.objects.filter(horizon=horizon, status=Issue.OPEN)).select_related("owner", "team").prefetch_related("todos")
     solved = scoped(Issue.objects.filter(status=Issue.SOLVED)).select_related("owner", "team").order_by("-solved_at", "-created_at")[:15]
     can_add = is_admin(request.user) or is_team_member(request.user, team)
+    company = company_items(Issue.objects.filter(horizon=horizon, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos")
     return render(
         request,
         "issues/issues.html",
         {
             "issues": issues,
+            "company_issues": mark_editable(company, request.user),
+            "company_counts": {h: company_items(Issue.objects.filter(horizon=h, status=Issue.OPEN), team).count() for h in (Issue.SHORT, Issue.LONG)} if is_site(team) else {},
             "solved": solved,
             "horizon": horizon,
             "counts": {h: scoped(Issue.objects.filter(horizon=h, status=Issue.OPEN)).count() for h in (Issue.SHORT, Issue.LONG)},

@@ -27,6 +27,13 @@
   {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}<p class="px-4 py-8 text-center text-sm text-neutral-500">No open {{ horizon }}-term issues.</p>{% endfor %}
 </div>
 
+{% if company_issues %}
+  {% include "_company_group.html" with n=company_issues|length what="issues" %}
+  <div class="list-group" id="company-issues">
+    {% for i in company_issues %}{% if i.editable %}{% include "issues/_issue.html" with can_edit=True rank_ro=True %}{% else %}{% include "issues/_issue.html" with can_edit=False rank_ro=True %}{% endif %}{% endfor %}
+  </div>
+{% endif %}
+
 {% if solved %}
 <details class="mt-8">
   <summary class="section-title cursor-pointer select-none">Recently solved <span class="text-xs text-neutral-500 font-normal">({{ solved|length }})</span></summary>

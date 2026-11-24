@@ -1,7 +1,7 @@
 {% load sn %}
 <div class="px-4 py-3" x-data="{solve: false}" id="issue-{{ i.pk }}">
   <div class="flex items-start gap-3">
-    {% if can_edit %}
+    {% if can_edit and not rank_ro %}
       <div class="flex gap-1 shrink-0 pt-0.5" aria-label="Priority">
         {% for n in "123" %}
           <form method="post" action="{% url 'issue_priority' i.pk %}">{% csrf_token %}

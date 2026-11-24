@@ -4,6 +4,12 @@
   {% if can_run %}{% include "issues/_add.html" %}{% endif %}
   {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">The Issues list is clear.</p>{% endfor %}
 </div>
+{% if company_issues %}
+  {% include "_company_group.html" with n=company_issues|length what="issues" team=meeting.team %}
+  <div class="list-group">
+    {% for i in company_issues %}{% if i.editable %}{% include "issues/_issue.html" with can_edit=True rank_ro=True %}{% else %}{% include "issues/_issue.html" with can_edit=False rank_ro=True %}{% endif %}{% endfor %}
+  </div>
+{% endif %}
 {% if solved_here %}
   <h3 class="section-title mt-6 mb-2">Solved in this meeting</h3>
   <div class="list-group">
