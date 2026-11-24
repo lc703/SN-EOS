@@ -413,7 +413,7 @@ def test_leadership_l10_shows_the_whole_scorecard_and_a_plant_l10_only_its_plant
     lead_meeting.attendees.add(admin)
     c = Client()
     c.force_login(admin)
-    seg = c.get(f"/meetings/{lead_meeting.pk}/?s=scorecard").content.decode()
+    seg = c.get(f"/meetings/{lead_meeting.pk}/?s=scorecard&all=1").content.decode()
     assert len(re.findall(r'id="m-\d+"', seg)) == 5 and "Total pipeline" in seg and "Full scorecard" in seg
     assert 'href="/scorecard/"' in seg
 
@@ -421,7 +421,7 @@ def test_leadership_l10_shows_the_whole_scorecard_and_a_plant_l10_only_its_plant
     ky_meeting.attendees.add(member)
     c = Client()
     c.force_login(member)
-    seg = c.get(f"/meetings/{ky_meeting.pk}/?s=scorecard").content.decode()
+    seg = c.get(f"/meetings/{ky_meeting.pk}/?s=scorecard&all=1").content.decode()
     assert re.findall(r'id="m-(\d+)"', seg) == [str(board[k].pk) for k in ("pipe", "leads", "oee_kentucky")]
     assert "Company, then Kentucky" in seg and ">Le Roy</button>" not in seg
 
@@ -432,7 +432,7 @@ def test_non_plant_team_l10_shows_everything(board, teams, cur_q, admin):
     meeting.attendees.add(admin)
     c = Client()
     c.force_login(admin)
-    assert len(re.findall(r'id="m-\d+"', c.get(f"/meetings/{meeting.pk}/?s=scorecard").content.decode())) == 5
+    assert len(re.findall(r'id="m-\d+"', c.get(f"/meetings/{meeting.pk}/?s=scorecard&all=1").content.decode())) == 5
 
 
 # ---- dashboards ------------------------------------------------------------------------------------

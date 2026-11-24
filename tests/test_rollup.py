@@ -122,7 +122,7 @@ def test_company_l10_runs_on_everything_a_site_l10_on_its_own(admin, member, all
     ky.attendees.add(member)
     c = client_for(admin)
     for section, needle in (("rocks", "Rock"), ("todos", "Todo"), ("ids", "Issue")):
-        body = c.get(f"/meetings/{lead.pk}/?s={section}").content.decode()
+        body = c.get(f"/meetings/{lead.pk}/?s={section}&all=1").content.decode()
         assert all(f"{needle} {k}" in body for k in ("company", "ky", "lr", "mabel")), section
     heads = c.get(f"/meetings/{lead.pk}/?s=headlines").content.decode()
     assert all(f"Headline {k}" in heads for k in ("company", "ky", "lr", "mabel"))
@@ -222,7 +222,7 @@ def test_new_measurable_on_a_site_scorecard_defaults_to_that_plant(member, all_t
 def test_l10_scorecard_for_a_site_has_the_company_section(member, all_teams, world, cur_q):
     meeting = Meeting.objects.create(team=all_teams["lr"], quarter=cur_q, date=timezone.localdate())
     meeting.attendees.add(member)
-    body = client_for(member).get(f"/meetings/{meeting.pk}/?s=scorecard").content.decode()
+    body = client_for(member).get(f"/meetings/{meeting.pk}/?s=scorecard&all=1").content.decode()
     assert row_ids(body) == [world["pipe"].pk, world["leads"].pk, world["oee"]["le-roy"].pk]
     assert 'sc-group-label">Company<' in body
 

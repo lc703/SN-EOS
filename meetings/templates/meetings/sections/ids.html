@@ -1,3 +1,4 @@
+{% include "meetings/_roster_note.html" %}
 <p class="text-sm text-neutral-600 mb-3">Pick the top 3 (1, 2, 3), then Identify, Discuss, Solve, one at a time. Solutions become to-dos.
   {% if long_count %}<a class="link ml-1" href="{% url 'issues' %}?team={{ meeting.team.slug }}&list=long" hx-target="unset" hx-select="unset" hx-swap="unset" hx-push-url="unset">{{ long_count }} long-term</a>{% endif %}</p>
 <div class="list-group">

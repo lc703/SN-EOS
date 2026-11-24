@@ -196,9 +196,9 @@ def test_a_site_cannot_reorder_company_rocks(member, all_teams, world, cur_q):
 # ---- L10 ----------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("section,needle,marker", [("ids", "Issue", None), ("todos", "Todo", None), ("rocks", "Rock", None)])
-def test_site_l10_sections_show_own_then_company_never_other_sites(member, all_teams, world, cur_q, section, needle, marker):
+def test_site_l10_sections_show_own_then_company_never_other_sites(member, admin, all_teams, world, cur_q, section, needle, marker):
     meeting = Meeting.objects.create(team=all_teams["ky"], quarter=cur_q, date=timezone.localdate(), facilitator=member)
-    meeting.attendees.add(member)
+    meeting.attendees.add(member, admin)  # Kim (Kentucky) and Ada (owns the Company items)
     body = client_for(member).get(f"/meetings/{meeting.pk}/?s={section}").content.decode()
     group = body.index("from Company, not Kentucky")
     assert body.index(f"{needle} ky") < group < body.index(f"{needle} company")

@@ -41,9 +41,9 @@ def test_l10_ids_section_shows_the_chip_on_site_and_company_meetings(admin, memb
     for key, user in (("company", admin), ("ky", member)):
         m = Meeting.objects.create(team=all_teams[key], quarter=cur_q, date=timezone.localdate())
         m.attendees.add(user)
-        body = client_for(user).get(f"/meetings/{m.pk}/?s=ids").content.decode()
+        body = client_for(user).get(f"/meetings/{m.pk}/?s=ids&all=1").content.decode()
         assert "Kentucky" in chips(body)
-    assert "Mabel" in chips(client_for(admin).get(f"/meetings/{m.pk - 1}/?s=ids").content.decode())
+    assert "Mabel" in chips(client_for(admin).get(f"/meetings/{m.pk - 1}/?s=ids&all=1").content.decode())
 
 
 def test_issue_detail_shows_the_site_chip(member, all_teams, world):

@@ -21,7 +21,7 @@
 <div class="grid lg:grid-cols-[13.5rem_1fr] gap-5 items-start">
   <nav class="rail card p-1.5 lg:sticky lg:top-[4.5rem] flex lg:flex-col gap-0.5 overflow-x-auto" aria-label="Agenda">
     {% for key, label in sections %}
-      <a href="?s={{ key }}" class="{% if key == section %}on{% endif %}">
+      <a href="?s={{ key }}{% if roster.show_all %}&all=1{% endif %}" class="{% if key == section %}on{% endif %}">
         <span class="rail-n">{{ forloop.counter }}</span>{{ label }}
         {% if key == meeting.current_section and not meeting.is_concluded %}<span class="fac" title="Facilitator is here"></span>{% endif %}
       </a>

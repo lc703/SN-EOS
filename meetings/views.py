@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST, require_safe
 
 from core.forms import owner_choices, people_choices
-from core.models import monday_of
+from core.models import User, monday_of
 from core.scoping import company_items, for_team
 from core.permissions import is_admin, is_team_member
 from core.utils import go_back, is_htmx, require, scope
@@ -24,6 +24,7 @@ from scorecard.views import build_rows
 from todos.models import Todo, default_due, weekly_completion
 from todos.views import TodoForm
 
+from .roster import Roster
 from .models import SECTION_KEYS, SECTIONS, Headline, Meeting, MeetingRating
 
 
@@ -50,6 +51,7 @@ def meeting_start(request):
     if meeting is None:
         meeting = Meeting.objects.create(team=team, quarter=quarter, date=today, facilitator=request.user)
         meeting.attendees.set(team.members.filter(is_active=True))
+        meeting.attendees.add(request.user)
     return redirect("meeting", pk=meeting.pk)
 
 
@@ -63,14 +65,16 @@ def _scorecard_weeks(meeting):
 
 def section_context(request, meeting, section):
     team = meeting.team
-    ctx = {}
+    roster = Roster(meeting, show_all=request.GET.get("all") == "1")
+    ctx = {"roster": roster}
     if section == "segue":
         ctx["members"] = people_choices(team, include=list(meeting.attendees.values_list("pk", flat=True)))
         ctx["attendee_ids"] = set(meeting.attendees.values_list("pk", flat=True))
+        ctx["others"] = User.objects.filter(is_active=True).exclude(pk__in=[m.pk for m in ctx["members"]]).order_by("name")
     elif section == "scorecard":
         weeks = _scorecard_weeks(meeting)
         measurables, plant = scorecard_for_team(team)
-        rows = build_rows(measurables, weeks, request.user, grouped=True, plant=plant)
+        rows = build_rows(roster.apply(measurables), weeks, request.user, grouped=True, plant=plant)
         ctx.update(
             rows=rows, plant=plant, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
             show_trailing=True, show_trend=True,
@@ -78,10 +82,10 @@ def section_context(request, meeting, section):
         )
     elif section == "rocks":
         qs = Rock.objects.filter(quarter=meeting.quarter).select_related("owner", "team", "quarter").prefetch_related("milestones", "updates")
-        rocks = with_strips(qs if team.is_leadership else qs.filter(team=team), meeting.quarter)
+        rocks = with_strips(roster.apply(qs if team.is_leadership else qs.filter(team=team)), meeting.quarter)
         ctx.update(
             rocks=rocks, summary=rock_summary(rocks), statuses=Rock.STATUS_CHOICES,
-            company_rocks=with_strips(company_items(qs, team), meeting.quarter),
+            company_rocks=with_strips(roster.apply(company_items(qs, team)), meeting.quarter),
         )
     elif section == "headlines":
         since = meeting.started_at - dt.timedelta(days=7)
@@ -93,10 +97,12 @@ def section_context(request, meeting, section):
         todos = for_team(Todo.objects.filter(is_private=False), team).filter(
             Q(done=False) | Q(done_at__date__gte=week_ago)
         ).exclude(meeting=meeting).select_related("owner", "rock", "issue", "team")
+        todos = roster.apply(todos)
         due = [t for t in todos if t.due_date <= meeting.date]
         company_todos = company_items(Todo.objects.filter(is_private=False), team).filter(
             Q(done=False) | Q(done_at__date__gte=week_ago)
         ).exclude(meeting=meeting).select_related("owner", "rock", "issue", "team")
+        company_todos = roster.apply(company_todos)
         ctx.update(
             todos=todos,
             company_todos=list(company_todos),
@@ -107,31 +113,34 @@ def section_context(request, meeting, section):
         )
     elif section == "ids":
         ctx.update(
-            issues=for_team(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos"),
+            issues=roster.apply(for_team(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos")),
             company_issues=mark_editable(
-                company_items(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos"),
+                roster.apply(company_items(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos")),
                 request.user,
             ),
             long_count=for_team(Issue.objects.filter(horizon=Issue.LONG, status=Issue.OPEN), team).count(),
-            solved_here=meeting.solved_issues.all(),
+            solved_here=roster.apply(meeting.solved_issues.all()),
             people=owner_choices(team, user=request.user),
             default_due=default_due(),
             horizon=Issue.SHORT,
             can_edit=True,
         )
     elif section == "conclude":
-        ctx.update(conclude_context(meeting))
+        ctx.update(conclude_context(meeting, roster))
     ctx["rollup"] = bool(team.is_leadership)
     return ctx
 
 
-def conclude_context(meeting):
+def conclude_context(meeting, roster=None):
+    """The Conclude recap. The Conclude section passes the roster (attendees' items only); the printable recap is
+    the full record of the meeting and passes none."""
+    keep = roster.apply if roster is not None else (lambda qs: qs)
     ratings = {r.user_id: r.rating for r in meeting.ratings.all()}
     attendees = list(meeting.attendees.order_by("name"))
     return {
-        "new_todos": meeting.new_todos.select_related("owner", "issue"),
-        "solved": meeting.solved_issues.select_related("owner").prefetch_related("todos"),
-        "raised": meeting.raised_issues.filter(status=Issue.OPEN).select_related("owner"),
+        "new_todos": keep(meeting.new_todos.select_related("owner", "issue")),
+        "solved": keep(meeting.solved_issues.select_related("owner").prefetch_related("todos")),
+        "raised": keep(meeting.raised_issues.filter(status=Issue.OPEN).select_related("owner")),
         "attendee_ratings": [(u, ratings.get(u.pk)) for u in attendees],
         "average": meeting.average_rating,
         "rating_range": range(1, 11),
@@ -191,6 +200,9 @@ def meeting_update(request, pk):
             fields.append(name)
     if "attendees_present" in request.POST:
         meeting.attendees.set(request.POST.getlist("attendees"))
+    extra = request.POST.get("add_attendee", "")
+    if extra.isdigit() and User.objects.filter(pk=int(extra), is_active=True).exists():
+        meeting.attendees.add(int(extra))
     if request.POST.get("facilitate"):
         meeting.facilitator = request.user
         fields.append("facilitator")

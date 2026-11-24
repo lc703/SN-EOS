@@ -13,5 +13,13 @@
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="attendees" value="{{ m.pk }}" class="h-4 w-4" {% if m.pk in attendee_ids %}checked{% endif %} {% if can_run %}onchange="this.form.requestSubmit()"{% else %}disabled{% endif %}> {{ m.display_name }}</label>
       {% endfor %}
     </div>
+    {% if can_run and others %}
+      <label class="mt-3 block text-xs text-neutral-500" for="add-attendee">Add someone else</label>
+      <select id="add-attendee" name="add_attendee" onchange="this.form.requestSubmit()" class="mt-1 block w-full rounded-lg border bg-white px-2 py-1.5 text-sm">
+        <option value="">Choose a person…</option>
+        {% for o in others %}<option value="{{ o.pk }}">{{ o.display_name }}</option>{% endfor %}
+      </select>
+    {% endif %}
+    <p class="mt-3 text-xs text-neutral-500">This meeting shows only items owned by the people checked here.</p>
   </form>
 </div>
