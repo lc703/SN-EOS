@@ -1,0 +1,19 @@
+{% load sn %}
+{% include "meetings/_roster_note.html" %}
+<div class="flex flex-wrap items-center gap-3 mb-3">
+  <p class="text-sm text-neutral-600 flex-1">Last week’s to-dos: done or not done. Check them off as owners report.</p>
+  <div class="card px-3 py-1.5 text-center">
+    <div class="font-display font-extrabold text-xl leading-none {{ due_pct|pct_class }}">{% if due_pct is None %}—{% else %}{{ due_pct }}%{% endif %}</div>
+    <div class="eyebrow !text-[10px]">{{ due_done }}/{{ due_total }} due done</div>
+  </div>
+</div>
+<div class="list-group">
+  {% include "todos/_add.html" with uid="l10" %}
+  {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No open to-dos.</p>{% endfor %}
+</div>
+{% if company_todos %}
+  {% include "_company_group.html" with n=company_todos|length what="to-dos" team=meeting.team %}
+  <div class="list-group">
+    {% for t in company_todos %}{% include "todos/_todo.html" %}{% endfor %}
+  </div>
+{% endif %}

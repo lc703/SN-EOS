@@ -1,0 +1,9 @@
+<div id="chart-tree" class="tree">
+  {% if tree %}
+    <div class="flex items-start gap-12">
+      {% for node in tree %}<ul class="root">{% include "vision/_seat_node.html" %}</ul>{% endfor %}
+    </div>
+  {% else %}
+    <div class="card w-[28rem]">{% include "_empty.html" with title="Build your Accountability Chart" text="Start with the Visionary and Integrator seats, then the major functions under them. Each seat gets about five roles. Structure first, then people." cta_url=can_edit|yesno:"/chart/seats/new/," cta_label="Add the first seat" %}</div>
+  {% endif %}
+</div>

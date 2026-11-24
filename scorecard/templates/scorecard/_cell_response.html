@@ -1,0 +1,6 @@
+{% for c in row.cells %}{% if c.week == week %}{% include "scorecard/_cell.html" %}{% endif %}{% endfor %}
+<template>
+{% include "scorecard/_title_cell.html" with oob=1 %}
+{% if show_trend %}{% include "scorecard/_trend_cell.html" with oob=1 %}{% endif %}
+{% if show_trailing %}{% include "scorecard/_trail_cell.html" with oob=1 %}{% endif %}
+</template>

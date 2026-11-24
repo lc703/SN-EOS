@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}To-Dos{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">{{ team.label }}</div>
+    <h1 class="text-2xl">To-Dos</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Seven-day action items. Check them off as you go.</p>
+  </div>
+  <form method="get" class="flex items-center gap-2 text-sm w-full sm:w-auto">
+    <select name="owner" onchange="this.form.requestSubmit()" class="min-w-0 flex-1 sm:flex-none rounded-lg border border-black/10 bg-white px-2 py-1.5">
+      <option value="">Everyone</option>
+      {% for m in members %}<option value="{{ m.pk }}" {% if who == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.display_name }}</option>{% endfor %}
+    </select>
+    <select name="show" onchange="this.form.requestSubmit()" class="min-w-0 flex-1 sm:flex-none rounded-lg border border-black/10 bg-white px-2 py-1.5">
+      <option value="open" {% if show == 'open' %}selected{% endif %}>Open</option>
+      <option value="recent" {% if show == 'recent' %}selected{% endif %}>Open + done (14 days)</option>
+    </select>
+  </form>
+</div>
+
+<div class="grid lg:grid-cols-[1fr_26rem] gap-6 items-start">
+  <div class="space-y-6">
+    <section>
+      <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if rollup %}All to-dos <span class="text-neutral-400 font-medium">every team</span>{% else %}{{ team.name }} to-dos{% endif %}</h2><span class="text-xs text-neutral-500">{{ todos|length }}</span></div>
+      <div class="list-group">
+        {% if can_add %}{% include "todos/_add.html" with uid="team" %}{% endif %}
+        {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">Nothing open. Nice.</p>{% endfor %}
+      </div>
+    </section>
+    {% if company_todos %}
+    <section>
+      {% include "_company_group.html" with n=company_todos|length what="to-dos" %}
+      <div class="list-group" id="company-todos">
+        {% for t in company_todos %}{% include "todos/_todo.html" %}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+    <section>
+      <div class="flex items-center justify-between mb-2"><h2 class="section-title">My private to-dos</h2><span class="text-xs text-neutral-500">Only you see these</span></div>
+      <div class="list-group">
+        {% for t in private %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-4 text-sm text-neutral-500">No private to-dos. Tick “Private” when adding one.</p>{% endfor %}
+      </div>
+    </section>
+  </div>
+  <aside>
+    <h2 class="section-title mb-2">Completion</h2>
+    {% include "todos/_completion.html" %}
+  </aside>
+</div>
+{% endblock %}

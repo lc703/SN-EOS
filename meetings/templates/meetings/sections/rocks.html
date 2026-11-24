@@ -1,0 +1,12 @@
+{% include "meetings/_roster_note.html" %}
+<p class="text-sm text-neutral-600 mb-3">Each owner says “on track” or “off track”. Off-track rocks drop to Issues.
+  <span class="ml-1 text-green-700 font-semibold">{{ summary.on_track }} on</span> · <span class="text-red-700 font-semibold">{{ summary.off_track }} off</span> · {{ summary.done }} done</p>
+<div class="list-group">
+  {% for r in rocks %}{% include "rocks/_rock.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">No rocks for {{ meeting.quarter.name|default:"this quarter" }}.</p>{% endfor %}
+</div>
+{% if company_rocks %}
+  {% include "_company_group.html" with n=company_rocks|length what="rocks" team=meeting.team %}
+  <div class="list-group">
+    {% for r in company_rocks %}{% include "rocks/_rock.html" with mode="company" %}{% endfor %}
+  </div>
+{% endif %}

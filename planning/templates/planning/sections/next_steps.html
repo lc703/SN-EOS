@@ -1,0 +1,17 @@
+{% load sn %}
+<div class="grid md:grid-cols-2 gap-4">
+  <section class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">To-dos from this session</h3><span class="text-xs text-neutral-400">{{ todos|length }}</span></div>
+    <ul class="divide-y divide-black/[.05]">{% for t in todos %}<li class="px-4 py-2 flex items-center gap-3 text-sm">{% avatar t.owner "sm" %}<span class="flex-1">{{ t.title }}</span><span class="text-xs text-neutral-500">{{ t.due_date|date:"M j" }}</span></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">None yet.</li>{% endfor %}</ul>
+    {% if can_run %}
+      <form method="post" action="{% url 'session_todo' session.pk %}" class="px-3 py-2 border-t border-black/[.06] bg-[#fcfcfb] flex flex-wrap gap-2">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <input name="title" required placeholder="Who does what…" class="flex-1 min-w-[10rem] rounded-lg border bg-white px-3 h-9 text-sm">
+        <select name="owner" class="rounded-lg border bg-white px-2 h-9 text-sm" aria-label="Owner">{% for p in people %}<option value="{{ p.pk }}" {% if p.pk == request.user.pk %}selected{% endif %}>{{ p.first }}</option>{% endfor %}</select>
+        <input type="date" name="due_date" value="{{ default_due|date:'Y-m-d' }}" class="rounded-lg border bg-white px-2 h-9 text-sm" aria-label="Due">
+        <button class="btn btn-sm h-9">Add</button>
+      </form>
+    {% endif %}
+  </section>
+  {% for kind, label, items in groups %}{% if kind == "cascade" %}{% include "planning/_group.html" %}{% endif %}{% endfor %}
+</div>

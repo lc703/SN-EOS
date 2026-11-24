@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Quarterly Conversations{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div>
+    <div class="eyebrow">{{ quarter.name }} · {% if show_all %}Everyone{% else %}{{ team.name }}{% endif %}</div>
+    <h1 class="text-2xl">Quarterly Conversations</h1>
+    <p class="text-sm text-neutral-500 mt-0.5 max-w-2xl">EOS 5-5-5: once a quarter, each manager sits down with each direct report to talk through core values, the five roles of their seat, and their rocks. Green, yellow or red on each. Private to the person, their manager and admins.</p>
+  </div>
+  <div class="seg">
+    <a href="?" class="{% if not show_all %}on{% endif %}">{{ team.name }}</a>
+    <a href="?all=1" class="{% if show_all %}on{% endif %}">Everyone</a>
+  </div>
+</div>
+
+<div class="grid sm:grid-cols-4 gap-3 mb-5">
+  <div class="card stat sm:col-span-2">
+    <div>
+      <div class="stat-label">Completed this quarter</div>
+      <div class="flex items-baseline gap-2"><span class="stat-value">{{ done }}<span class="text-neutral-400 text-lg">/{{ total }}</span></span>{% if pct is not None %}<span class="text-sm font-semibold {{ pct|pct_class }}">{{ pct }}%</span>{% endif %}</div>
+      <div class="bar-track mt-2"><div class="bar-fill" style="width: {{ pct|default:0 }}%"></div></div>
+    </div>
+  </div>
+  <div class="card stat"><div class="stat-label">In progress</div><div class="stat-value">{{ in_progress }}</div></div>
+  <div class="card stat"><div class="stat-label">Struggling</div><div class="stat-value {% if struggling %}text-[#b42318]{% endif %}">{{ struggling }}</div><div class="text-xs text-neutral-500">Any red, or a GWC no</div></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Person</th><th>Manager</th><th>Status</th><th>Grid</th><th>GWC</th><th>Last 1:1</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><a href="{% url 'person' r.person.pk %}" class="flex items-center gap-2 font-semibold min-h-11">{% avatar r.person %}{{ r.person.display_name }}</a></td>
+          <td class="text-neutral-600 whitespace-nowrap">{% for m in r.managers %}{{ m.first }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-neutral-400">—</span>{% endfor %}</td>
+          <td>{% if r.state == "done" %}<span class="badge badge-green">Done {{ r.convo.completed_at|date:"M j" }}</span>{% elif r.state == "progress" %}<span class="badge badge-yellow">In progress</span>{% else %}<span class="badge">Not started</span>{% endif %}
+              {% if r.convo.is_struggling %}<span class="flag-struggling ml-1" title="Struggling">!</span>{% endif %}</td>
+          <td>{% if r.convo %}{% with cc=r.convo.color_counts %}<span class="inline-flex items-center gap-2 text-xs tabular-nums"><span class="flex items-center gap-1"><span class="dot dot-green"></span>{{ cc.green }}</span><span class="flex items-center gap-1"><span class="dot dot-yellow"></span>{{ cc.yellow }}</span><span class="flex items-center gap-1"><span class="dot dot-red"></span>{{ cc.red }}</span></span>{% endwith %}{% else %}<span class="text-neutral-400">—</span>{% endif %}</td>
+          <td>{% if r.convo and r.convo.gets_it is not None %}<span class="gwc"><i class="{{ r.convo.gets_it|yesno:'y,n,u' }}">G</i><i class="{{ r.convo.wants_it|yesno:'y,n,u' }}">W</i><i class="{{ r.convo.capacity|yesno:'y,n,u' }}">C</i></span>{% else %}<span class="text-neutral-400">—</span>{% endif %}</td>
+          <td class="text-neutral-600 whitespace-nowrap">{{ r.last_one|date:"M j"|default:"—" }}</td>
+          <td class="text-right whitespace-nowrap">
+            {% if r.convo %}<a href="{% url 'conversation' r.convo.pk %}" class="btn btn-sm">{% if r.state == 'done' %}View{% else %}Continue{% endif %}</a>
+            {% elif r.can_run %}<form method="post" action="{% url 'conversation_new' r.person.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="kind" value="quarterly"><button class="btn btn-sm btn-primary">Start</button></form>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include "_empty.html" with title="No one to talk to yet" text="Conversations follow the Accountability Chart: put people in seats under yours and they show up here." cta_url="/chart/" cta_label="Open the Accountability Chart" icon="M17 20h5v-2a3 3 0 00-5.4-1.8M9 20H2v-2a4 4 0 017.6-1.8M15 7a3 3 0 11-6 0 3 3 0 016 0z" %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}{{ meeting.team.name }} L10{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-4">
+  <div class="flex-1 min-w-0">
+    <a href="{% url 'meetings' %}?team={{ meeting.team.slug }}" class="eyebrow hover:text-black">← {{ meeting.team.label }} · Level 10</a>
+    <h1 class="text-2xl leading-tight">{{ meeting.date|date:"l, F j" }}</h1>
+    <div class="text-sm text-neutral-500 flex flex-wrap items-center gap-x-2">
+      <span>Facilitator: <strong class="text-neutral-800">{{ meeting.facilitator.display_name|default:"—" }}</strong></span>
+      {% if can_run and not is_facilitator and not meeting.is_concluded %}
+        <form method="post" action="{% url 'meeting_update' meeting.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="facilitate" value="1"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="link text-xs">Take over</button></form>
+      {% endif %}
+      <span>· {{ meeting.attendees.count }} attendees</span>
+      {% if meeting.is_concluded %}<span class="pill st-done">Concluded</span>{% endif %}
+    </div>
+  </div>
+  <a href="{% url 'meeting_recap' meeting.pk %}" class="btn">Recap</a>
+</div>
+
+<div class="grid lg:grid-cols-[13.5rem_1fr] gap-5 items-start">
+  <nav class="rail card p-1.5 lg:sticky lg:top-[4.5rem] flex lg:flex-col gap-0.5 overflow-x-auto" aria-label="Agenda">
+    {% for key, label in sections %}
+      <a href="?s={{ key }}{% if roster.show_all %}&all=1{% endif %}" class="{% if key == section %}on{% endif %}">
+        <span class="rail-n">{{ forloop.counter }}</span>{{ label }}
+        {% if key == meeting.current_section and not meeting.is_concluded %}<span class="fac" title="Facilitator is here"></span>{% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="min-w-0">
+    <div class="flex items-center gap-2 mb-3">
+      <h2 class="text-xl flex-1">{{ section_label }}</h2>
+      {% if prev %}<a href="?s={{ prev }}{% if roster.show_all %}&all=1{% endif %}" class="btn btn-sm">← Back</a>{% endif %}
+      {% if next_s %}<a href="?s={{ next_s }}{% if roster.show_all %}&all=1{% endif %}" class="btn btn-sm btn-primary">Next →</a>{% endif %}
+    </div>
+    <div id="l10-body" hx-target="#l10-body" hx-select="#l10-body" hx-swap="outerHTML show:none" hx-push-url="false">
+      <div hx-get="{% url 'meeting_where' meeting.pk %}?s={{ section }}" hx-trigger="every 8s" hx-target="this" hx-select="unset" hx-swap="innerHTML"></div>
+      {% include "meetings/sections/"|add:section|add:".html" %}
+    </div>
+  </div>
+</div>
+<script>
+  // Keep the address bar on the section being shown, so Back from a detail page lands here and not on the bare meeting URL.
+  (function () {
+    var u = new URL(location.href), all = {% if roster.show_all %}true{% else %}false{% endif %};
+    if (u.searchParams.get("s") !== "{{ section }}" || (all && u.searchParams.get("all") !== "1")) {
+      u.searchParams.set("s", "{{ section }}");
+      if (all) u.searchParams.set("all", "1");
+      history.replaceState(history.state, "", u.pathname + u.search);
+    }
+  })();
+</script>
+{% endblock %}

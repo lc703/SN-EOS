@@ -1,0 +1,26 @@
+<div class="grid md:grid-cols-[1fr_18rem] gap-4">
+  <div class="space-y-4">
+    {% for kind, label, items in groups %}{% include "planning/_group.html" %}{% endfor %}
+    <div class="card card-pad text-sm text-neutral-600">This session set <strong>{{ new_rocks }}</strong> rock{{ new_rocks|pluralize }} and <strong>{{ new_todos }}</strong> to-do{{ new_todos|pluralize }}.</div>
+  </div>
+  <section class="card overflow-hidden self-start">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">Rate the session</h3><span class="text-lg font-bold tabular-nums">{{ average|default:"—" }}</span></div>
+    <ul class="divide-y divide-black/[.05]">
+      {% for u, r in attendee_ratings %}
+        <li class="px-4 py-2 flex items-center gap-2 text-sm"><span class="flex-1">{{ u.first }}</span>
+          {% if u.pk == request.user.pk or session.facilitator_id == request.user.pk %}
+            <form method="post" action="{% url 'session_rate' session.pk %}">{% csrf_token %}<input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <select name="rating" onchange="this.form.requestSubmit()" class="rounded-lg border bg-white px-2 h-8 text-sm tabular-nums" aria-label="Rating for {{ u.first }}"><option value="">—</option>{% for n in rating_range %}<option value="{{ n }}" {% if r == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+            </form>
+          {% else %}<span class="tabular-nums font-semibold">{{ r|default:"—" }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if can_run %}
+      <form method="post" action="{% url 'session_conclude' session.pk %}" class="px-4 py-3 border-t border-black/[.06]">{% csrf_token %}
+        {% if session.is_concluded %}<input type="hidden" name="reopen" value="1"><button class="btn w-full">Reopen session</button>
+        {% else %}<button class="btn btn-bolt w-full">Conclude &amp; open recap</button>{% endif %}
+      </form>
+    {% endif %}
+  </section>
+</div>

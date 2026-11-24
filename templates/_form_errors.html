@@ -1,0 +1,7 @@
+{# Why a quick-add was refused. Context: fe (from {% form_errors %}), what ("issue", "to-do", "rock") #}
+{% if fe.errors %}
+  <div role="alert" class="basis-full w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+    <strong>Couldn't add that {{ what }}.</strong>
+    <ul class="mt-0.5 list-disc pl-5">{% for label, msg in fe.errors %}<li>{% if label %}<span class="font-semibold">{{ label }}:</span> {% endif %}{{ msg }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}

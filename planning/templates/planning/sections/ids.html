@@ -1,0 +1,12 @@
+<div class="grid md:grid-cols-2 gap-4 mb-4">
+  <section class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">Long-term Issues List</h3><a href="{% url 'issues' %}?team={{ session.team.slug }}&h=long" class="link text-xs">Open</a></div>
+    <ul class="divide-y divide-black/[.05] max-h-80 overflow-y-auto">{% for i in long_issues %}<li class="px-4 py-2 text-sm flex gap-2"><span class="flex-1">{{ i.title }}</span><span class="text-xs text-neutral-500">{{ i.owner.first|default:"" }}</span></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">Empty.</li>{% endfor %}</ul>
+  </section>
+  <section class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-black/[.06] flex items-center"><h3 class="section-title flex-1">Short-term (L10) issues</h3><a href="{% url 'issues' %}?team={{ session.team.slug }}" class="link text-xs">Open</a></div>
+    <ul class="divide-y divide-black/[.05] max-h-80 overflow-y-auto">{% for i in short_issues %}<li class="px-4 py-2 text-sm flex gap-2"><span class="flex-1">{{ i.title }}</span><span class="text-xs text-neutral-500">{{ i.owner.first|default:"" }}</span></li>{% empty %}<li class="px-4 py-3 text-sm text-neutral-400">Empty.</li>{% endfor %}</ul>
+  </section>
+</div>
+{% if solved_here %}<p class="text-sm mb-4"><span class="badge badge-green">{{ solved_here|length }} solved in this session</span> {% for i in solved_here %}{{ i.title }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+<p class="text-xs text-neutral-500 mb-3">Write the top three below, then IDS them one at a time: Identify the real issue, Discuss, Solve. Solutions become to-dos in Next steps.</p>

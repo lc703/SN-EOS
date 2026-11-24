@@ -1,0 +1,53 @@
+{% load sn %}
+<div class="panel-head">
+  <div class="min-w-0">
+    <div class="eyebrow">Weekly rock update · {{ rock.kind_label }}</div>
+    <h2 class="text-lg leading-snug">{{ rock.title }}</h2>
+  </div>
+</div>
+<form class="panel-body space-y-4" hx-post="{% url 'rock_update' rock.pk %}{% if meeting_id %}?meeting={{ meeting_id }}{% endif %}" hx-target="#panel-body" hx-swap="innerHTML" hx-select="unset"
+      x-data="{ color: '{{ data.color }}' }">
+  {% csrf_token %}
+  {% if reload %}<input type="hidden" name="reload" value="1">{% endif %}
+  {% if error %}<div class="rounded-lg bg-red-50 text-[#b42318] text-sm px-3 py-2 font-medium" role="alert">{{ error }}</div>{% endif %}
+  <div>
+    <div class="flex items-center justify-between mb-1.5">
+      <span class="text-[13px] font-semibold text-neutral-700">How's it going?</span>
+      <select name="week" class="rounded-lg border bg-white px-2 h-8 text-xs" aria-label="Week">
+        {% for w in weeks %}<option value="{{ w|date:'Y-m-d' }}" {% if w|date:'Y-m-d' == data.week %}selected{% endif %}>Week of {{ w|date:"M j" }}{% if forloop.first %} (this week){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      {% for val, label in colors %}
+        <label class="status-choice cursor-pointer rounded-xl border px-3 py-2.5 text-sm font-semibold flex items-center gap-2 has-[:checked]:border-black has-[:checked]:ring-2 has-[:checked]:ring-black/10">
+          <input type="radio" name="color" value="{{ val }}" class="sr-only" x-model="color" {% if data.color == val %}checked{% endif %} {% if forloop.first %}autofocus{% endif %}>
+          <span class="dot {{ val|color_dot }}"></span>{{ label }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+  <label class="block">
+    <span class="block text-[13px] font-semibold text-neutral-700 mb-1">Note</span>
+    <textarea name="note" rows="3" class="block w-full rounded-lg border bg-white px-3 py-2 text-sm" placeholder="What moved this week?">{{ data.note }}</textarea>
+  </label>
+  <label class="block" x-show="color === 'red'" x-cloak>
+    <span class="block text-[13px] font-semibold text-[#b42318] mb-1">Recovery plan <span class="font-normal">(required when off track)</span></span>
+    <textarea name="recovery_plan" rows="3" class="block w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm" placeholder="What gets it back on track, who does it, and by when?" :required="color === 'red'">{{ data.recovery_plan }}</textarea>
+    <span class="block text-xs text-neutral-500 mt-1">Can't recover it? Drop it to the Issues List instead.</span>
+  </label>
+  <div class="flex items-center gap-2 pt-1">
+    <button class="btn btn-primary">Save update</button>
+    <button type="button" class="btn btn-ghost" @click="$store.ui.closePanel()">Cancel</button>
+    <a href="{% url 'rock_detail' rock.pk %}{% l10_from 'rocks' %}" class="link text-xs ml-auto" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">Open rock</a>
+  </div>
+  {% if recent %}
+    <div class="pt-3 border-t border-black/[.06]">
+      <div class="eyebrow mb-1.5">Recent</div>
+      <ul class="space-y-2 text-sm">
+        {% for u in recent %}
+          <li class="flex gap-2"><span class="dot {{ u.color|color_dot }} mt-1.5"></span><div class="min-w-0"><div class="text-xs text-neutral-500">Week of {{ u.week_start|date:"M j" }}{% if u.author %} · {{ u.author.first }}{% endif %}</div>{% if u.note %}<div>{{ u.note }}</div>{% endif %}{% if u.recovery_plan %}<div class="text-[#b42318] text-[13px]"><strong>Recovery:</strong> {{ u.recovery_plan }}</div>{% endif %}</div></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</form>

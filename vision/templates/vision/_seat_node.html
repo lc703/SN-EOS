@@ -1,0 +1,40 @@
+{% load sn %}{% with s=node.seat st=node.seat.display_status %}
+<li data-node="{{ s.pk }}" data-depth="{{ node.depth }}"{% if node.children %} data-has-children{% endif %}>
+  <div class="seat seat-{{ st }}{% if node.depth == 0 %} seat-root{% endif %}" data-seat="{{ s.pk }}" data-panel="{% url 'seat_panel' s.pk %}" tabindex="0" role="button"
+       aria-label="{{ s.title }}{% if s.holder %}, {{ s.holder }}{% endif %}"
+       {% if can_edit %}draggable="true" @dragstart="dragStart($event, {{ s.pk }})" @dragend="dragEnd()" @dragover="dragOver($event, {{ s.pk }})" @dragleave="dragLeave({{ s.pk }})" @drop="drop($event, {{ s.pk }})"{% endif %}
+       :class="{'drop-target': dropId === '{{ s.pk }}', 'is-dragging': dragId === '{{ s.pk }}'}" @keydown.enter="$el.click()">
+    <div class="seat-title">{{ s.title }}</div>
+    <div class="seat-person">
+      {% if s.person %}{% avatar s.person "sm" %}<span class="truncate">{{ s.holder }}</span>
+      {% elif s.holder %}<span class="avatar avatar-sm avatar-ghost">{{ s.holder|slice:":1"|upper }}</span><span class="truncate">{{ s.holder }}</span>
+      {% elif st == "future" %}<span class="text-neutral-500 italic">Future seat</span>
+      {% else %}<span class="font-semibold text-[#c2410c]">Open · hiring</span>{% endif %}
+      {% if s.agency %}<span class="badge badge-outline ml-auto">Agency</span>{% endif %}
+    </div>
+    {% with roles=s.role_list %}{% if roles %}
+      <ul class="seat-roles">
+        {% for r in roles|slice:":5" %}<li>{{ r }}</li>{% endfor %}
+        {% if roles|length > 5 %}<li class="more">+{{ roles|length|add:"-5" }} more roles</li>{% endif %}
+      </ul>
+    {% endif %}{% endwith %}
+    {% if node.flags or node.children %}
+      <div class="seat-foot">
+        {% if node.flags %}{% include "vision/_seat_flags.html" with flags=node.flags %}{% endif %}
+        {% if node.children %}
+          <button type="button" class="seat-toggle" data-no-panel @click.stop="toggle({{ s.pk }})" :aria-expanded="!isCollapsed({{ s.pk }})"
+                  :title="isCollapsed({{ s.pk }}) ? 'Show reports' : 'Hide reports'">
+            <svg class="h-3 w-3 transition-transform" :class="isCollapsed({{ s.pk }}) && '-rotate-90'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+            {{ node.size|add:"-1" }}
+          </button>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  {% if node.children %}
+    <ul class="{% if node.stack %}v{% else %}h{% endif %}">
+      {% for child in node.children %}{% include "vision/_seat_node.html" with node=child %}{% endfor %}
+    </ul>
+  {% endif %}
+</li>
+{% endwith %}

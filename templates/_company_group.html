@@ -1,0 +1,5 @@
+{# Heading for the Company group shown below a site's own items. Context: n (count), what ("issues", "to-dos", "rocks") #}
+<div class="flex items-center justify-between gap-3 mt-8 mb-2">
+  <h2 class="section-title flex items-center gap-2"><span class="pill pill-muted">Company</span> {{ what|default:"items" }} <span class="text-neutral-400 font-medium text-sm">from Company, not {{ team.name }}</span></h2>
+  <span class="text-xs text-neutral-500">{{ n }}</span>
+</div>

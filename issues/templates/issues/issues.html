@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load sn %}
+{% block title %}Issues{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <div class="eyebrow">{{ team.label }}</div>
+    <h1 class="text-2xl">Issues</h1>
+    <p class="text-sm text-neutral-500 mt-0.5">Pick your top 3, then IDS them: identify, discuss, solve.</p>
+  </div>
+  <div class="inline-flex rounded-xl bg-white border border-black/10 p-1 text-sm font-semibold">
+    <a href="?list=short{% if site %}&site={{ site.slug }}{% endif %}" class="px-3 h-8 hit inline-flex items-center rounded-lg {% if horizon == 'short' %}bg-black text-white{% else %}text-neutral-600{% endif %}">Short-term <span class="ml-1.5 text-xs opacity-70">{{ counts.short }}</span></a>
+    <a href="?list=long{% if site %}&site={{ site.slug }}{% endif %}" class="px-3 h-8 hit inline-flex items-center rounded-lg {% if horizon == 'long' %}bg-black text-white{% else %}text-neutral-600{% endif %}">Long-term <span class="ml-1.5 text-xs opacity-70">{{ counts.long }}</span></a>
+  </div>
+</div>
+
+{% if sites %}
+<nav class="flex flex-wrap items-center gap-1.5 mb-3 text-sm" aria-label="Filter by site" id="site-filter">
+  <span class="eyebrow mr-1">Site</span>
+  <a href="?list={{ horizon }}" class="hit h-7 px-3 inline-flex items-center rounded-full font-medium {% if not site %}bg-black text-white{% else %}text-neutral-600 bg-white border border-black/10 hover:bg-neutral-100{% endif %}">All</a>
+  {% for s in sites %}<a href="?list={{ horizon }}&site={{ s.slug }}" class="hit h-7 px-3 inline-flex items-center rounded-full font-medium {% if site and site.pk == s.pk %}bg-black text-white{% else %}text-neutral-600 bg-white border border-black/10 hover:bg-neutral-100{% endif %}">{{ s.name }}</a>{% endfor %}
+</nav>
+{% endif %}
+
+<div class="list-group">
+  {% if can_add %}{% include "issues/_add.html" %}{% endif %}
+  {% for i in issues %}{% include "issues/_issue.html" %}{% empty %}<p class="px-4 py-8 text-center text-sm text-neutral-500">No open {{ horizon }}-term issues.</p>{% endfor %}
+</div>
+
+{% if company_issues %}
+  {% include "_company_group.html" with n=company_issues|length what="issues" %}
+  <div class="list-group" id="company-issues">
+    {% for i in company_issues %}{% if i.editable %}{% include "issues/_issue.html" with can_edit=True rank_ro=True %}{% else %}{% include "issues/_issue.html" with can_edit=False rank_ro=True %}{% endif %}{% endfor %}
+  </div>
+{% endif %}
+
+{% if solved %}
+<details class="mt-8">
+  <summary class="section-title cursor-pointer select-none">Recently solved <span class="text-xs text-neutral-500 font-normal">({{ solved|length }})</span></summary>
+  <div class="list-group mt-2">
+    {% for i in solved %}
+      <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm">
+        <span class="pill st-done">Solved</span><span class="flex-1 truncate text-neutral-600">{{ i.title }}</span>{% include "_site_chip.html" with t=i.team always=1 %}
+        <span class="text-xs text-neutral-400">{{ i.solved_at|date:"M j"|default:"" }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% endblock %}

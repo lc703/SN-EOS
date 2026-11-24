@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Edit V/TO{% endblock %}
+{% block content %}
+<a href="{% url 'vto' %}" class="text-sm text-neutral-500 hover:text-black">← V/TO</a>
+<h1 class="text-2xl mt-1 mb-4">Edit V/TO</h1>
+<form method="post" class="space-y-5">{% csrf_token %}
+  <section class="card card-pad">
+    <h2 class="section-title mb-3">Core values</h2>
+    {{ values.management_form }}
+    {% for e in values.non_form_errors %}<p class="text-sm text-red-700">{{ e }}</p>{% endfor %}
+    <div class="space-y-3">
+      {% for f in values %}
+        <div class="grid sm:grid-cols-[14rem_1fr_5rem_auto_auto] gap-2 items-start">
+          {{ f.id }}
+          <div>{{ f.name }}</div>
+          <div>{{ f.description }}</div>
+          <div>{{ f.sort }}</div>
+          <label class="flex items-center gap-1.5 text-sm pt-2">{{ f.active }} Active</label>
+          {% if f.instance.pk %}<label class="flex items-center gap-1.5 text-sm pt-2 text-red-700">{{ f.DELETE }} Remove</label>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="card card-pad">
+    <h2 class="section-title mb-3">Vision &amp; traction</h2>
+    {% include "_form.html" %}
+  </section>
+  <div class="flex gap-2"><button class="btn btn-primary">Save V/TO</button><a href="{% url 'vto' %}" class="btn">Cancel</a></div>
+</form>
+{% endblock %}

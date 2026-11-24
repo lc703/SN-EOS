@@ -1,0 +1,20 @@
+{% load sn %}
+<form method="post" action="{% url 'issue_new' %}" class="flex flex-wrap items-center gap-2 px-4 py-3 bg-neutral-50/70">
+  {% csrf_token %}
+  {% form_errors "issue" as fe %}{% include "_form_errors.html" with what="issue" %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="horizon" value="{{ horizon|default:'short' }}">
+  {% if meeting %}<input type="hidden" name="meeting" value="{{ meeting.pk }}">{% endif %}
+  <input name="title" required value="{{ fe.values.title }}" placeholder="Add an issue…" aria-label="New issue" class="flex-1 min-w-[14rem] rounded-lg border bg-white px-3 py-2 text-[15px]">
+  {% if meeting and not meeting.team.is_leadership %}
+    <input type="hidden" name="team" value="{{ meeting.team.pk }}">
+  {% else %}
+  <select name="team" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Site">
+    {% with sel=site|default:team %}{% for t in all_teams %}<option value="{{ t.pk }}" {% if t.pk == sel.pk %}selected{% endif %}>{{ t.name }}</option>{% endfor %}{% endwith %}
+  </select>
+  {% endif %}
+  <select name="owner" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Owner">
+    {% for p in people %}<option value="{{ p.pk }}" {% if p.pk == user.pk %}selected{% endif %}>{{ p.display_name }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-primary h-10">Add</button>
+</form>
