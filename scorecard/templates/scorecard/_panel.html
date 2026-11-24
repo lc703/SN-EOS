@@ -46,6 +46,6 @@
   </section>
   <div class="flex items-center gap-2">
     {% if row.is_red %}{% include "issues/_drop_button.html" with kind="measurable" obj_id=m.pk %}{% endif %}
-    {% if editable %}<a href="{% url 'measurable_edit' m.pk %}" class="btn ml-auto" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">Edit measurable</a>{% endif %}
+    {% if editable %}<a href="{% url 'measurable_edit' m.pk %}{% l10_from 'scorecard' %}" class="btn ml-auto" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">Edit measurable</a>{% endif %}
   </div>
 </div>

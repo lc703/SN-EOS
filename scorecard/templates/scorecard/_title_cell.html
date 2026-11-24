@@ -3,7 +3,7 @@
     {% if sortable and mode == "scorecard" and row.section == "company" %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
     {% avatar m.owner %}
     <div class="min-w-0 flex-1">
-      <button type="button" class="sc-name font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}" data-panel-wide title="{{ m.title }}{% if m.plant_id %} · {{ m.plant.name }}{% endif %}: trend and details" aria-label="{{ m.title }}{% if m.plant_id %}, {{ m.plant.name }}{% endif %}">{% if mode != 'home' and row.sub %}{{ row.plant_label }}{% else %}{{ m.title }}{% endif %}</button>
+      <button type="button" class="sc-name font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}{% if meeting_id %}?meeting={{ meeting_id }}{% endif %}" data-panel-wide title="{{ m.title }}{% if m.plant_id %} · {{ m.plant.name }}{% endif %}: trend and details" aria-label="{{ m.title }}{% if m.plant_id %}, {{ m.plant.name }}{% endif %}">{% if mode != 'home' and row.sub %}{{ row.plant_label }}{% else %}{{ m.title }}{% endif %}</button>
       <div class="text-[11.5px] text-neutral-500 truncate">{% if m.owner %}{{ m.owner.display_name }}{% else %}No owner{% endif %}{% if mode == 'home' %} · {{ m.plant_name }}{% endif %}</div>
       <div class="sc-inline-goal">Goal {% if m.goal is None %}not set{% else %}{{ m.goal_display }}{% endif %}</div>
       {% if m.source %}<div class="text-[10.5px] italic leading-tight text-neutral-400 truncate" title="{{ m.source }}">{{ m.source }}</div>{% endif %}
@@ -11,7 +11,7 @@
     {% if mode != 'home' %}
       <div class="sc-actions">
         {% if row.is_red %}{% include "issues/_drop_button.html" with kind="measurable" obj_id=m.pk compact=1 %}{% endif %}
-        {% if row.editable %}<a href="{% url 'measurable_edit' m.pk %}" class="btn btn-ghost btn-sm !px-1.5 text-neutral-400" title="Edit measurable" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">
+        {% if row.editable %}<a href="{% url 'measurable_edit' m.pk %}{% l10_from 'scorecard' %}" class="btn btn-ghost btn-sm !px-1.5 text-neutral-400" title="Edit measurable" hx-select="unset" hx-target="unset" hx-swap="unset" hx-boost="false">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg></a>{% endif %}
       </div>
     {% endif %}

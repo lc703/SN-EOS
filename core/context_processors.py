@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import reverse
 
+from .l10 import l10_return
 from .context import current_quarter, current_team
 from .models import Quarter, Team, User
 
@@ -26,6 +27,7 @@ def app(request):
             rollup=bool(team and team.is_leadership),
         )
         ctx["sn_nav"] = nav_data(ctx["all_teams"], request.user)
+        ctx["l10_back"] = l10_return(request)
     return ctx
 
 

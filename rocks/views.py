@@ -14,6 +14,7 @@ from core.models import monday_of
 from core.forms import DateInput, PersonField, StyledForm, owner_choices
 from core.permissions import can_edit_owned, is_admin, is_team_member
 from core.scoping import company_items, for_team, is_rollup, is_site
+from core.l10 import l10_return
 from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from todos.views import TodoForm
 
@@ -167,6 +168,7 @@ def update_panel_ctx(rock, request, color="", form=None, error=""):
         "rock": rock, "data": data, "error": error, "weeks": list(reversed(weeks)),
         "colors": RockUpdate.COLOR_CHOICES, "recent": rock.updates.select_related("author")[:4],
         "reload": request.GET.get("reload") or request.POST.get("reload") or "",
+        "meeting_id": (request.GET.get("meeting") or "") if (request.GET.get("meeting") or "").isdigit() else "",
     }
 
 
@@ -221,11 +223,13 @@ def rock_detail(request, pk):
             require(is_admin(request.user) or rock.owner_id == request.user.pk)
             rock.delete()
             messages.success(request, "Rock deleted.")
-            return redirect("rocks")
+            back = l10_return(request)
+            return redirect(back["url"]) if back else redirect("rocks")
         if form.is_valid():
             form.save()
             messages.success(request, "Rock saved.")
-            return redirect("rock_detail", pk=rock.pk)
+            back = l10_return(request)
+            return redirect(reverse("rock_detail", args=[rock.pk]) + (back["qs"] if back else ""))
     return render(
         request,
         "rocks/rock_detail.html",

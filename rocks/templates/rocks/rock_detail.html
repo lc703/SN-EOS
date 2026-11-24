@@ -2,7 +2,7 @@
 {% load sn %}
 {% block title %}{{ rock.title }}{% endblock %}
 {% block content %}
-<a href="{% url 'rocks' %}" class="text-sm text-neutral-500 hover:text-black">← Rocks</a>
+{% if not l10_back %}<a href="{% url 'rocks' %}" class="text-sm text-neutral-500 hover:text-black">← Rocks</a>{% endif %}
 <div class="mt-1 mb-5 flex flex-wrap items-center gap-3">
   <h1 class="text-2xl flex-1 min-w-0">{{ rock.title }}</h1>
   {% if rock.status == 'off_track' %}{% include "issues/_drop_button.html" with kind="rock" obj_id=rock.pk %}{% endif %}
@@ -80,7 +80,7 @@
       <section>
         <h2 class="section-title mb-2">Issues raised from this rock</h2>
         <div class="list-group">
-          {% for i in issues %}<a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill {% if i.is_open %}pill-muted{% else %}st-done{% endif %}">{{ i.get_status_display }}</span><span class="flex-1 truncate">{{ i.title }}</span>{% include "_site_chip.html" with t=i.team always=1 %}</a>{% endfor %}
+          {% for i in issues %}<a href="{% url 'issue_detail' i.pk %}{{ l10_back.qs }}" class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill {% if i.is_open %}pill-muted{% else %}st-done{% endif %}">{{ i.get_status_display }}</span><span class="flex-1 truncate">{{ i.title }}</span>{% include "_site_chip.html" with t=i.team always=1 %}</a>{% endfor %}
         </div>
       </section>
     {% endif %}
@@ -88,7 +88,7 @@
   </div>
 
   <aside>
-    <form method="post" action="{% url 'rock_detail' rock.pk %}" hx-boost="false" class="card card-pad">{% csrf_token %}
+    <form method="post" action="{% url 'rock_detail' rock.pk %}{{ l10_back.qs }}" hx-boost="false" class="card card-pad">{% csrf_token %}
       <h2 class="section-title mb-3">Edit rock</h2>
       {% if editable %}
         {% include "_form.html" with cols="grid-cols-1" %}

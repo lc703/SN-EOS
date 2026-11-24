@@ -31,8 +31,8 @@
   <div class="min-w-0">
     <div class="flex items-center gap-2 mb-3">
       <h2 class="text-xl flex-1">{{ section_label }}</h2>
-      {% if prev %}<a href="?s={{ prev }}" class="btn btn-sm">← Back</a>{% endif %}
-      {% if next_s %}<a href="?s={{ next_s }}" class="btn btn-sm btn-primary">Next →</a>{% endif %}
+      {% if prev %}<a href="?s={{ prev }}{% if roster.show_all %}&all=1{% endif %}" class="btn btn-sm">← Back</a>{% endif %}
+      {% if next_s %}<a href="?s={{ next_s }}{% if roster.show_all %}&all=1{% endif %}" class="btn btn-sm btn-primary">Next →</a>{% endif %}
     </div>
     <div id="l10-body" hx-target="#l10-body" hx-select="#l10-body" hx-swap="outerHTML show:none" hx-push-url="false">
       <div hx-get="{% url 'meeting_where' meeting.pk %}?s={{ section }}" hx-trigger="every 8s" hx-target="this" hx-select="unset" hx-swap="innerHTML"></div>
@@ -40,4 +40,15 @@
     </div>
   </div>
 </div>
+<script>
+  // Keep the address bar on the section being shown, so Back from a detail page lands here and not on the bare meeting URL.
+  (function () {
+    var u = new URL(location.href), all = {% if roster.show_all %}true{% else %}false{% endif %};
+    if (u.searchParams.get("s") !== "{{ section }}" || (all && u.searchParams.get("all") !== "1")) {
+      u.searchParams.set("s", "{{ section }}");
+      if (all) u.searchParams.set("all", "1");
+      history.replaceState(history.state, "", u.pathname + u.search);
+    }
+  })();
+</script>
 {% endblock %}

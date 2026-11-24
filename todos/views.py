@@ -1,9 +1,10 @@
 import datetime as dt
+from types import SimpleNamespace
 
 from django import forms
 from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -12,6 +13,7 @@ from core.forms import DateInput, PersonField, StyledForm, owner_choices
 from core.models import User
 from core.scoping import company_items, for_team, is_rollup
 from core.permissions import can_edit_todo, can_view_todo, is_admin, is_team_member
+from core.l10 import l10_return
 from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from meetings.models import Meeting
 
@@ -144,7 +146,9 @@ def todo_toggle(request, pk):
     require(can_edit_todo(request.user, todo))
     todo.set_done(request.POST.get("done") in {"1", "on", "true"})
     if is_htmx(request) and request.POST.get("partial"):
-        return render(request, "todos/_todo.html", {"t": todo, "today": timezone.localdate(), "compact": request.POST.get("compact")})
+        return render(request, "todos/_todo.html", {"t": todo, "today": timezone.localdate(), "compact": request.POST.get("compact"),
+                       "meeting_id": request.POST.get("meeting", ""), "l10_section": request.POST.get("section", ""),
+                       "roster": SimpleNamespace(show_all=request.POST.get("all") == "1")})
     return go_back(request, "/todos/")
 
 
@@ -191,6 +195,13 @@ def todo_asana(request, pk):
     return go_back(request, "/todos/")
 
 
+def _after_edit(request):
+    back = l10_return(request)
+    if back and not request.POST.get("next"):
+        return redirect(back["url"])
+    return go_back(request, "/todos/")
+
+
 def todo_edit(request, pk):
     todo = get_object_or_404(Todo.objects.select_related("team", "rock", "issue"), pk=pk)
     require(can_view_todo(request.user, todo))
@@ -202,12 +213,12 @@ def todo_edit(request, pk):
         if "delete" in request.POST:
             todo.delete()
             messages.success(request, "To-do deleted.")
-            return go_back(request, "/todos/")
+            return _after_edit(request)
         if form.is_valid():
             form.save()
             messages.success(request, "To-do saved.")
             problem = asana_client.push_notes_if_changed(todo, old_notes)
             if problem:
                 messages.warning(request, f"Saved here, but Asana was not updated: {problem}")
-            return go_back(request, "/todos/")
+            return _after_edit(request)
     return render(request, "todos/todo_form.html", {"form": form, "obj": todo, "editable": editable})

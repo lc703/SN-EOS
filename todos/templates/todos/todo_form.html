@@ -2,21 +2,21 @@
 {% block title %}To-do{% endblock %}
 {% block content %}
 <div class="max-w-2xl">
-  <a href="{{ request.GET.next|default:'/todos/' }}" class="text-sm text-neutral-500 hover:text-black">← Back</a>
+  <a href="{% if l10_back %}{{ l10_back.url }}{% elif request.GET.next %}{{ request.GET.next }}{% else %}/todos/{% endif %}" class="text-sm text-neutral-500 hover:text-black">← Back</a>
   <h1 class="text-2xl mt-1 mb-1">To-do</h1>
   <p class="text-sm text-neutral-500 mb-4">
     {% if obj.team %}{{ obj.team.name }} · {% endif %}created {{ obj.created_at|date:"M j, Y" }}
-    {% if obj.rock %} · Rock: <a class="link" href="{% url 'rock_detail' obj.rock.pk %}">{{ obj.rock.title }}</a>{% endif %}
-    {% if obj.issue %} · Issue: <a class="link" href="{% url 'issue_detail' obj.issue.pk %}">{{ obj.issue.title }}</a>{% endif %}
+    {% if obj.rock %} · Rock: <a class="link" href="{% url 'rock_detail' obj.rock.pk %}{{ l10_back.qs }}">{{ obj.rock.title }}</a>{% endif %}
+    {% if obj.issue %} · Issue: <a class="link" href="{% url 'issue_detail' obj.issue.pk %}{{ l10_back.qs }}">{{ obj.issue.title }}</a>{% endif %}
     {% if obj.done %} · <span class="pill st-done">Done</span>{% endif %}
   </p>
   <form method="post" action="{% url 'todo_edit' obj.pk %}" hx-boost="false" class="card card-pad">{% csrf_token %}
-    <input type="hidden" name="next" value="{{ request.GET.next|default:'/todos/' }}">
+    <input type="hidden" name="next" value="{% if l10_back %}{{ l10_back.url }}{% elif request.GET.next %}{{ request.GET.next }}{% else %}/todos/{% endif %}">
     {% if editable %}{% include "_form.html" %}{% else %}<p class="text-sm">{{ obj.title }}</p><p class="text-sm text-neutral-600 prose-pre mt-2">{{ obj.notes }}</p>{% endif %}
     {% if editable %}
     <div class="mt-5 flex items-center gap-2">
       <button class="btn btn-primary">Save</button>
-      <a href="{{ request.GET.next|default:'/todos/' }}" class="btn">Cancel</a>
+      <a href="{% if l10_back %}{{ l10_back.url }}{% elif request.GET.next %}{{ request.GET.next }}{% else %}/todos/{% endif %}" class="btn">Cancel</a>
       <button name="delete" value="1" class="btn btn-ghost btn-danger ml-auto" onclick="return confirm('Delete this to-do?')">Delete</button>
     </div>
     {% endif %}

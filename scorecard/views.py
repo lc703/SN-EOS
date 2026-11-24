@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 from core.forms import PersonField, StyledForm, owner_choices
 from core.models import monday_of
 from core.permissions import can_edit_owned, is_admin, is_team_member
+from core.l10 import l10_return
 from core.utils import require, scope
 
 from .models import Measurable, Plant, ScoreEntry
@@ -241,11 +242,13 @@ def measurable_edit(request, pk):
             m.active = False
             m.save(update_fields=["active"])
             messages.success(request, f"Archived “{m.title}”.")
-            return redirect("scorecard")
+            back = l10_return(request)
+            return redirect(back["url"]) if back else redirect("scorecard")
         if form.is_valid():
             form.save()
             messages.success(request, "Measurable saved.")
-            return redirect("scorecard")
+            back = l10_return(request)
+            return redirect(back["url"]) if back else redirect("scorecard")
     return render(request, "scorecard/measurable_form.html", {"form": form, "obj": m})
 
 
@@ -294,6 +297,7 @@ def measurable_panel(request, pk):
         "average": m.format_value(avg if m.is_currency else avg.quantize(Decimal("1") if abs(avg) >= 1000 else Decimal("0.01"))) if values else "",
         "hit_pct": round(100 * hits[0] / hits[1]) if hits else None, "hits": hits,
         "editable": can_edit_owned(request.user, m), "plants": Plant.objects.all(),
+        "meeting_id": request.GET.get("meeting", "") if request.GET.get("meeting", "").isdigit() else "",
     })
 
 

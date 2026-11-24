@@ -5,7 +5,7 @@
   {% if sortable %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
   {% avatar r.owner %}
   <div class="min-w-[12rem] md:min-w-0 flex-1">
-    <a href="{% url 'rock_detail' r.pk %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-vals="unset">{{ r.title }}</a>
+    <a href="{% url 'rock_detail' r.pk %}{% l10_from 'rocks' %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-push-url="unset" hx-vals="unset">{{ r.title }}</a>
     <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-neutral-500">
       <span>{{ r.owner.display_name|default:"No owner" }}</span>
       {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
@@ -21,7 +21,7 @@
   <div class="ml-auto flex items-center justify-end gap-2 shrink-0 {% if mode != 'home' %}md:w-[13rem]{% endif %}">
     {% if user.is_admin or r.owner_id == user.pk or not r.owner_id %}
       {% if r.status != 'done' %}
-        <button type="button" class="btn btn-sm !h-8 gap-1.5" data-panel="{% url 'rock_update' r.pk %}" title="Weekly G/Y/R update">
+        <button type="button" class="btn btn-sm !h-8 gap-1.5" data-panel="{% url 'rock_update' r.pk %}{% if meeting_id %}?meeting={{ meeting_id }}{% endif %}" title="Weekly G/Y/R update">
           <span class="dot {{ r.this_week.color|color_dot }}"></span>{% if r.this_week %}Updated{% else %}Update{% endif %}
         </button>
       {% endif %}

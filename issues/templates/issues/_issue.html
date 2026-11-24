@@ -12,7 +12,7 @@
       </div>
     {% elif i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
     <div class="min-w-0 flex-1">
-      <a href="{% url 'issue_detail' i.pk %}{% if meeting %}?meeting={{ meeting.pk }}{% endif %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset">{{ i.title }}</a>
+      <a href="{% url 'issue_detail' i.pk %}{% if meeting %}?meeting={{ meeting.pk }}{% l10_from 'ids' '&' %}{% endif %}" class="font-medium leading-snug hover:underline" hx-select="unset" hx-target="unset" hx-swap="unset" hx-push-url="unset">{{ i.title }}</a>
       <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
         <span class="inline-flex items-center gap-1">{% avatar i.owner %}{{ i.owner.first|default:"Unassigned" }}</span>
         <span>· {{ i.created_at|ago }}</span>

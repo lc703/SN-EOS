@@ -141,3 +141,27 @@ def form_errors(context, key):
     request = context.get("request")
     session = getattr(request, "session", None)
     return (session.pop(f"form_errors:{key}", None) if session is not None else None) or {}
+
+
+@register.simple_tag(takes_context=True)
+def l10_from(context, section, prefix="?"):
+    """`?from=<this L10 section>` for links out of an L10 section, or "" when not inside a meeting."""
+    from urllib.parse import quote
+
+    from core.l10 import l10_path
+
+    mid = context.get("meeting_id")
+    if not mid:
+        meeting = context.get("meeting")
+        mid = getattr(meeting, "pk", None)
+    if not str(mid or "").isdigit():
+        return ""
+    from meetings.models import SECTION_KEYS
+
+    current = context.get("section") or context.get("l10_section")
+    if current in SECTION_KEYS:
+        section = current
+    roster = context.get("roster")
+    request = context.get("request")
+    show_all = bool(getattr(roster, "show_all", False)) or bool(request and request.GET.get("all") == "1")
+    return prefix + "from=" + quote(l10_path(int(mid), section, show_all), safe="")

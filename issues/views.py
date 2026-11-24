@@ -3,6 +3,7 @@ import datetime as dt
 from django import forms
 from django.contrib import messages
 from django.http import HttpResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -12,6 +13,7 @@ from core.forms import PersonField, StyledForm, owner_choices
 from core.models import Team
 from core.permissions import can_edit_team_item, is_admin, is_team_member
 from core.scoping import company_items, for_team, is_rollup, is_site
+from core.l10 import l10_return
 from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from meetings.models import Headline, Meeting
 from rocks.models import Rock
@@ -142,13 +144,21 @@ def issue_detail(request, pk):
         if "delete" in request.POST:
             issue.delete_and_recompact()
             messages.success(request, "Issue deleted.")
-            return redirect("issues")
+            back = l10_return(request)
+            return redirect(back["url"]) if back else redirect("issues")
         if form.is_valid():
             form.save()
             if (issue.team_id, issue.horizon) != before:
                 issue.clear_priority_if_taken()
             messages.success(request, "Issue saved.")
-            return redirect("issue_detail", pk=issue.pk)
+            back = l10_return(request)
+            mid = request.GET.get("meeting", "")
+            params = []
+            if mid.isdigit():
+                params.append(f"meeting={mid}")
+            if back:
+                params.append(back["qs"][1:])
+            return redirect(reverse("issue_detail", args=[issue.pk]) + ("?" + "&".join(params) if params else ""))
     return render(
         request,
         "issues/issue_detail.html",
