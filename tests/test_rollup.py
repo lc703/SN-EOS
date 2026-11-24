@@ -84,7 +84,7 @@ def test_company_rocks_page_rolls_up_every_team_with_chips(admin, all_teams, wor
 def test_site_rocks_page_stays_one_team(member, all_teams, world):
     body = get(member, "/rocks/", all_teams["ky"]).content.decode()
     assert "Rock ky" in body and "Rock lr" not in body and "Rock mabel" not in body
-    assert "site-chip" not in body
+    assert ">Kentucky</span>" in body and ">Le Roy</span>" not in body
 
 
 def test_company_todos_roll_up_and_private_stay_private(admin, all_teams, world):

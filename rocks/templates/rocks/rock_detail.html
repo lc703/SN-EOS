@@ -80,7 +80,7 @@
       <section>
         <h2 class="section-title mb-2">Issues raised from this rock</h2>
         <div class="list-group">
-          {% for i in issues %}<a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill {% if i.is_open %}pill-muted{% else %}st-done{% endif %}">{{ i.get_status_display }}</span><span class="flex-1 truncate">{{ i.title }}</span></a>{% endfor %}
+          {% for i in issues %}<a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm"><span class="pill {% if i.is_open %}pill-muted{% else %}st-done{% endif %}">{{ i.get_status_display }}</span><span class="flex-1 truncate">{{ i.title }}</span>{% include "_site_chip.html" with t=i.team always=1 %}</a>{% endfor %}
         </div>
       </section>
     {% endif %}

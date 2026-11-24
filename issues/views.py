@@ -8,8 +8,9 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.forms import PersonField, StyledForm, people_choices
+from core.models import Team
 from core.permissions import can_edit_team_item, is_admin, is_team_member
-from core.scoping import for_team
+from core.scoping import for_team, is_rollup
 from core.utils import go_back, is_htmx, require, scope
 from meetings.models import Headline, Meeting
 from rocks.models import Rock
@@ -22,18 +23,36 @@ from .models import Issue
 
 class IssueForm(StyledForm, forms.ModelForm):
     owner = PersonField(queryset=None, required=False)
+    team = forms.ModelChoiceField(queryset=Team.objects.order_by("sort", "name"), required=False, label="Site", empty_label=None)
 
     class Meta:
         model = Issue
-        fields = ["title", "owner", "horizon", "description"]
+        fields = ["title", "team", "owner", "horizon", "description"]
         widgets = {"description": forms.Textarea(attrs={"rows": 3})}
 
     full_width = ["title"]
 
-    def __init__(self, *args, team=None, **kwargs):
+    def __init__(self, *args, team=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        team = team or (self.instance.team if self.instance.team_id else None)
-        self.fields["owner"].queryset = people_choices(team, include=[self.instance.owner_id])
+        self.user = user
+        self.current_team = self.instance.team if self.instance.team_id else None
+        default = self.current_team or team
+        self.default_team = default
+        self.fields["team"].initial = default
+        owners = people_choices(default, include=[self.instance.owner_id])
+        picked = self.data.get("team") if self.is_bound else None
+        if picked and str(picked).isdigit() and (other := Team.objects.filter(pk=int(picked)).first()) and other != default:
+            owners = (owners | people_choices(other, include=[self.instance.owner_id])).distinct()
+        self.fields["owner"].queryset = owners
+
+    def clean_team(self):
+        team = self.cleaned_data.get("team") or self.default_team
+        if team is None:
+            raise forms.ValidationError("Pick a site.")
+        if team != self.current_team and self.user is not None:
+            if not (is_admin(self.user) or is_team_member(self.user, team)):
+                raise forms.ValidationError(f"You're not on the {team.name} team.")
+        return team
 
 
 def open_issues(team, horizon=Issue.SHORT):
@@ -43,8 +62,15 @@ def open_issues(team, horizon=Issue.SHORT):
 def issues_list(request):
     team, _ = scope(request)
     horizon = Issue.LONG if request.GET.get("list") == "long" else Issue.SHORT
-    issues = open_issues(team, horizon).prefetch_related("todos")
-    solved = for_team(Issue.objects.filter(status=Issue.SOLVED), team).select_related("owner", "team").order_by("-solved_at", "-created_at")[:15]
+    sites, site = (list(Team.objects.order_by("sort", "name")), None)
+    if is_rollup(team):
+        slug = request.GET.get("site", "")
+        site = next((t for t in sites if t.slug == slug), None)
+    else:
+        sites = []
+    scoped = lambda qs: qs.filter(team=site) if site else for_team(qs, team)
+    issues = scoped(Issue.objects.filter(horizon=horizon, status=Issue.OPEN)).select_related("owner", "team").prefetch_related("todos")
+    solved = scoped(Issue.objects.filter(status=Issue.SOLVED)).select_related("owner", "team").order_by("-solved_at", "-created_at")[:15]
     can_add = is_admin(request.user) or is_team_member(request.user, team)
     return render(
         request,
@@ -53,9 +79,9 @@ def issues_list(request):
             "issues": issues,
             "solved": solved,
             "horizon": horizon,
-            "counts": {
-                h: for_team(Issue.objects.filter(horizon=h, status=Issue.OPEN), team).count() for h in (Issue.SHORT, Issue.LONG)
-            },
+            "counts": {h: scoped(Issue.objects.filter(horizon=h, status=Issue.OPEN)).count() for h in (Issue.SHORT, Issue.LONG)},
+            "sites": sites,
+            "site": site,
             "can_add": can_add,
             "can_edit": can_add,
             "people": people_choices(team, include=[request.user.pk]),
@@ -68,24 +94,24 @@ def issues_list(request):
 def issue_new(request):
     team, _ = scope(request)
     require(is_admin(request.user) or is_team_member(request.user, team))
-    form = IssueForm(request.POST, team=team)
+    form = IssueForm(request.POST, team=team, user=request.user)
     if form.is_valid():
         issue = form.save(commit=False)
-        issue.team = team
         issue.created_by = request.user
         if not issue.owner_id:
             issue.owner = request.user
         issue.raised_meeting = Meeting.objects.filter(pk=request.POST.get("meeting") or 0).first()
         issue.save()
     else:
-        messages.error(request, "An issue needs a title.")
+        messages.error(request, "An issue needs a title." if "title" in form.errors else " ".join(form.errors.get("team", ["Couldn't add that issue."])))
     return go_back(request, "/issues/")
 
 
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue.objects.select_related("team", "owner", "source_measurable", "source_rock", "source_headline"), pk=pk)
     editable = can_edit_team_item(request.user, issue)
-    form = IssueForm(request.POST or None, instance=issue)
+    before = (issue.team_id, issue.horizon)
+    form = IssueForm(request.POST or None, instance=issue, user=request.user)
     if request.method == "POST":
         require(editable)
         if "delete" in request.POST:
@@ -94,6 +120,8 @@ def issue_detail(request, pk):
             return redirect("issues")
         if form.is_valid():
             form.save()
+            if (issue.team_id, issue.horizon) != before:
+                issue.clear_priority_if_taken()
             messages.success(request, "Issue saved.")
             return redirect("issue_detail", pk=issue.pk)
     return render(

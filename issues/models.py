@@ -73,6 +73,18 @@ class Issue(LegacyMixin):
         self.solved_meeting = None
         self.save()
 
+    def clear_priority_if_taken(self):
+        """After a team or list change: keep the rank only if nobody in the new list holds it."""
+        if not (self.priority and self.is_open):
+            return False
+        taken = Issue.objects.filter(
+            team=self.team, horizon=self.horizon, status=self.OPEN, priority=self.priority
+        ).exclude(pk=self.pk).exists()
+        if taken:
+            self.priority = None
+            self.save(update_fields=["priority"])
+        return taken
+
     def set_priority(self, rank):
         """Rank 1-3 is unique per team list; the old holder of that rank is bumped off."""
         if rank:

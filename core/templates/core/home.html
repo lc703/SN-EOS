@@ -92,7 +92,7 @@
         <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5">
           {% if i.priority %}<span class="prio prio-on">{{ i.priority }}</span>{% endif %}
           <span class="flex-1 text-sm font-medium truncate">{{ i.title }}</span>
-          <span class="pill pill-muted">{{ i.team.name }}</span><span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
+          {% include "_site_chip.html" with t=i.team always=1 %}<span class="text-xs text-neutral-500 hidden sm:inline">{{ i.get_horizon_display }}</span>
         </a>
       {% empty %}<p class="px-4 py-6 text-sm text-neutral-500">{% if viewing_other %}No open issues {{ subject.first }} owns.{% else %}No open issues you own.{% endif %}</p>{% endfor %}
       {% if issues|length > 10 %}<a href="{% url 'issues' %}" class="block px-4 py-2.5 text-xs link">{{ issues|length|add:"-10" }} more on the Issues lists</a>{% endif %}

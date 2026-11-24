@@ -1,2 +1,2 @@
-{# Small team/site label for roll-up lists. Pass t=<team>. Only shows on the Company view, where lists mix every site. #}
-{% if rollup and t %}<span class="pill pill-muted site-chip" title="Team">{{ t.name }}</span>{% endif %}
+{# Small team/site label. Pass t=<team>. Shows on the Company roll-up, or anywhere with always=1 (issues, to-dos, rocks). #}
+{% if t and rollup or t and always %}<span class="pill pill-muted site-chip" title="Site">{{ t.name }}</span>{% endif %}

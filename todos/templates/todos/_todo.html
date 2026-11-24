@@ -14,7 +14,7 @@
     <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
       <span class="{% if t.overdue %}text-red-700 font-semibold{% endif %}">{% if t.overdue %}Overdue · {% endif %}{{ t.due_date|relday }}</span>
       {% if t.is_private %}<span class="pill pill-muted">Private</span>{% endif %}
-      {% if compact and t.team %}<span>{{ t.team.name }}</span>{% elif not compact %}{% include "_site_chip.html" with t=t.team %}{% endif %}
+      {% if compact and t.team %}<span>{{ t.team.name }}</span>{% elif not compact %}{% include "_site_chip.html" with t=t.team always=1 %}{% endif %}
       {% if t.rock %}<a href="{% url 'rock_detail' t.rock.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Rock: {{ t.rock.title|truncatechars:32 }}</a>{% endif %}
       {% if t.issue %}<a href="{% url 'issue_detail' t.issue.pk %}" class="pill pill-muted hover:bg-neutral-200 max-w-[14rem] truncate" hx-select="unset" hx-target="unset" hx-swap="unset">Issue: {{ t.issue.title|truncatechars:32 }}</a>{% endif %}
       {% if t.notes %}<span title="{{ t.notes }}">· notes</span>{% endif %}

@@ -5,6 +5,7 @@
 <a href="{% if meeting %}{% url 'meeting' meeting.pk %}?s=ids{% else %}{% url 'issues' %}{% endif %}" class="text-sm text-neutral-500 hover:text-black">← {% if meeting %}Back to the meeting{% else %}Issues{% endif %}</a>
 <div class="mt-1 mb-5 flex flex-wrap items-start gap-3">
   <h1 class="text-2xl flex-1 min-w-0">{{ issue.title }}</h1>
+  {% include "_site_chip.html" with t=issue.team always=1 %}
   {% if issue.is_open %}<span class="pill pill-muted">Open · {{ issue.get_horizon_display }}</span>{% if issue.priority %}<span class="prio prio-on">{{ issue.priority }}</span>{% endif %}
   {% else %}<span class="pill st-done">Solved {{ issue.solved_at|date:"M j"|default:"" }}</span>{% endif %}
 </div>
