@@ -13,7 +13,7 @@
       </tr>
     </thead>
     <tbody {% if sortable and mode == "scorecard" %}data-sortable="{% url 'measurables_sort' %}"{% endif %}>
-      {% for row in rows %}{% if not row.plant_label or mode == "home" %}
+      {% for row in rows %}{% if row.section == "company" or mode == "home" %}
         {% include "scorecard/_row.html" %}
       {% endif %}{% empty %}
         <tr><td colspan="20">{% include "_empty.html" with title="No measurables yet" text="Pick five to fifteen weekly numbers that tell you, at a glance, whether the business is on track. One owner and one goal each." icon="M4 19V5m4 14V9m4 10v-6m4 6V7m4 12v-9" %}</td></tr>
@@ -21,7 +21,7 @@
     </tbody>
     {% if mode != "home" %}
     <tbody class="sc-plants">
-      {% for row in rows %}{% if row.plant_label %}
+      {% for row in rows %}{% if row.section == "plants" %}
         {% include "scorecard/_row.html" %}
       {% endif %}{% endfor %}
     </tbody>

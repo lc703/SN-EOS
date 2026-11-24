@@ -99,26 +99,25 @@ def test_new_measurable_on_a_plant_joins_that_plants_team(as_user, teams, plants
 
 # ---- the single scorecard ----------------------------------------------------------------------
 
-def test_scorecard_has_no_team_or_plant_switcher(admin, teams, board, quarter):
+def test_scorecard_has_the_team_switcher_and_quarter_picker(admin, teams, board, quarter):
     body = _page(admin).content.decode()
-    assert 'href="?team=' not in body and "eyebrow shrink-0 hidden sm:inline\">Team" not in body
-    assert 'name="quarter"' in body  # the quarter picker stays
+    assert 'href="?team=company"' in body and 'href="?team=kentucky"' in body
+    assert 'name="quarter"' in body
     assert "Company · Q4 2026" in body
 
 
-def test_every_team_param_shows_the_same_scorecard(admin, teams, board, quarter):
-    plain = _page(admin).content.decode()
-    for slug in ("kentucky", "le-roy", "company"):
-        rows = re.findall(r'id="m-(\d+)"', _page(admin, f"/scorecard/?team={slug}").content.decode())
-        assert rows == re.findall(r'id="m-(\d+)"', plain) and len(rows) == 5
+def test_company_and_unknown_team_params_show_the_whole_scorecard(admin, teams, board, quarter):
+    plain = _page(admin, "/scorecard/?team=company").content.decode()
+    rows = re.findall(r'id="m-(\d+)"', plain)
+    assert len(rows) == 5 and rows == re.findall(r'id="m-(\d+)"', _page(admin).content.decode())
 
 
 def test_company_rows_first_then_plants_grouped_by_name(admin, board, quarter):
     body = _page(admin).content.decode()
     ids = [int(x) for x in re.findall(r'id="m-(\d+)"', body)]
     assert ids == [board["pipe"].pk, board["leads"].pk, board["oee_kentucky"].pk, board["oee_le-roy"].pk, board["oee_mabel"].pk]
-    assert body.count('class="sc-group"') == 1 and 'sc-group-label">OEE<' in body
-    assert body.index("Total pipeline") < body.index("sc-group-label") < body.index(">Kentucky</button>")
+    assert body.count('class="sc-group"') == 2 and 'sc-group-label">OEE<' in body and 'sc-group-label">Company<' in body
+    assert body.index("Total pipeline") < body.index('sc-group-label">OEE<') < body.index(">Kentucky</button>")
     assert body.index(">Kentucky</button>") < body.index(">Le Roy</button>") < body.index(">Mabel</button>")
 
 
@@ -151,7 +150,8 @@ def test_reordering_company_rows_sticks(as_user, admin, teams, board, quarter):
 def test_layout_orders_plants_by_plant_order_not_creation(board, plants):
     ordered, groups = layout(Measurable.objects.filter(active=True))
     assert [m.plant_name for m in ordered if m.title == "OEE"] == ["Kentucky", "Le Roy", "Mabel"]
-    assert groups[board["oee_kentucky"].pk] == ("OEE", True) and groups[board["oee_mabel"].pk] == ("OEE", False)
+    assert groups[board["oee_kentucky"].pk] == ("OEE", True, True) and groups[board["oee_mabel"].pk] == ("OEE", False, True)
+    assert groups[board["pipe"].pk] == ("Company", True, False)
 
 
 def test_single_plant_measurable_still_sits_under_its_name(admin, teams, plants, quarter):
@@ -422,8 +422,8 @@ def test_leadership_l10_shows_the_whole_scorecard_and_a_plant_l10_only_its_plant
     c = Client()
     c.force_login(member)
     seg = c.get(f"/meetings/{ky_meeting.pk}/?s=scorecard").content.decode()
-    assert re.findall(r'id="m-(\d+)"', seg) == [str(board["oee_kentucky"].pk)]
-    assert "Kentucky only" in seg and "Total pipeline" not in seg
+    assert re.findall(r'id="m-(\d+)"', seg) == [str(board[k].pk) for k in ("pipe", "leads", "oee_kentucky")]
+    assert "Company, then Kentucky" in seg and ">Le Roy</button>" not in seg
 
 
 def test_non_plant_team_l10_shows_everything(board, teams, cur_q, admin):

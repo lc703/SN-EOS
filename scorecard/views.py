@@ -16,7 +16,7 @@ from core.permissions import can_edit_owned, is_admin, is_team_member
 from core.utils import require, scope
 
 from .models import Measurable, Plant, ScoreEntry
-from .plants import assign_plant, layout, team_for_plant
+from .plants import COMPANY_GROUP, assign_plant, layout, scorecard_for_team, team_for_plant
 
 
 @dataclass
@@ -38,6 +38,13 @@ class Row:
     latest_state: str = ""
     group: str = ""
     group_first: bool = False
+    group_note: str = ""
+    sub: bool = False
+
+    @property
+    def section(self):
+        """Company measurables sit in the top section; plant measurables below."""
+        return "plants" if self.measurable.plant_id else "company"
 
     @property
     def plant_label(self):
@@ -76,12 +83,13 @@ def trailing_for(m, values):
     return (average if m.is_currency else average.quantize(Decimal("0.01"))), "avg"
 
 
-def build_rows(measurables, weeks, user, grouped=False):
-    """One Row per measurable. `grouped` puts Company rows first, then plant rows under a header per name."""
+def build_rows(measurables, weeks, user, grouped=False, plant=None):
+    """One Row per measurable. `grouped` puts Company rows first, then plant rows under a header per name.
+    `plant` is a site's own view: Company section on top, then that plant's measurables."""
     measurables = list(measurables)
     groups = {}
     if grouped:
-        measurables, groups = layout(measurables)
+        measurables, groups = layout(measurables, plant)
     entries = {
         (e.measurable_id, e.week_start): e.value
         for e in ScoreEntry.objects.filter(measurable__in=measurables, week_start__in=weeks)
@@ -90,7 +98,9 @@ def build_rows(measurables, weeks, user, grouped=False):
     rows = []
     for m in measurables:
         row = Row(measurable=m, editable=can_edit_owned(user, m))
-        row.group, row.group_first = groups.get(m.pk, ("", False))
+        row.group, row.group_first, row.sub = groups.get(m.pk, ("", False, False))
+        if plant is not None and row.group == COMPANY_GROUP:
+            row.group_note = "Company numbers, shown on every site"
         values = []
         for w in weeks:
             v = entries.get((m.pk, w))
@@ -121,10 +131,10 @@ def _can_add(user):
 
 
 def scorecard(request):
-    _, quarter = scope(request)
+    team, quarter = scope(request)
     weeks = quarter.weeks() if quarter else []
-    measurables = Measurable.objects.filter(active=True).select_related("owner", "team", "plant")
-    rows = build_rows(measurables, weeks, request.user, grouped=True)
+    measurables, plant = scorecard_for_team(team)
+    rows = build_rows(measurables, weeks, request.user, grouped=True, plant=plant)
     can_add = _can_add(request.user)
     return render(
         request,
@@ -137,9 +147,9 @@ def scorecard(request):
             "show_trend": True,
             "can_add": can_add,
             "sortable": can_add,
-            "form": MeasurableForm() if can_add else None,
+            "form": MeasurableForm(initial={"plant": plant}) if can_add else None,
+            "plant": plant,
             "wide": True,
-            "hide_team_scope": True,
         },
     )
 
@@ -165,6 +175,7 @@ def cell(request, pk, week):
     if week not in cols:
         cols.append(week)
     row = build_rows([m], cols, request.user)[0]
+    row.sub = request.POST.get("sub") == "1"
     return render(
         request,
         "scorecard/_cell_response.html",

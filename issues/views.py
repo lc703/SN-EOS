@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from core.forms import PersonField, StyledForm, people_choices
 from core.permissions import can_edit_team_item, is_admin, is_team_member
+from core.scoping import for_team
 from core.utils import go_back, is_htmx, require, scope
 from meetings.models import Headline, Meeting
 from rocks.models import Rock
@@ -36,14 +37,14 @@ class IssueForm(StyledForm, forms.ModelForm):
 
 
 def open_issues(team, horizon=Issue.SHORT):
-    return Issue.objects.filter(team=team, horizon=horizon, status=Issue.OPEN).select_related("owner")
+    return for_team(Issue.objects.filter(horizon=horizon, status=Issue.OPEN), team).select_related("owner", "team")
 
 
 def issues_list(request):
     team, _ = scope(request)
     horizon = Issue.LONG if request.GET.get("list") == "long" else Issue.SHORT
     issues = open_issues(team, horizon).prefetch_related("todos")
-    solved = Issue.objects.filter(team=team, status=Issue.SOLVED).select_related("owner").order_by("-solved_at", "-created_at")[:15]
+    solved = for_team(Issue.objects.filter(status=Issue.SOLVED), team).select_related("owner", "team").order_by("-solved_at", "-created_at")[:15]
     can_add = is_admin(request.user) or is_team_member(request.user, team)
     return render(
         request,
@@ -53,7 +54,7 @@ def issues_list(request):
             "solved": solved,
             "horizon": horizon,
             "counts": {
-                h: Issue.objects.filter(team=team, horizon=h, status=Issue.OPEN).count() for h in (Issue.SHORT, Issue.LONG)
+                h: for_team(Issue.objects.filter(horizon=h, status=Issue.OPEN), team).count() for h in (Issue.SHORT, Issue.LONG)
             },
             "can_add": can_add,
             "can_edit": can_add,

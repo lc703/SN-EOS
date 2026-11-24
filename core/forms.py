@@ -33,11 +33,11 @@ class DateInput(forms.DateInput):
 
 
 def people_choices(team=None, include=None):
-    """Team members (or everyone when the team has none), plus any ids in `include`."""
+    """Team members (or everyone when the team has none, or is the Company roll-up), plus any ids in `include`."""
     from django.db.models import Q
 
     qs = User.objects.filter(is_active=True)
-    if team is not None and team.members.exists():
+    if team is not None and not team.is_leadership and team.members.exists():
         cond = Q(teams=team)
         extra = [i for i in (include or []) if i]
         if extra:

@@ -1,9 +1,9 @@
-{% load sn %}{% with m=row.measurable %}<td id="mt-{{ m.pk }}" class="sc-sticky sc-title px-3 py-1.5 {% if mode != 'home' and row.plant_label %}sc-sub{% endif %}" {% if oob %}hx-swap-oob="true"{% endif %}>
+{% load sn %}{% with m=row.measurable %}<td id="mt-{{ m.pk }}" class="sc-sticky sc-title px-3 py-1.5 {% if mode != 'home' and row.sub %}sc-sub{% endif %}" {% if oob %}hx-swap-oob="true"{% endif %}>
   <div class="flex items-center gap-2">
-    {% if sortable and mode == "scorecard" and not row.plant_label %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
+    {% if sortable and mode == "scorecard" and row.section == "company" %}<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>{% endif %}
     {% avatar m.owner %}
     <div class="min-w-0 flex-1">
-      <button type="button" class="sc-name font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}" data-panel-wide title="{{ m.title }}{% if m.plant_id %} · {{ m.plant.name }}{% endif %}: trend and details" aria-label="{{ m.title }}{% if m.plant_id %}, {{ m.plant.name }}{% endif %}">{% if mode != 'home' and row.plant_label %}{{ row.plant_label }}{% else %}{{ m.title }}{% endif %}</button>
+      <button type="button" class="sc-name font-semibold leading-tight truncate block max-w-full text-left hover:underline" data-panel="{% url 'measurable_panel' m.pk %}" data-panel-wide title="{{ m.title }}{% if m.plant_id %} · {{ m.plant.name }}{% endif %}: trend and details" aria-label="{{ m.title }}{% if m.plant_id %}, {{ m.plant.name }}{% endif %}">{% if mode != 'home' and row.sub %}{{ row.plant_label }}{% else %}{{ m.title }}{% endif %}</button>
       <div class="text-[11.5px] text-neutral-500 truncate">{% if m.owner %}{{ m.owner.display_name }}{% else %}No owner{% endif %}{% if mode == 'home' %} · {{ m.plant_name }}{% endif %}</div>
       <div class="sc-inline-goal">Goal {% if m.goal is None %}not set{% else %}{{ m.goal_display }}{% endif %}</div>
       {% if m.source %}<div class="text-[10.5px] italic leading-tight text-neutral-400 truncate" title="{{ m.source }}">{{ m.source }}</div>{% endif %}

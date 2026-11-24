@@ -128,6 +128,20 @@ def _team(actor, ref=None):
     return team
 
 
+INCLUDE_ALL = {
+    "type": "boolean", "default": False,
+    "description": "Company roll-up: when `team` is Company (or omitted), return every team's items (Company, Kentucky, Le Roy, "
+                   "Mabel) instead of only the Company team's. Each item carries its `team`. Ignored for a site team.",
+}
+
+
+def _rolls_up(actor, team, include_all):
+    """True when `include_all` asks for the Company roll-up: no team given, or the leadership/Company team."""
+    if not include_all:
+        return False
+    return team in (None, "") or _team(actor, team).is_leadership
+
+
 def _person(ref, default=None):
     if ref in (None, ""):
         return default
@@ -301,8 +315,10 @@ def _plant_filter(ref):
       "grouped by name. Each has goal, owner, plant and weekly values for the quarter (13 weeks).",
       {"plant": {"type": "string", "description": "Only this plant's rows: 'company', 'kentucky', 'le-roy' or 'mabel'. Omit for everything."},
        "team": {"type": "string", "description": "Optional: only measurables on this team (rarely needed)."},
+       "include_all": {"type": "boolean", "default": False, "description": "With a site `team` (kentucky, le-roy, mabel): "
+                       "also return the Company measurables, the way the site's Scorecard page shows them."},
        "quarter": {"type": "string", "description": "e.g. 'Q4 2026'. Defaults to the current quarter."}})
-def get_scorecard(actor, team=None, quarter=None, plant=None):
+def get_scorecard(actor, team=None, quarter=None, plant=None, include_all=False):
     q = _quarter(quarter)
     weeks = q.weeks()
     ms = Measurable.objects.filter(active=True).select_related("team", "owner", "plant")
@@ -310,7 +326,11 @@ def get_scorecard(actor, team=None, quarter=None, plant=None):
     if filtering:
         ms = ms.filter(plant=p)
     if team not in (None, ""):
-        ms = ms.filter(team=_team(actor, team))
+        t = _team(actor, team)
+        if include_all:
+            ms = ms.filter(Q(team=t) | Q(plant__isnull=True))
+        else:
+            ms = ms.filter(team=t)
     ordered, _ = layout(ms)
     return {"quarter": q.name, "weeks": weeks, "measurables": [_measurable(m, weeks) for m in ordered]}
 
@@ -318,11 +338,11 @@ def get_scorecard(actor, team=None, quarter=None, plant=None):
 @tool("list_rocks", "Rocks for a quarter. Filter by team and/or owner.",
       {"team": {"type": "string", "description": "Team slug. Omit for all teams."},
        "owner": {"type": "string", "description": "'me', an email, or a name."},
-       "quarter": {"type": "string"}})
-def list_rocks(actor, team=None, owner=None, quarter=None):
+       "quarter": {"type": "string"}, "include_all": INCLUDE_ALL})
+def list_rocks(actor, team=None, owner=None, quarter=None, include_all=False):
     q = _quarter(quarter)
     qs = Rock.objects.filter(quarter=q).select_related("team", "owner", "quarter").prefetch_related("milestones", "updates")
-    if team:
+    if team and not _rolls_up(actor, team, include_all):
         t = _team(actor, team)
         qs = qs.filter(Q(team=t) | Q(is_company=True))
     if owner:
@@ -337,10 +357,11 @@ def get_rock(actor, rock_id):
 
 @tool("list_issues", "A team's Issues List (open by default).",
       {"team": {"type": "string"}, "list": {"type": "string", "enum": ["short_term", "long_term", "all"], "default": "short_term"},
-       "status": {"type": "string", "enum": ["open", "solved"], "default": "open"}})
-def list_issues(actor, team=None, list="short_term", status="open"):
-    t = _team(actor, team)
-    qs = Issue.objects.filter(team=t, status=status).select_related("team", "owner")
+       "status": {"type": "string", "enum": ["open", "solved"], "default": "open"}, "include_all": INCLUDE_ALL})
+def list_issues(actor, team=None, list="short_term", status="open", include_all=False):
+    qs = Issue.objects.filter(status=status).select_related("team", "owner")
+    if not _rolls_up(actor, team, include_all):
+        qs = qs.filter(team=_team(actor, team))
     if list != "all":
         qs = qs.filter(horizon=Issue.LONG if list == "long_term" else Issue.SHORT)
     return [_issue(i) for i in qs[:200]]
@@ -349,10 +370,10 @@ def list_issues(actor, team=None, list="short_term", status="open"):
 @tool("list_todos", "To-Dos. Defaults to your own open to-dos. Private to-dos are only visible to their owner. "
       "Each to-do shows whether it is in Asana (in_asana, asana_url, asana_state: none/sent/done). Sending to Asana is done in the app.",
       {"team": {"type": "string"}, "owner": {"type": "string", "description": "'me' (default), email, name, or 'all'."},
-       "include_done": {"type": "boolean", "default": False}})
-def list_todos(actor, team=None, owner="me", include_done=False):
+       "include_done": {"type": "boolean", "default": False}, "include_all": INCLUDE_ALL})
+def list_todos(actor, team=None, owner="me", include_done=False, include_all=False):
     qs = Todo.objects.visible_to(actor.user).select_related("team", "owner")
-    if team:
+    if team and not _rolls_up(actor, team, include_all):
         qs = qs.filter(team=_team(actor, team))
     if owner != "all":
         qs = qs.filter(owner=_person(owner, actor.user))
@@ -362,12 +383,13 @@ def list_todos(actor, team=None, owner="me", include_done=False):
 
 
 @tool("list_headlines", "Recent customer and employee headlines for a team.",
-      {"team": {"type": "string"}, "days": {"type": "integer", "default": 14}})
-def list_headlines(actor, team=None, days=14):
-    t = _team(actor, team)
+      {"team": {"type": "string"}, "days": {"type": "integer", "default": 14}, "include_all": INCLUDE_ALL})
+def list_headlines(actor, team=None, days=14, include_all=False):
     since = timezone.now() - dt.timedelta(days=int(days))
-    qs = Headline.objects.filter(team=t, created_at__gte=since).select_related("author")
-    return [{"id": h.pk, "kind": h.kind, "text": h.text, "author": _user(h.author), "created_at": h.created_at} for h in qs]
+    qs = Headline.objects.filter(created_at__gte=since).select_related("author", "team")
+    if not _rolls_up(actor, team, include_all):
+        qs = qs.filter(team=_team(actor, team))
+    return [{"id": h.pk, "team": h.team.slug, "kind": h.kind, "text": h.text, "author": _user(h.author), "created_at": h.created_at} for h in qs]
 
 
 @tool("get_l10", "The team's current (or most recent) Level 10 Meeting: section, attendees, headlines, ratings.",

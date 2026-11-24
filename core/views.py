@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
+from core.scoping import for_team
 from issues.models import Issue
 from meetings.models import Meeting
 from rocks.models import Rock
@@ -164,21 +165,21 @@ def people_picker(viewer):
 def team_pulse(team, quarter, today):
     """Leadership-at-a-glance numbers for the team in scope."""
     rocks = Rock.objects.filter(quarter=quarter)
-    rocks = rocks.filter(is_company=True) if team.is_leadership else rocks.filter(team=team)
+    rocks = rocks if team.is_leadership else rocks.filter(team=team)
     rs = rock_summary(rocks)
     last_week = monday_of(today) - dt.timedelta(days=7)
     measurables = list(scorecard_for_team(team)[0])
     entries = {e.measurable_id: e.value for e in ScoreEntry.objects.filter(measurable__in=measurables, week_start=last_week)}
     judged = [m.is_on_goal(entries.get(m.pk)) for m in measurables]
     judged = [j for j in judged if j is not None]
-    team_completion = weekly_completion(Todo.objects.filter(team=team, is_private=False), weeks=1, today=today)
+    team_completion = weekly_completion(for_team(Todo.objects.filter(is_private=False), team), weeks=1, today=today)
     last = team_completion[-1] if team_completion else None
     return {
         "team": team, "rocks": rs,
         "rocks_pct": round(100 * (rs["on_track"] + rs["done"]) / rs["total"]) if rs["total"] else None,
         "scorecard_pct": round(100 * sum(judged) / len(judged)) if judged else None,
         "scorecard_n": len(judged), "measurables": len(measurables), "week": last_week,
-        "issues": Issue.objects.filter(team=team, status=Issue.OPEN).count(),
+        "issues": for_team(Issue.objects.filter(status=Issue.OPEN), team).count(),
         "todo_pct": last[1] if last else None,
     }
 

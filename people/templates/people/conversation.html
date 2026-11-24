@@ -9,7 +9,7 @@
     <h1 class="text-2xl leading-tight">{{ c.get_kind_display }} with {{ c.person.first }}</h1>
     <p class="text-sm text-neutral-500">{{ c.date|date:"F j, Y" }}{% if c.manager %} · with {{ c.manager.display_name }}{% endif %}{% if c.quarter %} · {{ c.quarter.name }}{% endif %} · <span class="text-neutral-400">Private: {{ c.person.first }}, their manager and admins</span></p>
   </div>
-  <div class="flex items-center gap-2">
+  <div class="flex flex-wrap items-center gap-2">
     <span class="inline-flex items-center gap-2 text-sm tabular-nums card px-3 h-9"><span class="flex items-center gap-1"><span class="dot dot-green"></span>{{ counts.green }}</span><span class="flex items-center gap-1"><span class="dot dot-yellow"></span>{{ counts.yellow }}</span><span class="flex items-center gap-1"><span class="dot dot-red"></span>{{ counts.red }}</span>{% if unrated %}<span class="text-neutral-400">· {{ unrated }} open</span>{% endif %}</span>
     {% if editable %}
       <form method="post">{% csrf_token %}

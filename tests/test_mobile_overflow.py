@@ -56,6 +56,12 @@ def _pages():
         f"/planning/{ids['session']}/",
         "/settings/api/",
         "/settings/audit/",
+        "/scorecard/?team=kentucky",
+        "/rocks/?team=kentucky",
+        "/scorecard/?team=company",
+        "/rocks/?team=company",
+        "/todos/?team=company",
+        "/issues/?team=company",
     ]
 
 

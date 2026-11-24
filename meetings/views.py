@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from core.forms import people_choices
 from core.models import monday_of
+from core.scoping import for_team
 from core.permissions import is_admin, is_team_member
 from core.utils import go_back, is_htmx, require, scope
 from issues.models import Issue
@@ -31,7 +32,7 @@ def can_run(user, meeting):
 
 def meetings_list(request):
     team, _ = scope(request)
-    meetings = Meeting.objects.filter(team=team).prefetch_related("ratings", "attendees")[:30]
+    meetings = for_team(Meeting.objects.all(), team).select_related("team", "facilitator").prefetch_related("ratings", "attendees")[:30]
     return render(
         request,
         "meetings/meetings.html",
@@ -68,7 +69,7 @@ def section_context(request, meeting, section):
     elif section == "scorecard":
         weeks = _scorecard_weeks(meeting)
         measurables, plant = scorecard_for_team(team)
-        rows = build_rows(measurables, weeks, request.user, grouped=True)
+        rows = build_rows(measurables, weeks, request.user, grouped=True, plant=plant)
         ctx.update(
             rows=rows, plant=plant, weeks=weeks, cols=",".join(w.isoformat() for w in weeks),
             show_trailing=True, show_trend=True,
@@ -76,30 +77,30 @@ def section_context(request, meeting, section):
         )
     elif section == "rocks":
         qs = Rock.objects.filter(quarter=meeting.quarter).select_related("owner", "team", "quarter").prefetch_related("milestones", "updates")
-        rocks = with_strips(qs.filter(is_company=True) if team.is_leadership else qs.filter(team=team), meeting.quarter)
+        rocks = with_strips(qs if team.is_leadership else qs.filter(team=team), meeting.quarter)
         ctx.update(rocks=rocks, summary=rock_summary(rocks), statuses=Rock.STATUS_CHOICES)
     elif section == "headlines":
         since = meeting.started_at - dt.timedelta(days=7)
-        ctx["headlines"] = Headline.objects.filter(team=team).filter(
+        ctx["headlines"] = for_team(Headline.objects.all(), team).select_related("team").filter(
             Q(meeting=meeting) | Q(meeting__isnull=True, created_at__gte=since)
         ).select_related("author")
     elif section == "todos":
         week_ago = meeting.date - dt.timedelta(days=7)
-        todos = Todo.objects.filter(team=team, is_private=False).filter(
+        todos = for_team(Todo.objects.filter(is_private=False), team).filter(
             Q(done=False) | Q(done_at__date__gte=week_ago)
-        ).exclude(meeting=meeting).select_related("owner", "rock", "issue")
+        ).exclude(meeting=meeting).select_related("owner", "rock", "issue", "team")
         due = [t for t in todos if t.due_date <= meeting.date]
         ctx.update(
             todos=todos,
             due_pct=round(100 * sum(t.done for t in due) / len(due)) if due else None,
             due_done=sum(t.done for t in due), due_total=len(due),
-            weekly=weekly_completion(Todo.objects.filter(team=team, is_private=False), weeks=4, today=meeting.date),
+            weekly=weekly_completion(for_team(Todo.objects.filter(is_private=False), team), weeks=4, today=meeting.date),
             form=TodoForm(team=team, user=request.user),
         )
     elif section == "ids":
         ctx.update(
-            issues=Issue.objects.filter(team=team, horizon=Issue.SHORT, status=Issue.OPEN).select_related("owner").prefetch_related("todos"),
-            long_count=Issue.objects.filter(team=team, horizon=Issue.LONG, status=Issue.OPEN).count(),
+            issues=for_team(Issue.objects.filter(horizon=Issue.SHORT, status=Issue.OPEN), team).select_related("owner", "team").prefetch_related("todos"),
+            long_count=for_team(Issue.objects.filter(horizon=Issue.LONG, status=Issue.OPEN), team).count(),
             solved_here=meeting.solved_issues.all(),
             people=people_choices(team, include=[request.user.pk]),
             default_due=default_due(),
@@ -108,6 +109,7 @@ def section_context(request, meeting, section):
         )
     elif section == "conclude":
         ctx.update(conclude_context(meeting))
+    ctx["rollup"] = bool(team.is_leadership)
     return ctx
 
 

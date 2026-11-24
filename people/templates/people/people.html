@@ -8,7 +8,7 @@
     <h1 class="text-2xl">People</h1>
     <p class="text-sm text-neutral-500 mt-0.5">Directory, seats, 1:1s and the People Analyzer.</p>
   </div>
-  <a href="?{% if not show_all %}all=1{% endif %}" class="btn">{% if show_all %}Only {{ team.name }}{% else %}Show everyone{% endif %}</a>
+  {% if not rollup %}<a href="?{% if not show_all %}all=1{% endif %}" class="btn">{% if show_all %}Only {{ team.name }}{% else %}Show everyone{% endif %}</a>{% endif %}
 </div>
 <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
   {% for p in people %}

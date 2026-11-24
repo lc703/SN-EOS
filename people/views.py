@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from core.models import User
 from core.permissions import can_review_person, can_view_private_people_notes, manages
 from core.utils import go_back, require, scope
+from core.scoping import is_rollup
 from rocks.models import Rock
 from todos.models import Todo
 from vision.models import CoreValue, Seat
@@ -18,7 +19,7 @@ def people_list(request):
     team, _ = scope(request)
     show_all = request.GET.get("all") == "1"
     users = User.objects.filter(is_active=True).prefetch_related("teams", "seats").order_by("name")
-    if not show_all and team:
+    if not show_all and team and not is_rollup(team):
         users = users.filter(teams=team) | users.filter(home_team=team)
         users = users.distinct().order_by("name")
     return render(request, "people/people.html", {"people": users, "show_all": show_all})
@@ -107,7 +108,7 @@ def _conversation_people(request, team, show_all):
 
     users = User.objects.filter(is_active=True)
     if is_admin(request.user):
-        if not show_all and team:
+        if not show_all and team and not is_rollup(team):
             users = (users.filter(teams=team) | users.filter(home_team=team))
     else:
         managed = Seat.objects.filter(parent__person=request.user).values_list("person_id", flat=True)

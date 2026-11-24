@@ -79,6 +79,13 @@ class Command(BaseCommand):
         lead.members.set([u[k] for k in ("ava", "noah", "mia", "leo", "zoe")])
         ops.members.set([u[k] for k in ("leo", "eli", "ivy", "sam")])
         sales.members.set([u[k] for k in ("mia", "ruby", "owen")])
+        site_teams = {
+            name: Team.objects.create(name=name, short_code=code, sort=3 + i)
+            for i, (name, code) in enumerate([("Kentucky", "KY"), ("Le Roy", "LR"), ("Mabel", "MB")])
+        }
+        site_teams["Kentucky"].members.set([u[k] for k in ("eli", "sam")])
+        site_teams["Le Roy"].members.set([u[k] for k in ("sam", "ivy")])
+        site_teams["Mabel"].members.set([u[k] for k in ("ivy", "eli")])
 
         # ---------------- V/TO ----------------
         values = [CoreValue.objects.create(name=n, description=d, sort=i) for i, (n, d) in enumerate([
@@ -168,7 +175,7 @@ class Command(BaseCommand):
             for name, (owner, _) in plant_people.items():
                 lo, hi = rng
                 shift = {"Kentucky": 0, "Le Roy": -0.04, "Mabel": 0.03}[name] * (hi - lo)
-                sc.append((ops, title, owner, unit, cmp, goal, trail, (lo + shift, hi + shift), plants[name]))
+                sc.append((site_teams[name], title, owner, unit, cmp, goal, trail, (lo + shift, hi + shift), plants[name]))
         for i, row in enumerate(sc):
             team, title, owner, unit, cmp, goal, trail, (lo, hi) = row[:8]
             plant = row[8] if len(row) > 8 else None
@@ -200,6 +207,9 @@ class Command(BaseCommand):
             (ops, False, "Preventive maintenance plan for all lines", "sam", ["yellow", "green", "green", "green", "green", "green", "green", "green"], 2),
             (sales, False, "Sign 10 farms in the new northern territory", "ruby", ["green", "yellow", "yellow", "yellow", "red", "yellow", "yellow", "green"], 3),
             (sales, False, "Every quote out within 24 hours", "owen", ["green"] * 8, 0),
+            (site_teams["Kentucky"], False, "Blend room 5 and 6 online", "eli", ["green", "green", "yellow", "yellow", "green", "green", "green", "green"], 2),
+            (site_teams["Le Roy"], False, "Cut scrap to 1.5% on line 2", "sam", ["yellow", "yellow", "red", "yellow", "yellow", "green", "yellow", "yellow"], 2),
+            (site_teams["Mabel"], False, "Pass the Mabel customer audit", "ivy", ["green"] * 8, 1),
         ]
         rocks = []
         for i, (team, company, title, owner, colors, n_ms) in enumerate(rock_specs):
@@ -243,6 +253,9 @@ class Command(BaseCommand):
             (ops, "Mixer 2 vibration alarm", "eli", Issue.SHORT, 1),
             (ops, "Pallet wrap supplier late twice", "sam", Issue.SHORT, None),
             (sales, "CRM duplicates", "owen", Issue.SHORT, None),
+            (site_teams["Kentucky"], "Dust collector filter life", "eli", Issue.SHORT, None),
+            (site_teams["Le Roy"], "Line 2 scrap spikes on Mondays", "sam", Issue.SHORT, 1),
+            (site_teams["Mabel"], "Dock door 3 seal is torn", "ivy", Issue.SHORT, None),
         ]:
             Issue.objects.create(team=team, title=title, owner=u[owner], horizon=horizon, priority=prio, created_by=u[owner])
         Issue.objects.create(team=lead, title="Weekly revenue report is late", owner=u["zoe"], status=Issue.SOLVED,
@@ -254,6 +267,9 @@ class Command(BaseCommand):
             (lead, "Call the ISO auditor about dates", "ivy", 0, True), (lead, "Northern pricing proposal", "mia", 4, False),
             (ops, "Order spare bearings for mixer 2", "eli", 1, False), (ops, "Train two operators on SMED", "sam", 6, False),
             (sales, "Visit Hillcrest Dairy", "ruby", 3, False), (sales, "Clean CRM duplicates", "owen", -2, True),
+            (site_teams["Kentucky"], "Swap dust collector filters", "eli", 2, False),
+            (site_teams["Le Roy"], "Review line 2 changeover sheet", "sam", 3, False),
+            (site_teams["Mabel"], "Replace dock door 3 seal", "ivy", 5, False),
         ]
         for team, title, owner, due, done in todo_specs:
             Todo.objects.create(team=team, title=title, owner=u[owner], due_date=today + dt.timedelta(days=due), done=done,

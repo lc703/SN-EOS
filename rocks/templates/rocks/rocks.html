@@ -47,7 +47,25 @@
   </div>
 </section>
 
-{% if not team.is_leadership or team_rocks %}
+{% if rollup %}
+  {% regroup team_rocks by team as site_groups %}
+  {% for g in site_groups %}
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="section-title">{{ g.grouper.name }} rocks <span class="text-neutral-400 font-medium">Departmental</span></h2>
+      <span class="text-xs text-neutral-500">{{ g.list|length }}</span>
+    </div>
+    <div class="list-group">
+      {% for r in g.list %}{% include "rocks/_rock.html" %}{% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <section>
+    <div class="flex items-center justify-between mb-2"><h2 class="section-title">Departmental rocks <span class="text-neutral-400 font-medium">All teams</span></h2></div>
+    <div class="list-group"><div class="px-4">{% include "_empty.html" with title="No departmental rocks yet" text="Each person on a team owns one to three rocks that support the company rocks." icon="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" %}</div></div>
+  </section>
+  {% endfor %}
+{% else %}
 <section>
   <div class="flex items-center justify-between mb-2">
     <h2 class="section-title">{{ team.name }} rocks <span class="text-neutral-400 font-medium">Departmental</span></h2>

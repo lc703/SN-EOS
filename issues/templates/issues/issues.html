@@ -25,7 +25,7 @@
   <div class="list-group mt-2">
     {% for i in solved %}
       <a href="{% url 'issue_detail' i.pk %}" class="flex items-center gap-3 px-4 py-2.5 text-sm">
-        <span class="pill st-done">Solved</span><span class="flex-1 truncate text-neutral-600">{{ i.title }}</span>
+        <span class="pill st-done">Solved</span><span class="flex-1 truncate text-neutral-600">{{ i.title }}</span>{% include "_site_chip.html" with t=i.team %}
         <span class="text-xs text-neutral-400">{{ i.solved_at|date:"M j"|default:"" }}</span>
       </a>
     {% endfor %}

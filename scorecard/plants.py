@@ -1,8 +1,11 @@
 """Plants and the single Scorecard layout.
 
-One Scorecard shows every active measurable. Company measurables (no plant) come first. Plant measurables
+One Scorecard holds every active measurable. Company measurables (no plant) come first. Plant measurables
 follow, grouped by measurable name with one sub-row per plant, the way the old Battle Planner laid them out.
+The Company view shows all of it; a plant's view shows the Company measurables on top, then its own plant.
 """
+
+from django.db.models import Q
 
 from core.models import Team
 
@@ -43,38 +46,57 @@ def assign_plant(m, plant):
 
 
 def plant_filter_for_team(team):
-    """A plant L10 shows only that plant's rows. Any other team's L10 shows the whole Scorecard."""
+    """A plant team's Scorecard and L10 show Company rows plus that plant. Any other team shows everything."""
     if team is None:
         return None
     return next((p for p in Plant.objects.all() if p.name.lower() == team.name.lower()), None)
 
 
 def scorecard_for_team(team):
-    """(active measurables, plant or None) for a team's L10 and pulse: a plant team sees its plant's rows, anyone
-    else sees the whole Scorecard."""
+    """(active measurables, plant or None) for a team's Scorecard, L10 and pulse.
+
+    Company (and any team that is not a plant) sees the whole Scorecard: Company measurables first, then every
+    plant. A plant team sees the Company measurables on top, then its own plant's measurables."""
     plant = plant_filter_for_team(team)
     qs = Measurable.objects.filter(active=True).select_related("owner", "team", "plant")
-    return (qs.filter(plant=plant) if plant else qs), plant
+    if plant is None or (team is not None and team.is_leadership):
+        return qs, None
+    return qs.filter(Q(plant__isnull=True) | Q(plant=plant)), plant
 
 
-def layout(measurables):
-    """Order measurables for the single Scorecard.
+COMPANY_GROUP = "Company"
 
-    Returns (ordered, groups): Company first, then plant measurables grouped by name. `groups` maps a
-    measurable pk to (group title, first-in-group) for the rows that sit under a group header."""
+
+def layout(measurables, plant=None):
+    """Order measurables for the Scorecard.
+
+    Returns (ordered, groups): Company first, then plant measurables. `groups` maps a measurable pk to
+    (group title, first-in-group, sub-row) for rows that sit under a group header.
+
+    Without `plant` (the Company roll-up) plant measurables are grouped by name with one sub-row per plant, the
+    way the old Battle Planner laid them out. With `plant` (a site's own view) its measurables follow the Company
+    section under the site's name, each with its full title."""
     measurables = list(measurables)
     company = sorted((m for m in measurables if m.plant_id is None), key=lambda m: (m.sort, m.pk))
     plant_ms = [m for m in measurables if m.plant_id is not None]
+    ordered, groups = list(company), {}
+    for i, m in enumerate(company):
+        groups[m.pk] = (COMPANY_GROUP, i == 0, False)
+    if plant is not None:
+        own = sorted(plant_ms, key=lambda m: (m.sort, m.pk))
+        for i, m in enumerate(own):
+            ordered.append(m)
+            groups[m.pk] = (plant.name, i == 0, False)
+        return ordered, groups
     order, first = {}, {}
     for m in plant_ms:
         key = " ".join(m.title.lower().split())
         order.setdefault(key, []).append(m)
         first.setdefault(key, min(first.get(key, (m.sort, m.pk)), (m.sort, m.pk)))
     keys = sorted(order, key=lambda k: first[k])
-    ordered, groups = list(company), {}
     for key in keys:
         members = sorted(order[key], key=lambda m: (m.plant.sort, m.plant.name, m.pk))
         for i, m in enumerate(members):
             ordered.append(m)
-            groups[m.pk] = (members[0].title, i == 0)
+            groups[m.pk] = (members[0].title, i == 0, True)
     return ordered, groups

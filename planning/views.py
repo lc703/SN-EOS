@@ -10,11 +10,13 @@ from django.views.decorators.http import require_POST
 from core.forms import people_choices
 from core.models import Quarter
 from core.permissions import is_admin, is_team_member
+from core.scoping import for_team
 from core.utils import go_back, is_htmx, require, scope
 from issues.models import Issue
 from rocks.models import Rock
 from rocks.views import rock_summary
-from scorecard.models import Measurable, ScoreEntry
+from scorecard.models import ScoreEntry
+from scorecard.plants import scorecard_for_team
 from todos.models import Todo, default_due
 from vision.models import VTO, CoreValue
 
@@ -35,7 +37,7 @@ def next_quarter_for(quarter):
 
 def sessions_list(request):
     team, _ = scope(request)
-    sessions = Session.objects.filter(team=team).select_related("quarter", "next_quarter", "facilitator").prefetch_related("ratings", "items")
+    sessions = for_team(Session.objects.all(), team).select_related("team", "quarter", "next_quarter", "facilitator").prefetch_related("ratings", "items")
     return render(request, "planning/sessions.html", {
         "sessions": sessions, "can_run": team is not None and (is_admin(request.user) or is_team_member(request.user, team)),
         "agendas": [(k, label, AGENDAS[k]) for k, label in KIND_CHOICES],
@@ -64,16 +66,17 @@ def section_context(request, session, section):
     team = session.team
     ctx = {"groups": _items_by_kind(session, section)}
     if section == "review" and session.quarter:
-        rocks = list(Rock.objects.filter(quarter=session.quarter).filter(Q(team=team) | Q(is_company=True)).select_related("owner", "team"))
+        rocks = list(for_team(Rock.objects.filter(quarter=session.quarter), team, extra=Q(is_company=True)).select_related("owner", "team"))
         weeks = session.quarter.weeks()
-        entries = ScoreEntry.objects.filter(measurable__team=team, measurable__active=True, week_start__in=weeks).select_related("measurable")
+        site_ms = scorecard_for_team(team)[0]
+        entries = ScoreEntry.objects.filter(measurable__in=site_ms, week_start__in=weeks).select_related("measurable")
         judged = [e.on_goal for e in entries if e.on_goal is not None]
         ctx.update(
             rocks=rocks, summary=rock_summary(rocks),
             done_pct=round(100 * sum(r.status == Rock.DONE for r in rocks) / len(rocks)) if rocks else None,
             on_goal_pct=round(100 * sum(judged) / len(judged)) if judged else None,
-            measurables=Measurable.objects.filter(team=team, active=True).count(),
-            solved=Issue.objects.filter(team=team, status=Issue.SOLVED, solved_at__date__gte=session.quarter.start_date).count(),
+            measurables=site_ms.count(),
+            solved=for_team(Issue.objects.filter(status=Issue.SOLVED, solved_at__date__gte=session.quarter.start_date), team).count(),
         )
     elif section == "team_health":
         ctx["people"] = session.attendees.order_by("name")
@@ -85,18 +88,18 @@ def section_context(request, session, section):
         nq = session.next_quarter
         qs = Rock.objects.filter(quarter=nq).select_related("owner", "team") if nq else Rock.objects.none()
         ctx.update(
-            company_rocks=qs.filter(is_company=True), team_rocks=qs.filter(team=team, is_company=False),
+            company_rocks=qs.filter(is_company=True), team_rocks=for_team(qs.filter(is_company=False), team),
             people=people_choices(team, include=[request.user.pk]), next_quarter=nq,
         )
     elif section == "ids":
         ctx.update(
-            long_issues=Issue.objects.filter(team=team, status=Issue.OPEN, horizon=Issue.LONG).select_related("owner"),
-            short_issues=Issue.objects.filter(team=team, status=Issue.OPEN, horizon=Issue.SHORT).select_related("owner")[:15],
-            solved_here=Issue.objects.filter(team=team, status=Issue.SOLVED, solved_at__gte=session.started_at).select_related("owner"),
+            long_issues=for_team(Issue.objects.filter(status=Issue.OPEN, horizon=Issue.LONG), team).select_related("owner"),
+            short_issues=for_team(Issue.objects.filter(status=Issue.OPEN, horizon=Issue.SHORT), team).select_related("owner")[:15],
+            solved_here=for_team(Issue.objects.filter(status=Issue.SOLVED, solved_at__gte=session.started_at), team).select_related("owner"),
         )
     elif section == "next_steps":
         ctx.update(
-            todos=Todo.objects.filter(team=team, created_at__gte=session.started_at, is_private=False).select_related("owner"),
+            todos=for_team(Todo.objects.filter(created_at__gte=session.started_at, is_private=False), team).select_related("owner"),
             people=people_choices(team, include=[request.user.pk]), default_due=default_due(),
         )
     elif section == "conclude":
@@ -104,8 +107,8 @@ def section_context(request, session, section):
         ctx.update(
             attendee_ratings=[(u, ratings.get(u.pk)) for u in session.attendees.order_by("name")],
             average=session.average_rating, rating_range=range(1, 11),
-            new_rocks=Rock.objects.filter(quarter=session.next_quarter, created_at__gte=session.started_at).filter(Q(team=team) | Q(is_company=True)).count() if session.next_quarter else 0,
-            new_todos=Todo.objects.filter(team=team, created_at__gte=session.started_at).count(),
+            new_rocks=for_team(Rock.objects.filter(quarter=session.next_quarter, created_at__gte=session.started_at), team, extra=Q(is_company=True)).count() if session.next_quarter else 0,
+            new_todos=for_team(Todo.objects.filter(created_at__gte=session.started_at), team).count(),
         )
     return ctx
 

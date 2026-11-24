@@ -10,10 +10,12 @@ Stack: Python 3.12, Django 5.2, Postgres (SQLite in dev), Django templates, HTMX
 
 Everything is scoped by **team** (Company/Leadership, Kentucky, Le Roy, Mabel) and **quarter**, picked in the bar under the header. People can belong to several teams.
 
+**Company is a roll-up, not a business unit.** Picking Company shows everything across Company, Kentucky, Le Roy and Mabel: rocks, to-dos, issues, headlines, L10s and their meeting runner, planning sessions, people, the Scorecard and the dashboard counts. Each item carries a small team chip (Kentucky, Le Roy, ...) so you can tell where it comes from, and rocks are grouped by team. Picking a site shows only that site (plus the Company measurables on its Scorecard). Something created from the Company view is still filed under the Company team. Private to-dos are never part of the roll-up: only their owner (and whoever created them) sees them, as before. The one rule lives in `core/scoping.py` (`for_team`).
+
 | Page | What it does |
 | --- | --- |
 | **My 90** (`/`) | Your rocks (donut + 13-week strips), to-do completion bars for the last 6 weeks against the EOS 90% target, your measurables with trend sparklines, your issues, and a pulse for the team in scope (company scorecard on goal last week, rocks on track, team to-dos done, open issues). |
-| **Scorecard** | One company Scorecard (no team or plant switcher). Every Measurable has a **plant**: Company (high-level numbers like sales or marketing, the default for new ones) or Kentucky, Le Roy or Mabel. Company rows come first, then plant rows grouped by measurable name with a sub-row per plant (OEE → Kentucky / Le Roy / Mabel), each with its own owner, goal, values and green/red, like Battle Planner. Change a plant from the side panel's Plant field. Columns are the 13 weeks of the quarter. Type a value in any cell (Enter / arrow keys move like a spreadsheet); it saves on change and turns green (on goal) or red. Goal has an operator (`≥`, `≤`, `=`); units are number, %, currency or yes/no. Each row shows owner, goal, a trend sparkline with "x/y on goal", and an average or total column (yes/no shows "5/7"). Click a title for the 13-week trend chart with the goal line. Drag the handle to reorder. |
+| **Scorecard** | One company Scorecard. The Company view shows all of it; a site's view (Kentucky, Le Roy, Mabel) opens with a labeled **Company** section (the Company measurables, read-only or editable by the usual owner/admin rules), then the site's own measurables below under the site's name. Every Measurable has a **plant**: Company (high-level numbers like sales or marketing, the default for new ones) or Kentucky, Le Roy or Mabel. Company rows come first, then plant rows grouped by measurable name with a sub-row per plant (OEE → Kentucky / Le Roy / Mabel), each with its own owner, goal, values and green/red, like Battle Planner. Change a plant from the side panel's Plant field. Columns are the 13 weeks of the quarter. Type a value in any cell (Enter / arrow keys move like a spreadsheet); it saves on change and turns green (on goal) or red. Goal has an operator (`≥`, `≤`, `=`); units are number, %, currency or yes/no. Each row shows owner, goal, a trend sparkline with "x/y on goal", and an average or total column (yes/no shows "5/7"). Click a title for the 13-week trend chart with the goal line. Drag the handle to reorder. |
 | **Rocks** | Company and departmental rocks with owner, due date, milestones and a **weekly G/Y/R update** (On track / At risk / Off track, with a note). Red requires a **recovery plan**; choosing "Off Track" opens the update panel. Each rock shows a 13-week status strip. Drag to reorder. Company rocks show on every team's page. |
 | **Issues** | Short-term and long-term lists per team. Click 1, 2 or 3 to rank the top three. **IDS** opens the solve panel: record the decision, add to-dos, then mark solved. |
 | **To-Dos** | Team and private to-dos. Due date defaults to 7 days out. Weekly completion % per person and per team. |
@@ -85,7 +87,7 @@ Each row is an upsert on (measurable, week): new weeks are created, a changed va
 
 ### Plants
 
-Plants (Kentucky, Le Roy, Mabel) are their own small list, separate from Teams, so rocks, to-dos, issues and L10s are untouched. A measurable with no plant is a Company measurable. The migration puts measurables that sit on the Kentucky, Le Roy or Mabel teams on the matching plant and everything else on Company, and numbers the sort order once. Moving a measurable to a plant also moves it to the team of the same name when there is one (so who can edit an unowned row, and where Drop to Issues sends it, stay sensible); moving it back to Company keeps its team unless that was a plant team. The L10 Scorecard segment shows the same single Scorecard, except a plant team's L10 (a team named like a plant) shows only that plant's rows. Add more plants in the Django admin. Dragging reorders Company rows; plant groups sit in the order of their first row.
+Plants (Kentucky, Le Roy, Mabel) are their own small list, separate from Teams, so rocks, to-dos, issues and L10s are untouched. A measurable with no plant is a Company measurable. The migration puts measurables that sit on the Kentucky, Le Roy or Mabel teams on the matching plant and everything else on Company, and numbers the sort order once. Moving a measurable to a plant also moves it to the team of the same name when there is one (so who can edit an unowned row, and where Drop to Issues sends it, stay sensible); moving it back to Company keeps its team unless that was a plant team. The L10 Scorecard segment matches the Scorecard page: Company L10 shows everything, and a plant team's L10 (a team named like a plant) shows the Company measurables then that plant's rows. Add more plants in the Django admin. Dragging reorders Company rows; plant groups sit in the order of their first row.
 
 ### Dollar measurables
 
@@ -215,7 +217,9 @@ Tools (write tools are hidden from read-only tokens):
 | --- | --- |
 | `whoami`, `list_teams`, `my_90`, `get_scorecard`, `list_rocks`, `get_rock`, `list_issues`, `list_todos`, `list_headlines`, `get_l10` | `set_measurable_value`, `update_rock_status` (green/yellow/red; red needs `recovery_plan`), `set_rock_done`, `set_milestone`, `create_issue`, `update_issue`, `solve_issue` (with to-dos), `create_todo`, `update_todo`, `add_headline`, `rate_l10`, `add_cascading_message` |
 
-Teams are referenced by slug (see `list_teams`). Tool errors (not allowed, bad input) come back as `isError` results the assistant can read.
+Teams are referenced by slug (see `list_teams`).
+
+**Company queries.** The list tools (`list_rocks`, `list_issues`, `list_todos`, `list_headlines`) keep their old behavior by default: `team=company` returns only the Company team's items, and `team` omitted keeps each tool's existing default. Pass `include_all=true` to get the Company roll-up: with `team` Company (or omitted) you get every team's items, each tagged with its `team` slug. `include_all` is ignored for a site team. On `get_scorecard`, `include_all=true` with a site `team` also returns the Company measurables, the way that site's Scorecard page shows them. Private to-dos stay private either way. Tool errors (not allowed, bad input) come back as `isError` results the assistant can read.
 
 ### REST
 
@@ -224,13 +228,13 @@ Same tools over JSON at `/api/v1/`, same bearer token. Responses are `{"data": .
 | Method | Path | Tool |
 | --- | --- | --- |
 | GET | `/api/v1/me`, `/teams`, `/my90` | whoami, list_teams, my_90. `my90` takes an optional `?person=` (email, name, or id) for someone else's 90. Private to-dos stay with the people who can already see them. 1:1s, Quarterly Conversations and People Analyzer are never returned. |
-| GET | `/api/v1/scorecard` (optional `?plant=company\|kentucky\|le-roy\|mabel`) | get_scorecard: the whole company Scorecard, Company first, then plants grouped by name; each measurable has `plant` |
+| GET | `/api/v1/scorecard` (optional `?plant=company\|kentucky\|le-roy\|mabel`, `?team=kentucky&include_all=true` for the site's Company-then-own view) | get_scorecard: the whole company Scorecard, Company first, then plants grouped by name; each measurable has `plant` |
 | POST | `/api/v1/measurables/<id>/values` `{"value": 12, "week": "2026-11-16"}` | set_measurable_value |
 | POST | `/api/v1/measurables/values` `{"measurable": "Prelim Proposal Deal Value", "value": 1250000, "week": "2026-11-16"}` | set_measurable_value by name (add `"plant"` — `company`, `kentucky`, `le-roy` or `mabel` — if the name is on several plants, e.g. OEE). Posting the same week again replaces it. |
 | GET | `/api/v1/rocks`, `/rocks/<id>` | list_rocks, get_rock |
 | POST | `/api/v1/rocks/<id>/updates` `{"color": "red", "note": "...", "recovery_plan": "..."}` | update_rock_status |
 | POST | `/api/v1/rocks/<id>/done`, `/rocks/<id>/milestones` | set_rock_done, set_milestone |
-| GET, POST | `/api/v1/issues` | list_issues, create_issue |
+| GET, POST | `/api/v1/issues` (`?team=company&include_all=true` rolls up every team; same for `/rocks`, `/todos`, `/headlines`) | list_issues, create_issue |
 | PATCH | `/api/v1/issues/<id>`; POST `/issues/<id>/solve` | update_issue, solve_issue |
 | GET, POST | `/api/v1/todos`; PATCH `/todos/<id>` | list_todos, create_todo, update_todo |
 | GET, POST | `/api/v1/headlines` | list_headlines, add_headline |
@@ -274,7 +278,7 @@ python manage.py import_battle_planner battle-planner-export.json --refresh
 pytest
 ```
 
-Covers models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, Send to Asana (against a fake Asana, including a phone-sized browser run), the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`. `tests/test_mobile_overflow.py` opens every page at 375px in headless Chromium and fails if the page is wider than the phone; it skips when Playwright is not installed.
+Covers the Company roll-up and shared Company measurables (`tests/test_rollup.py`), models, the importer (with a small synthetic fixture in `tests/fixtures/`), scorecard coloring, inline entry, trends and reorder, the drop-to-issue → IDS → to-do flow, the L10 conclude/recap flow with cascading messages, weekly rock updates (red needs a recovery plan), the Accountability Chart (status counts, drag re-parent and cycle checks, side-panel autosave, private people flags), Quarterly Conversations, the planning session runner, the REST API and MCP server (tokens, read-only, permissions, audit log), `seed_demo`, Send to Asana (against a fake Asana, including a phone-sized browser run), the compiled CSS, and permissions. Run against Postgres with `TEST_DATABASE_URL=postgres://... pytest`. `tests/test_mobile_overflow.py` opens every page at 375px in headless Chromium and fails if the page is wider than the phone; it skips when Playwright is not installed.
 
 ## Code map
 

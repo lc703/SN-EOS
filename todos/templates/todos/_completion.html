@@ -8,7 +8,7 @@
     </tr></thead>
     <tbody class="divide-y divide-black/5">
       <tr class="bg-neutral-50/70 font-semibold">
-        <td class="px-4 py-2">{{ team.name }} team</td>
+        <td class="px-4 py-2">{% if rollup %}All teams{% else %}{{ team.name }} team{% endif %}</td>
         {% for w, pct, done, total in weekly %}<td class="px-2 py-2 text-center {{ pct|pct_class }}" title="{{ done }} of {{ total }}">{% if pct is None %}—{% else %}{{ pct }}%{% endif %}</td>{% endfor %}
         <td></td>
       </tr>

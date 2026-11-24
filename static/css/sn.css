@@ -158,8 +158,10 @@ input[type=checkbox] { accent-color: #000; }
 .sc-nogoal { font-size: 11.5px; font-weight: 500; color: #a3a3a3; }
 .sc-sub { padding-left: 1.5rem !important; }
 .sc-group td { background: #f7f7f4; border-bottom: 1px solid rgb(0 0 0 / .08); padding: .4rem .75rem; }
-.sc-group-label { position: sticky; left: .75rem; font-family: Montserrat, Inter, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: .01em; }
+.sc-group-head { position: sticky; left: .75rem; display: block; width: max-content; max-width: calc(100vw - 3.5rem); }
+.sc-group-label { font-family: Montserrat, Inter, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: .01em; }
 .sc-plants .sc-sub { background: #fff; }
+.sc-group-note { margin-left: .625rem; font-size: 11.5px; font-weight: 500; color: #737373; }
 @media (min-width: 900px) {
   .sc-goal { position: sticky; left: 17rem; z-index: 2; box-shadow: 1px 0 0 rgb(0 0 0 / .08); }
 }

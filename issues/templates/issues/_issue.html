@@ -16,6 +16,7 @@
       <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-neutral-500">
         <span class="inline-flex items-center gap-1">{% avatar i.owner %}{{ i.owner.first|default:"Unassigned" }}</span>
         <span>· {{ i.created_at|ago }}</span>
+        {% include "_site_chip.html" with t=i.team %}
         {% if i.source_measurable %}<span class="pill pill-muted">From scorecard</span>{% elif i.source_rock %}<span class="pill pill-muted">From rock</span>{% elif i.source_headline %}<span class="pill pill-muted">From headline</span>{% endif %}
         {% with n=i.todos.all|length %}{% if n %}<span class="pill pill-muted">{{ n }} to-do{{ n|pluralize }}</span>{% endif %}{% endwith %}
       </div>

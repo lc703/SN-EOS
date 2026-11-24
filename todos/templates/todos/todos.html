@@ -23,7 +23,7 @@
 <div class="grid lg:grid-cols-[1fr_26rem] gap-6 items-start">
   <div class="space-y-6">
     <section>
-      <div class="flex items-center justify-between mb-2"><h2 class="section-title">{{ team.name }} to-dos</h2><span class="text-xs text-neutral-500">{{ todos|length }}</span></div>
+      <div class="flex items-center justify-between mb-2"><h2 class="section-title">{% if rollup %}All to-dos <span class="text-neutral-400 font-medium">every team</span>{% else %}{{ team.name }} to-dos{% endif %}</h2><span class="text-xs text-neutral-500">{{ todos|length }}</span></div>
       <div class="list-group">
         {% if can_add %}{% include "todos/_add.html" with uid="team" %}{% endif %}
         {% for t in todos %}{% include "todos/_todo.html" %}{% empty %}<p class="px-4 py-6 text-sm text-neutral-500">Nothing open. Nice.</p>{% endfor %}

@@ -16,12 +16,14 @@ def app(request):
         "ASANA_ON": bool(settings.ASANA_PAT and settings.ASANA_WORKSPACE_GID),
     }
     if getattr(request, "user", None) and request.user.is_authenticated:
+        team = getattr(request, "_team", None) or current_team(request)
         ctx.update(
             all_teams=Team.objects.all(),
             all_quarters=Quarter.objects.all(),
-            team=getattr(request, "_team", None) or current_team(request),
+            team=team,
             quarter=getattr(request, "_quarter", None) or current_quarter(request),
             is_admin=request.user.is_admin,
+            rollup=bool(team and team.is_leadership),
         )
         ctx["sn_nav"] = nav_data(ctx["all_teams"], request.user)
     return ctx

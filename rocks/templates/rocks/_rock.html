@@ -10,7 +10,7 @@
       <span>{{ r.owner.display_name|default:"No owner" }}</span>
       {% if r.due_date %}<span>· due {{ r.due_date|date:"M j" }}</span>{% endif %}
       {% if mode != 'company' %}<span class="badge {% if r.is_company %}badge-ink{% endif %}">{{ r.kind_label }}</span>{% endif %}
-      {% if not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
+      {% if rollup %}{% include "_site_chip.html" with t=r.team %}{% elif not r.team.is_leadership %}<span>· {{ r.team.name }}</span>{% endif %}
       {% with p=r.milestone_progress %}{% if p %}<span>· {{ p.0 }}/{{ p.1 }} milestones</span>{% endif %}{% endwith %}
     </div>
     {% if r.strip and mode == 'home' %}<div class="mt-1.5">{% rock_strip r.strip %}</div>{% endif %}
