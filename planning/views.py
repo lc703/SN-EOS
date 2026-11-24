@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.forms import people_choices
+from core.forms import owner_choices
 from core.models import Quarter
 from core.permissions import is_admin, is_team_member
 from core.scoping import for_team
@@ -89,7 +89,7 @@ def section_context(request, session, section):
         qs = Rock.objects.filter(quarter=nq).select_related("owner", "team") if nq else Rock.objects.none()
         ctx.update(
             company_rocks=qs.filter(is_company=True), team_rocks=for_team(qs.filter(is_company=False), team),
-            people=people_choices(team, include=[request.user.pk]), next_quarter=nq,
+            people=owner_choices(team, user=request.user), next_quarter=nq,
         )
     elif section == "ids":
         ctx.update(
@@ -100,7 +100,7 @@ def section_context(request, session, section):
     elif section == "next_steps":
         ctx.update(
             todos=for_team(Todo.objects.filter(created_at__gte=session.started_at, is_private=False), team).select_related("owner"),
-            people=people_choices(team, include=[request.user.pk]), default_due=default_due(),
+            people=owner_choices(team, user=request.user), default_due=default_due(),
         )
     elif section == "conclude":
         ratings = {r.user_id: r.rating for r in session.ratings.all()}
@@ -211,7 +211,7 @@ def session_rock(request, pk):
     title = (request.POST.get("title") or "").strip()
     if title and session.next_quarter:
         company = request.POST.get("company") == "1" and (session.team.is_leadership or is_admin(request.user))
-        owner = people_choices(session.team, include=[request.user.pk]).filter(pk=request.POST.get("owner") or request.user.pk).first()
+        owner = owner_choices(session.team, user=request.user).filter(pk=request.POST.get("owner") or request.user.pk).first()
         Rock.objects.create(
             quarter=session.next_quarter, team=session.team, is_company=company, title=title[:200], owner=owner,
             sort=Rock.objects.filter(quarter=session.next_quarter, team=session.team).count(),
@@ -225,7 +225,7 @@ def session_todo(request, pk):
     require(can_run(request.user, session))
     title = (request.POST.get("title") or "").strip()
     if title:
-        owner = people_choices(session.team, include=[request.user.pk]).filter(pk=request.POST.get("owner") or request.user.pk).first() or request.user
+        owner = owner_choices(session.team, user=request.user).filter(pk=request.POST.get("owner") or request.user.pk).first() or request.user
         due = request.POST.get("due_date") or default_due()
         Todo.objects.create(team=session.team, title=title[:240], owner=owner, due_date=due, created_by=request.user)
     return go_back(request, f"/planning/{session.pk}/?s=next_steps")

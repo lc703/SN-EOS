@@ -1,11 +1,13 @@
+{% load sn %}
 {# Quick add: title, owner, due (default 7 days, past dates allowed). Context: form, meeting (optional), issue (optional) #}
 <form method="post" action="{{ action|default:'/todos/new/' }}" class="flex flex-wrap items-end gap-2 px-4 py-3 bg-neutral-50/70" x-data="{ priv: false }">
   {% csrf_token %}
+  {% form_errors "todo" as fe %}{% include "_form_errors.html" with what="to-do" %}
   {% if meeting %}<input type="hidden" name="meeting" value="{{ meeting.pk }}">{% endif %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
   <div class="flex-1 min-w-[14rem]">
     <label class="sr-only" for="todo-title-{{ uid|default:'x' }}">To-do</label>
-    <input id="todo-title-{{ uid|default:'x' }}" name="title" required placeholder="Add a to-do…" class="block w-full rounded-lg border bg-white px-3 py-2 text-[15px]">
+    <input id="todo-title-{{ uid|default:'x' }}" name="title" required value="{{ fe.values.title }}" placeholder="Add a to-do…" class="block w-full rounded-lg border bg-white px-3 py-2 text-[15px]">
   </div>
   <select name="owner" class="rounded-lg border bg-white px-2 py-2 text-sm" aria-label="Owner">
     {% for f in form.owner.field.queryset %}<option value="{{ f.pk }}" {% if f.pk == user.pk %}selected{% endif %}>{{ f.display_name }}</option>{% endfor %}

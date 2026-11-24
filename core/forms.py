@@ -36,14 +36,24 @@ def people_choices(team=None, include=None):
     """Team members (or everyone when the team has none, or is the Company roll-up), plus any ids in `include`."""
     from django.db.models import Q
 
-    qs = User.objects.filter(is_active=True)
+    extra = [i for i in (include or []) if i]
+    cond = Q(is_active=True)
     if team is not None and not team.is_leadership and team.members.exists():
         cond = Q(teams=team)
-        extra = [i for i in (include or []) if i]
-        if extra:
-            cond |= Q(pk__in=extra)
-        qs = User.objects.filter(cond)
-    return qs.distinct().order_by("name")
+    if extra:
+        cond |= Q(pk__in=extra)
+    return User.objects.filter(cond).distinct().order_by("name")
+
+
+def owner_choices(team=None, *, user=None, instance=None, extra=()):
+    """The one list of people an owner/assignee select offers, for the form field AND the rendered template.
+
+    It always includes the person using the form (they are preselected as the owner, even when they are an
+    admin who is not on the team) and the instance's current owner on edit. Build every owner select from
+    this, never from `people_choices` directly, so what is rendered is always what the form accepts.
+    """
+    ids = [getattr(user, "pk", None), getattr(instance, "owner_id", None), *extra]
+    return people_choices(team, include=ids)
 
 
 class PersonField(forms.ModelChoiceField):

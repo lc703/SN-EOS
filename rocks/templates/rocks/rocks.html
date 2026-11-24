@@ -9,10 +9,12 @@
     <p class="text-sm text-neutral-500 mt-0.5">The three to seven most important things for the next 90 days. Update each one green, yellow or red every week.</p>
   </div>
   {% if can_add %}
-    <div x-data="{open:false}">
+    {% form_errors "rock" as fe %}
+    <div x-data="{open: {% if fe.errors %}true{% else %}false{% endif %}}">
       <button type="button" class="btn btn-primary" @click="open=!open" data-shortcut="new">+ Rock</button>
       <div x-cloak x-show="open" @click.outside="open=false" @keydown.escape.window="open=false" class="absolute right-4 mt-2 w-[min(34rem,calc(100vw-2rem))] card card-pad z-20 shadow-lg">
         <form method="post" action="{% url 'rock_new' %}">{% csrf_token %}
+          <div class="mb-3">{% include "_form_errors.html" with what="rock" %}</div>
           {% include "_form.html" %}
           <div class="mt-4 flex justify-end gap-2"><button type="button" class="btn" @click="open=false">Cancel</button><button class="btn btn-primary">Add rock</button></div>
         </form>

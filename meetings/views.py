@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_safe
 
-from core.forms import people_choices
+from core.forms import owner_choices, people_choices
 from core.models import monday_of
 from core.scoping import company_items, for_team
 from core.permissions import is_admin, is_team_member
@@ -114,7 +114,7 @@ def section_context(request, meeting, section):
             ),
             long_count=for_team(Issue.objects.filter(horizon=Issue.LONG, status=Issue.OPEN), team).count(),
             solved_here=meeting.solved_issues.all(),
-            people=people_choices(team, include=[request.user.pk]),
+            people=owner_choices(team, user=request.user),
             default_due=default_due(),
             horizon=Issue.SHORT,
             can_edit=True,

@@ -11,10 +11,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.models import monday_of
-from core.forms import DateInput, PersonField, StyledForm, people_choices
+from core.forms import DateInput, PersonField, StyledForm, owner_choices
 from core.permissions import can_edit_owned, is_admin, is_team_member
 from core.scoping import company_items, for_team, is_rollup, is_site
-from core.utils import go_back, is_htmx, require, scope
+from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from todos.views import TodoForm
 
 from .models import Milestone, Rock, RockUpdate
@@ -34,7 +34,7 @@ class RockForm(StyledForm, forms.ModelForm):
     def __init__(self, *args, team=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         team = team or (self.instance.team if self.instance.team_id else None)
-        self.fields["owner"].queryset = people_choices(team, include=[self.instance.owner_id])
+        self.fields["owner"].queryset = owner_choices(team, user=user, instance=self.instance)
         if team is not None and team.is_leadership and not self.instance.pk:
             self.fields["is_company"].initial = True
         if user is not None and not is_admin(user) and not (team and team.is_leadership):
@@ -116,7 +116,7 @@ def rock_new(request):
         rock.save()
         messages.success(request, f"Rock “{rock.title}” added.")
         return redirect("rock_detail", pk=rock.pk)
-    messages.error(request, "A rock needs a title.")
+    stash_form_errors(request, "rock", form)
     return go_back(request, "/rocks/")
 
 

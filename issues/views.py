@@ -8,11 +8,11 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from core.forms import PersonField, StyledForm, people_choices
+from core.forms import PersonField, StyledForm, owner_choices
 from core.models import Team
 from core.permissions import can_edit_team_item, is_admin, is_team_member
 from core.scoping import company_items, for_team, is_rollup, is_site
-from core.utils import go_back, is_htmx, require, scope
+from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from meetings.models import Headline, Meeting
 from rocks.models import Rock
 from scorecard.models import Measurable, ScoreEntry
@@ -40,10 +40,10 @@ class IssueForm(StyledForm, forms.ModelForm):
         default = self.current_team or team
         self.default_team = default
         self.fields["team"].initial = default
-        owners = people_choices(default, include=[self.instance.owner_id])
+        owners = owner_choices(default, user=user, instance=self.instance)
         picked = self.data.get("team") if self.is_bound else None
         if picked and str(picked).isdigit() and (other := Team.objects.filter(pk=int(picked)).first()) and other != default:
-            owners = (owners | people_choices(other, include=[self.instance.owner_id])).distinct()
+            owners = (owners | owner_choices(other, user=user, instance=self.instance)).distinct()
         self.fields["owner"].queryset = owners
 
     def clean_team(self):
@@ -96,7 +96,7 @@ def issues_list(request):
             "site": site,
             "can_add": can_add,
             "can_edit": can_add,
-            "people": people_choices(team, include=[request.user.pk]),
+            "people": owner_choices(team, user=request.user),
             "default_due": default_due(),
         },
     )
@@ -128,7 +128,7 @@ def issue_new(request):
         issue.raised_meeting = meeting
         issue.save()
     else:
-        messages.error(request, "An issue needs a title." if "title" in form.errors else " ".join(form.errors.get("team", ["Couldn't add that issue."])))
+        stash_form_errors(request, "issue", form)
     return go_back(request, f"/meetings/{meeting.pk}/?s=ids" if meeting else "/issues/")
 
 
@@ -158,7 +158,7 @@ def issue_detail(request, pk):
             "editable": editable,
             "todos": issue.todos.select_related("owner"),
             "todo_form": TodoForm(team=issue.team, user=request.user),
-            "people": people_choices(issue.team, include=[request.user.pk]),
+            "people": owner_choices(issue.team, user=request.user),
             "default_due": default_due(),
             "meeting": Meeting.objects.filter(pk=request.GET.get("meeting") or 0).first(),
         },

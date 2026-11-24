@@ -8,11 +8,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core import asana_client
-from core.forms import DateInput, PersonField, StyledForm, people_choices
+from core.forms import DateInput, PersonField, StyledForm, owner_choices
 from core.models import User
 from core.scoping import company_items, for_team, is_rollup
 from core.permissions import can_edit_todo, can_view_todo, is_admin, is_team_member
-from core.utils import go_back, is_htmx, require, scope
+from core.utils import go_back, is_htmx, require, scope, stash_form_errors
 from meetings.models import Meeting
 
 from .models import Todo, default_due, weekly_completion
@@ -31,7 +31,7 @@ class TodoForm(StyledForm, forms.ModelForm):
     def __init__(self, *args, team=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         team = team or (self.instance.team if self.instance.team_id else None)
-        self.fields["owner"].queryset = people_choices(team, include=[self.instance.owner_id, getattr(user, "pk", None)])
+        self.fields["owner"].queryset = owner_choices(team, user=user, instance=self.instance)
         if user and not self.instance.pk:
             self.fields["owner"].initial = user.pk
             self.fields["due_date"].initial = default_due()
@@ -114,12 +114,15 @@ def todos_list(request):
 
 @require_POST
 def todo_new(request):
-    team, _ = scope(request)
+    mid = request.POST.get("meeting", "")
+    meeting = Meeting.objects.select_related("team").filter(pk=int(mid)).first() if mid.isdigit() else None
+    team = meeting.team if meeting else scope(request)[0]
+    if meeting is not None:
+        require(is_admin(request.user) or is_team_member(request.user, team))
     form = TodoForm(request.POST, team=team, user=request.user)
     if form.is_valid():
         if not form.cleaned_data["is_private"]:
             require(is_admin(request.user) or is_team_member(request.user, team))
-        meeting = Meeting.objects.filter(pk=request.POST.get("meeting") or 0).first()
         todo = form.save(commit=False)
         todo.team = team
         todo.created_by = request.user
@@ -131,8 +134,8 @@ def todo_new(request):
             messages.success(request, f"To-do added for {todo.owner.first}.")
         send_if_asked(request, todo)
     else:
-        messages.error(request, "To-do needs a title and an owner.")
-    return go_back(request, "/todos/")
+        stash_form_errors(request, "todo", form)
+    return go_back(request, f"/meetings/{meeting.pk}/?s=todos" if meeting else "/todos/")
 
 
 @require_POST

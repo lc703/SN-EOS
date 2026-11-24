@@ -133,3 +133,11 @@ def get_item(mapping, key):
         return mapping.get(key)
     except AttributeError:
         return None
+
+
+@register.simple_tag(takes_context=True)
+def form_errors(context, key):
+    """Errors (and typed values) left by `stash_form_errors` for this form, shown once."""
+    request = context.get("request")
+    session = getattr(request, "session", None)
+    return (session.pop(f"form_errors:{key}", None) if session is not None else None) or {}

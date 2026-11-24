@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.forms import PersonField, StyledForm, people_choices
+from core.forms import PersonField, StyledForm, owner_choices
 from core.models import monday_of
 from core.permissions import can_edit_owned, is_admin, is_team_member
 from core.utils import require, scope
@@ -147,7 +147,7 @@ def scorecard(request):
             "show_trend": True,
             "can_add": can_add,
             "sortable": can_add,
-            "form": MeasurableForm(initial={"plant": plant}) if can_add else None,
+            "form": MeasurableForm(initial={"plant": plant}, user=request.user) if can_add else None,
             "plant": plant,
             "wide": True,
         },
@@ -204,9 +204,9 @@ class MeasurableForm(StyledForm, forms.ModelForm):
         model = Measurable
         fields = ["title", "plant", "owner", "unit", "goal_compare", "goal", "trailing", "source", "sort"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["owner"].queryset = people_choices(None, include=[self.instance.owner_id])
+        self.fields["owner"].queryset = owner_choices(None, user=user, instance=self.instance)
         self.fields["goal"].widget.attrs["step"] = "any"
         self.fields["source"].widget.attrs["placeholder"] = "Filled weekly by assistant from Attio"
 
@@ -220,7 +220,7 @@ class MeasurableForm(StyledForm, forms.ModelForm):
 
 def measurable_new(request):
     require(_can_add(request.user))
-    form = MeasurableForm(request.POST or None)
+    form = MeasurableForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         m = form.save(commit=False)
         require(m.team_id)
@@ -235,7 +235,7 @@ def measurable_new(request):
 def measurable_edit(request, pk):
     m = get_object_or_404(Measurable, pk=pk)
     require(can_edit_owned(request.user, m))
-    form = MeasurableForm(request.POST or None, instance=m)
+    form = MeasurableForm(request.POST or None, instance=m, user=request.user)
     if request.method == "POST":
         if "archive" in request.POST:
             m.active = False
